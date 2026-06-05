@@ -1,6 +1,15 @@
 import Link from 'next/link'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { ArrowRight, Store, Package, Shield, TrendingUp, Clock, MapPin, Star } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+
+function getDashboardLink(role: string) {
+  if (role === 'HOST') return '/dashboard/host'
+  if (role === 'ADMIN') return '/dashboard/admin'
+  if (role === 'FIELD_AGENT') return '/dashboard/field-agent'
+  return '/dashboard/vendor'
+}
 
 async function getFeaturedShelves() {
   return prisma.shelf.findMany({
@@ -17,7 +26,9 @@ const CATEGORY_ICON: Record<string, string> = {
 }
 
 export default async function HomePage() {
+  const session = await getServerSession(authOptions)
   const shelves = await getFeaturedShelves()
+  const dashboardLink = session ? getDashboardLink(session.user.role) : null
 
   return (
     <div className="min-h-screen bg-white">
@@ -33,8 +44,18 @@ export default async function HomePage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/browse" className="hidden sm:block text-sm text-gray-600 hover:text-green-600 font-medium transition">Browse Shelves</Link>
-            <Link href="/login" className="text-sm text-gray-600 hover:text-green-600 font-medium transition">Login</Link>
-            <Link href="/register" className="btn-primary text-sm !py-2 !px-4">Get Started</Link>
+            {session ? (
+              <>
+                <span className="text-sm font-medium text-gray-700 hidden sm:block">{session.user.name}</span>
+                <Link href={dashboardLink!} className="btn-primary text-sm !py-2 !px-4">Dashboard</Link>
+                <Link href="/api/auth/signout" className="text-sm text-gray-400 hover:text-red-500 transition">Logout</Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm text-gray-600 hover:text-green-600 font-medium transition">Login</Link>
+                <Link href="/register" className="btn-primary text-sm !py-2 !px-4">Get Started</Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
