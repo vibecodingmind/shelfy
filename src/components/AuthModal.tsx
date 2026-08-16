@@ -77,7 +77,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       name,
       email,
       phone,
-      password,
+      password, // min 10 chars, upper, lower, number, special
       role,
       businessName,
       category,
@@ -389,6 +389,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 placeholder="••••••••"
               />
+              <p className="text-[10px] text-slate-500 mt-1">At least 10 characters with upper, lower, number, and a special character.</p>
             </div>
 
             <button

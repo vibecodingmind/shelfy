@@ -7,9 +7,13 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import { Pool } from 'pg';
 import { PlatformSettings, Shelf } from '../types/index.js';
+import { execSync } from 'child_process';
 import { buildCompleteSeedData, DatabaseSchema } from './seedData.js';
+import { capturePaymentInLedger } from './services/finance.js';
+import { getPrisma } from './prisma.js';
+import { importSchemaToPrisma, loadSchemaFromPrisma, persistSchemaToPrisma, relationalUserCount } from './relational.js';
 
-export const SEED_SCHEMA_VERSION = 3;
+export const SEED_SCHEMA_VERSION = 4;
 
 const DATA_DIR = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || process.cwd(), process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH ? '' : 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'shelfy.json');
@@ -59,6 +63,10 @@ const DEFAULT_SETTINGS: PlatformSettings = {
     'Baked Goods',
     'Supplements & Herbal',
   ],
+  minWithdrawalTzs: 20000,
+  bookingGraceHours: 24,
+  cancellationFeePercent: 10,
+  freeCancelDays: 7,
   shelfTypes: [
     { id: 'EYE_LEVEL', name: 'Eye-Level Display', description: 'Optimal line of sight (120–160cm) with maximum shopper gaze capture.', icon: '👁️' },
     { id: 'COUNTER_DISPLAY', name: 'Counter Checkout Box', description: 'High-impulse point-of-sale positioning directly at cashier desk.', icon: '🛒' },
@@ -80,7 +88,9 @@ const EMPTY_COLLECTIONS: Array<keyof DatabaseSchema> = [
   'products',
   'shelfInventory',
   'bookings',
+  'bookingStatusHistory',
   'payments',
+  'paymentAttempts',
   'payouts',
   'fieldVisits',
   'shelfReports',
@@ -89,6 +99,9 @@ const EMPTY_COLLECTIONS: Array<keyof DatabaseSchema> = [
   'auditLogs',
   'reviews',
   'disputes',
+  'authTokens',
+  'ledgerAccounts',
+  'ledgerEntries',
 ];
 
 function normalizeCategory(category: string): string {
@@ -149,7 +162,13 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
       // rehash below
     }
     changed = true;
-    return { ...user, passwordHash: bcrypt.hashSync(demoPassword, 10), updatedAt: new Date().toISOString() };
+    return {
+      ...user,
+      passwordHash: bcrypt.hashSync(demoPassword, 10),
+      emailVerifiedAt: user.emailVerifiedAt || new Date().toISOString(),
+      status: user.status === 'PENDING' ? 'ACTIVE' : user.status,
+      updatedAt: new Date().toISOString(),
+    };
   });
 
   if (!next.fieldVisits.some((v) => v.id === 'fv_2')) {
@@ -171,6 +190,13 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
     changed = true;
   }
 
+  for (const booking of next.bookings.filter((b) => b.paymentStatus === 'PAID')) {
+    const payment = next.payments.find((p) => p.bookingId === booking.id);
+    if (capturePaymentInLedger(next, booking, payment?.id || `pay_for_${booking.id}`)) {
+      changed = true;
+    }
+  }
+
   if (next.schemaVersion !== SEED_SCHEMA_VERSION) {
     next.schemaVersion = SEED_SCHEMA_VERSION;
     changed = true;
@@ -181,8 +207,9 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
 
 class DatabaseEngine {
   private data: DatabaseSchema;
-  private driver: 'file' | 'postgres' = 'file';
+  private driver: 'file' | 'postgres' | 'prisma' = 'file';
   private pool: Pool | null = null;
+  private writeChain: Promise<void> = Promise.resolve();
   public readonly ready: Promise<void>;
 
   constructor() {
@@ -192,13 +219,33 @@ class DatabaseEngine {
 
   private async init() {
     if (process.env.DATABASE_URL) {
-      this.driver = 'postgres';
       const internal = process.env.DATABASE_URL.includes('railway.internal') || process.env.DATABASE_URL.includes('sslmode=disable');
       this.pool = new Pool({
         connectionString: process.env.DATABASE_URL,
         ssl: internal ? false : { rejectUnauthorized: false },
       });
       await this.ensurePostgres();
+      await this.tryMigrate();
+
+      const prisma = getPrisma();
+      if (prisma) {
+        try {
+          const count = await relationalUserCount(prisma);
+          if (count === 0) {
+            const fromBlob = await this.loadFromPostgres();
+            const source = normalizeDatabase(fromBlob || buildCompleteSeedData()).data;
+            await importSchemaToPrisma(prisma, source);
+          }
+          this.data = normalizeDatabase(await loadSchemaFromPrisma(prisma)).data;
+          this.driver = 'prisma';
+          console.log('🗄️  Shelfy database driver: prisma');
+          return;
+        } catch (err) {
+          console.error('Prisma bootstrap failed, falling back to JSONB document store:', err);
+        }
+      }
+
+      this.driver = 'postgres';
       const loaded = await this.loadFromPostgres();
       if (loaded) {
         const { data, changed } = normalizeDatabase(loaded);
@@ -216,6 +263,17 @@ class DatabaseEngine {
     this.driver = 'file';
     this.data = this.loadFromFile();
     console.log('🗄️  Shelfy database driver: file');
+  }
+
+  private tryMigrate() {
+    try {
+      execSync('npx prisma migrate deploy', {
+        stdio: 'inherit',
+        env: process.env,
+      });
+    } catch (err) {
+      console.warn('prisma migrate deploy did not complete. Relational tables may be created on the next release.', err);
+    }
   }
 
   private ensureDir() {
@@ -275,22 +333,47 @@ class DatabaseEngine {
 
   private async persist(dataToSave?: DatabaseSchema) {
     const target = dataToSave || this.data;
-    if (this.driver === 'postgres' && this.pool) {
+    if (this.driver === 'prisma') {
+      const prisma = getPrisma();
+      if (prisma) {
+        await persistSchemaToPrisma(prisma, target);
+        return;
+      }
+    }
+    if ((this.driver === 'postgres' || this.driver === 'prisma') && this.pool) {
       await this.pool.query(
         `INSERT INTO shelfy_store (id, data, updated_at)
          VALUES ('main', $1::jsonb, NOW())
          ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
         [JSON.stringify(target)]
       );
+      if (this.driver === 'prisma') return;
       return;
     }
     this.saveFile(target);
   }
 
   public save() {
-    void this.persist().catch((err) => {
-      console.error('Failed to persist Shelfy database:', err);
+    void this.saveAsync();
+  }
+
+  public saveAsync(): Promise<void> {
+    this.writeChain = this.writeChain
+      .then(() => this.persist())
+      .catch((err) => {
+        console.error('Failed to persist Shelfy database:', err);
+      });
+    return this.writeChain;
+  }
+
+  public async withLock<T>(fn: () => T | Promise<T>): Promise<T> {
+    let result!: T;
+    this.writeChain = this.writeChain.then(async () => {
+      result = await fn();
+      await this.persist();
     });
+    await this.writeChain;
+    return result;
   }
 
   public get db(): DatabaseSchema {
@@ -311,7 +394,8 @@ class DatabaseEngine {
       payouts: this.data.payouts.length,
       fieldVisits: this.data.fieldVisits.length,
       settingsCategories: this.data.settings.shelfCategories?.length || 0,
-      dataFile: this.driver === 'file' ? DB_FILE : 'postgres:shelfy_store',
+      dataFile: this.driver === 'file' ? DB_FILE : this.driver === 'prisma' ? 'postgres:prisma' : 'postgres:shelfy_store',
+      ledgerEntries: this.data.ledgerEntries?.length || 0,
     };
   }
 }

@@ -17,6 +17,11 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   avatarUrl?: string;
+  emailVerifiedAt?: string;
+  phoneVerifiedAt?: string;
+  failedLoginCount?: number;
+  lockedUntil?: string;
+  lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -130,6 +135,7 @@ export type BookingStatus =
   | 'PENDING_APPROVAL'
   | 'APPROVED'
   | 'PAYMENT_PENDING'
+  | 'PAYMENT_FAILED'
   | 'PAID'
   | 'ACTIVE'
   | 'EXPIRING'
@@ -312,6 +318,40 @@ export interface PlatformSettings {
   maintenanceMode: boolean;
   shelfCategories: string[];
   shelfTypes: ShelfTypeOption[];
+  minWithdrawalTzs?: number;
+  bookingGraceHours?: number;
+  cancellationFeePercent?: number;
+  freeCancelDays?: number;
+  policies?: Record<string, string>;
+}
+
+export interface BookingStatusHistory {
+  id: string;
+  bookingId: string;
+  fromStatus?: BookingStatus;
+  toStatus: BookingStatus;
+  actorId?: string;
+  actorRole: string;
+  reason?: string;
+  createdAt: string;
+}
+
+export interface AuthToken {
+  id: string;
+  userId: string;
+  type: 'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'PHONE_OTP';
+  tokenHash: string;
+  expiresAt: string;
+  usedAt?: string;
+  createdAt: string;
+}
+
+export interface PaymentAttempt {
+  id: string;
+  paymentId: string;
+  status: string;
+  payload?: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface AuthState {

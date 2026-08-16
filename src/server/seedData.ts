@@ -18,7 +18,11 @@ import {
   Review,
   Dispute,
   PlatformSettings,
+  BookingStatusHistory,
+  AuthToken,
+  PaymentAttempt,
 } from '../types/index.js';
+import { LedgerAccount, LedgerEntry, accountKey, paymentCapturedPostings } from './domain/ledger.js';
 
 export interface DatabaseSchema {
   schemaVersion?: number;
@@ -30,7 +34,9 @@ export interface DatabaseSchema {
   products: Product[];
   shelfInventory: ShelfInventory[];
   bookings: Booking[];
+  bookingStatusHistory: BookingStatusHistory[];
   payments: Payment[];
+  paymentAttempts: PaymentAttempt[];
   payouts: Payout[];
   fieldVisits: FieldVisit[];
   shelfReports: ShelfReport[];
@@ -39,6 +45,9 @@ export interface DatabaseSchema {
   auditLogs: AuditLog[];
   reviews: Review[];
   disputes: Dispute[];
+  authTokens: AuthToken[];
+  ledgerAccounts: LedgerAccount[];
+  ledgerEntries: LedgerEntry[];
   settings: PlatformSettings;
 }
 
@@ -57,6 +66,9 @@ export function buildCompleteSeedData(): DatabaseSchema {
       role: 'ADMIN',
       status: 'ACTIVE',
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      emailVerifiedAt: now,
+      phoneVerifiedAt: now,
+      failedLoginCount: 0,
       createdAt: now,
       updatedAt: now,
     },
@@ -1755,10 +1767,69 @@ export function buildCompleteSeedData(): DatabaseSchema {
       { id: 'END_CAP', name: 'Aisle End-Cap Feature', description: 'Prime corner position commanding cross-traffic attention.', icon: '🎯' },
       { id: 'WINDOW_DISPLAY', name: 'Street Window Showcase', description: 'Exterior street-facing glass showcase attracting passersby.', icon: '🪟' },
     ],
+    minWithdrawalTzs: 20000,
+    bookingGraceHours: 24,
+    cancellationFeePercent: 10,
+    freeCancelDays: 7,
+    policies: {
+      damage: 'LEGAL_REVIEW_REQUIRED — Damage to host fixtures or vendor goods is handled via the dispute workflow. Liability is not assigned automatically by software.',
+      theft: 'LEGAL_REVIEW_REQUIRED — Theft or unexplained loss is reported through a dispute with evidence. Shelfy does not automatically debit either party.',
+      expiry: 'LEGAL_REVIEW_REQUIRED — Expired goods remain the vendor’s responsibility unless a written add-on service says otherwise.',
+      shelfRentalTerms: 'LEGAL_REVIEW_REQUIRED — The vendor rents shelf space only. Product title stays with the vendor.',
+    },
   };
 
+  for (const user of users) {
+    user.emailVerifiedAt = user.emailVerifiedAt || now;
+    user.phoneVerifiedAt = user.phoneVerifiedAt || now;
+    user.failedLoginCount = user.failedLoginCount ?? 0;
+  }
+
+  const bookingStatusHistory: BookingStatusHistory[] = bookings.map((booking, index) => ({
+    id: `bsh_seed_${index + 1}`,
+    bookingId: booking.id,
+    toStatus: booking.status,
+    actorRole: 'SYSTEM',
+    reason: 'Seed import',
+    createdAt: now,
+  }));
+
+  const ledgerAccounts: LedgerAccount[] = [];
+  const ledgerEntries: LedgerEntry[] = [];
+  const ensureAccount = (ownerType: LedgerAccount['ownerType'], ownerId: string, type: LedgerAccount['type']) => {
+    const id = accountKey(ownerType, ownerId, type);
+    if (!ledgerAccounts.some((a) => a.id === id)) {
+      ledgerAccounts.push({ id, ownerType, ownerId, type });
+    }
+    return id;
+  };
+
+  for (const booking of bookings.filter((b) => b.paymentStatus === 'PAID')) {
+    const posts = paymentCapturedPostings({
+      hostId: booking.hostId,
+      totalPriceTzs: booking.totalPriceTzs,
+      platformFeeTzs: booking.platformFeeTzs,
+      hostEarningsTzs: booking.hostEarningsTzs,
+    });
+    posts.forEach((post, i) => {
+      const accountId = ensureAccount(post.account.ownerType, post.account.ownerId, post.account.type);
+      ledgerEntries.push({
+        id: `le_seed_${booking.id}_${i}`,
+        accountId,
+        amountTzs: post.amountTzs,
+        direction: post.direction,
+        type: post.type,
+        refType: 'Payment',
+        refId: `pay_for_${booking.id}`,
+        idempotencyKey: `payment:pay_for_${booking.id}:captured:${i}`,
+        memo: `Seed capture for ${booking.id}`,
+        createdAt: now,
+      });
+    });
+  }
+
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     users,
     vendorProfiles,
     hostProfiles,
@@ -1767,7 +1838,9 @@ export function buildCompleteSeedData(): DatabaseSchema {
     products,
     shelfInventory,
     bookings,
+    bookingStatusHistory,
     payments,
+    paymentAttempts: [],
     payouts,
     fieldVisits,
     shelfReports,
@@ -1776,6 +1849,9 @@ export function buildCompleteSeedData(): DatabaseSchema {
     auditLogs,
     reviews,
     disputes,
+    authTokens: [],
+    ledgerAccounts,
+    ledgerEntries,
     settings,
   };
 }

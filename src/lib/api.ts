@@ -82,8 +82,12 @@ export const api = {
   updateBookingStatus: (bookingId: string, status: string) => apiFetch<Booking>(`/api/bookings/${bookingId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   getPayouts: () => apiFetch<Payout[]>('/api/payouts'),
   initiatePesapalSession: (bookingId: string) => apiFetch<any>('/api/payments/initiate-session', { method: 'POST', body: JSON.stringify({ bookingId }) }),
-  verifyPesapalCallback: (payload: { bookingId: string; transactionReference: string; orderTrackingId?: string; paymentProvider?: string; phoneOrCardNumber?: string }) => apiFetch<any>('/api/payments/callback-verify', { method: 'POST', body: JSON.stringify(payload) }),
-  checkoutPayment: (paymentData: any) => apiFetch<{ payment: Payment; booking: Booking }>('/api/payments/checkout', { method: 'POST', body: JSON.stringify(paymentData) }),
+  syncPayment: (paymentId: string) => apiFetch<any>(`/api/payments/${paymentId}/sync`, { method: 'POST' }),
+  getPaymentsByBooking: (bookingId: string) => apiFetch<{ booking: Booking; payments: Payment[] }>(`/api/payments/by-booking/${bookingId}`),
+  getFinanceSummary: () => apiFetch<any>('/api/finance/summary'),
+  verifyEmail: (token: string) => apiFetch<any>('/api/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
+  forgotPassword: (email: string) => apiFetch<any>('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) => apiFetch<any>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
 
   // Products & Inventory
   getProducts: () => apiFetch<Product[]>('/api/products'),

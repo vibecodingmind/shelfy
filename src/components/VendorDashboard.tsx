@@ -76,7 +76,6 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
 
   // PesaPal Checkout
   const [checkoutBooking, setCheckoutBooking] = useState<Booking | null>(null);
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
 
   // Run AI ShelfMatch
   const handleRunMatch = async () => {
@@ -119,17 +118,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
     }
   };
 
-  // Process PesaPal Checkout
-  const handlePesaPalCheckout = async () => {
-    if (!checkoutBooking) return;
-    setLoadingCheckout(true);
-    const res = await api.checkoutPayment({ bookingId: checkoutBooking.id });
-    if (res.success) {
-      setCheckoutBooking(null);
-      onRefreshData();
-    }
-    setLoadingCheckout(false);
-  };
+  // Checkout is handled by PesapalPaymentModal → server initiate + poll.
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">

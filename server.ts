@@ -7,16 +7,86 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 import { dbEngine } from './src/server/db.js';
 import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRequest } from './src/server/auth.js';
 import { analyzeShelfPhoto, recommendShelves, generateVendorInsights } from './src/server/ai.js';
 import { BookingStatus, UserRole } from './src/types/index.js';
+import { validatePassword, demoLoginAllowed, isDemoEmail } from './src/server/domain/passwords.js';
+import { publicUser, publicUsers } from './src/server/domain/publicUser.js';
+import { addMonthsIsoDate, BLOCKING_BOOKING_STATUSES, calculateBookingQuote, datesOverlap } from './src/server/domain/pricing.js';
+import { assertTransition, initialBookingStatus, normalizeHostApproval } from './src/server/domain/bookingMachine.js';
+import { canMessageBookingCounterparties } from './src/server/domain/messages.js';
+import { canAccessBooking } from './src/server/domain/rbac.js';
+import { newId } from './src/server/domain/ids.js';
+import { capturePaymentInLedger, financeSummaryForHost } from './src/server/services/finance.js';
+import { createAuthToken, consumeAuthToken, verifySandboxSignature } from './src/server/services/tokens.js';
+import {
+  amountsMatch,
+  getTransactionStatus,
+  mapPesapalStatus,
+  pesapalConfigured,
+  pesapalEnvironment,
+  registerIpn,
+  submitOrderRequest,
+} from './src/server/payments/pesapal.js';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: { message: 'Too many authentication attempts. Try again later.' } },
+});
+
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: { message: 'Too many payment requests. Try again later.' } },
+});
+
+function recordBookingHistory(
+  bookingId: string,
+  fromStatus: BookingStatus | undefined,
+  toStatus: BookingStatus,
+  actorId: string | undefined,
+  actorRole: string,
+  reason?: string
+) {
+  dbEngine.db.bookingStatusHistory.push({
+    id: newId('bsh'),
+    bookingId,
+    fromStatus,
+    toStatus,
+    actorId,
+    actorRole,
+    reason,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+function notify(userId: string, title: string, message: string, type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ALERT' = 'INFO') {
+  dbEngine.db.notifications.push({
+    id: newId('notif'),
+    userId,
+    title,
+    message,
+    type,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+function appUrl(): string {
+  return (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
+}
 
 // Health Check
 app.get('/api/health', (req: Request, res: Response) => {
@@ -34,7 +104,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 // ==========================================
 
 // POST /api/auth/register
-app.post('/api/auth/register', (req: Request, res: Response) => {
+app.post('/api/auth/register', authLimiter, (req: Request, res: Response) => {
   try {
     const { name, email, phone, password, role, businessName, businessRegistration, description, category, city, address } = req.body;
 
@@ -50,13 +120,18 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
       });
     }
 
+    const passwordCheck = validatePassword(password);
+    if (passwordCheck.ok === false) {
+      return res.status(400).json({ success: false, error: { message: passwordCheck.message } });
+    }
+
     const existing = dbEngine.db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (existing) {
       return res.status(400).json({ success: false, error: { message: 'An account with this email already exists.' } });
     }
 
     const passwordHash = bcrypt.hashSync(password, 10);
-    const userId = `usr_${Date.now()}`;
+    const userId = newId('usr');
     const now = new Date().toISOString();
 
     const newUser = {
@@ -66,17 +141,17 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
       phone: phone || '',
       passwordHash,
       role: role as UserRole,
-      status: 'ACTIVE' as const,
+      status: 'PENDING' as const,
+      failedLoginCount: 0,
       createdAt: now,
       updatedAt: now,
     };
 
     dbEngine.db.users.push(newUser);
 
-    // Create role profile
     if (role === 'VENDOR') {
       dbEngine.db.vendorProfiles.push({
-        id: `vp_${Date.now()}`,
+        id: newId('vp'),
         userId,
         businessName: businessName || `${name}'s Business`,
         businessRegistration: businessRegistration || '',
@@ -90,7 +165,7 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
       });
     } else if (role === 'HOST') {
       dbEngine.db.hostProfiles.push({
-        id: `hp_${Date.now()}`,
+        id: newId('hp'),
         userId,
         businessName: businessName || `${name}'s Shop`,
         businessRegistration: businessRegistration || '',
@@ -100,16 +175,18 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
       });
     }
 
-    dbEngine.save();
-
-    const token = generateToken(newUser);
+    const verify = createAuthToken(dbEngine.db, userId, 'EMAIL_VERIFY', 24 * 60 * 60 * 1000);
+    void dbEngine.saveAsync();
     logAuditEvent(userId, name, role as UserRole, 'USER_REGISTERED', 'User', userId, `Registered as ${role}`);
 
+    const token = generateToken(newUser);
     return res.json({
       success: true,
       data: {
         token,
-        user: { id: newUser.id, name: newUser.name, email: newUser.email, phone: newUser.phone, role: newUser.role, status: newUser.status },
+        user: publicUser(newUser),
+        emailVerificationRequired: true,
+        verifyEmailToken: process.env.NODE_ENV === 'production' ? undefined : verify.raw,
       },
     });
   } catch (err: any) {
@@ -118,26 +195,46 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
 });
 
 // POST /api/auth/login
-app.post('/api/auth/login', (req: Request, res: Response) => {
+app.post('/api/auth/login', authLimiter, (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ success: false, error: { message: 'Email and password required.' } });
     }
 
-    const user = dbEngine.db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (isDemoEmail(email) && !demoLoginAllowed()) {
+      return res.status(403).json({ success: false, error: { message: 'Demo login is disabled in this environment.' } });
+    }
+
+    const user = dbEngine.db.users.find((u) => u.email.toLowerCase() === String(email).toLowerCase());
     if (!user) {
-      return res.status(401).json({ success: false, error: { message: 'Invalid credentials. User not found.' } });
+      return res.status(401).json({ success: false, error: { message: 'Invalid credentials.' } });
+    }
+
+    if (user.lockedUntil && new Date(user.lockedUntil).getTime() > Date.now()) {
+      return res.status(423).json({ success: false, error: { message: 'Account temporarily locked after failed sign-in attempts.' } });
     }
 
     const validPassword = bcrypt.compareSync(password, user.passwordHash);
     if (!validPassword) {
-      return res.status(401).json({ success: false, error: { message: 'Invalid credentials. Password incorrect.' } });
+      user.failedLoginCount = (user.failedLoginCount || 0) + 1;
+      if (user.failedLoginCount >= 5) {
+        user.lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        user.failedLoginCount = 0;
+      }
+      user.updatedAt = new Date().toISOString();
+      void dbEngine.saveAsync();
+      return res.status(401).json({ success: false, error: { message: 'Invalid credentials.' } });
     }
 
     if (user.status === 'SUSPENDED') {
       return res.status(403).json({ success: false, error: { message: 'Your account has been suspended by Admin.' } });
     }
+
+    user.failedLoginCount = 0;
+    user.lockedUntil = undefined;
+    user.lastLoginAt = new Date().toISOString();
+    void dbEngine.saveAsync();
 
     const token = generateToken(user);
     const vendorProfile = dbEngine.db.vendorProfiles.find((v) => v.userId === user.id);
@@ -147,14 +244,95 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
       success: true,
       data: {
         token,
-        user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, status: user.status, avatarUrl: user.avatarUrl },
+        user: publicUser(user),
         vendorProfile,
         hostProfile,
+        emailVerified: Boolean(user.emailVerifiedAt),
       },
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { message: err.message || 'Login failed.' } });
   }
+});
+
+app.post('/api/auth/verify-email', authLimiter, (req: Request, res: Response) => {
+  const consumed = consumeAuthToken(dbEngine.db, 'EMAIL_VERIFY', String(req.body.token || ''));
+  if (!consumed) {
+    return res.status(400).json({ success: false, error: { message: 'Invalid or expired verification token.' } });
+  }
+  const user = dbEngine.db.users.find((u) => u.id === consumed.userId);
+  if (!user) return res.status(404).json({ success: false, error: { message: 'User not found.' } });
+  user.emailVerifiedAt = new Date().toISOString();
+  if (user.status === 'PENDING') user.status = 'ACTIVE';
+  user.updatedAt = user.emailVerifiedAt;
+  void dbEngine.saveAsync();
+  res.json({ success: true, data: { user: publicUser(user) } });
+});
+
+app.post('/api/auth/resend-verification', requireAuth, authLimiter, (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user!;
+  const verify = createAuthToken(dbEngine.db, user.id, 'EMAIL_VERIFY', 24 * 60 * 60 * 1000);
+  void dbEngine.saveAsync();
+  res.json({
+    success: true,
+    data: { sent: true, verifyEmailToken: process.env.NODE_ENV === 'production' ? undefined : verify.raw },
+  });
+});
+
+app.post('/api/auth/forgot-password', authLimiter, (req: Request, res: Response) => {
+  const email = String(req.body.email || '').toLowerCase();
+  const user = dbEngine.db.users.find((u) => u.email === email);
+  let resetToken: string | undefined;
+  if (user) {
+    resetToken = createAuthToken(dbEngine.db, user.id, 'PASSWORD_RESET', 60 * 60 * 1000).raw;
+    void dbEngine.saveAsync();
+  }
+  res.json({
+    success: true,
+    data: {
+      sent: true,
+      resetToken: process.env.NODE_ENV === 'production' ? undefined : resetToken,
+    },
+  });
+});
+
+app.post('/api/auth/reset-password', authLimiter, (req: Request, res: Response) => {
+  const passwordCheck = validatePassword(String(req.body.password || ''));
+  if (passwordCheck.ok === false) {
+    return res.status(400).json({ success: false, error: { message: passwordCheck.message } });
+  }
+  const consumed = consumeAuthToken(dbEngine.db, 'PASSWORD_RESET', String(req.body.token || ''));
+  if (!consumed) {
+    return res.status(400).json({ success: false, error: { message: 'Invalid or expired reset token.' } });
+  }
+  const user = dbEngine.db.users.find((u) => u.id === consumed.userId);
+  if (!user) return res.status(404).json({ success: false, error: { message: 'User not found.' } });
+  user.passwordHash = bcrypt.hashSync(req.body.password, 10);
+  user.failedLoginCount = 0;
+  user.lockedUntil = undefined;
+  user.updatedAt = new Date().toISOString();
+  void dbEngine.saveAsync();
+  logAuditEvent(user.id, user.name, user.role, 'PASSWORD_RESET', 'User', user.id);
+  res.json({ success: true, data: { reset: true } });
+});
+
+app.post('/api/auth/request-phone-otp', requireAuth, authLimiter, (req: AuthenticatedRequest, res: Response) => {
+  const otp = createAuthToken(dbEngine.db, req.user!.id, 'PHONE_OTP', 10 * 60 * 1000);
+  void dbEngine.saveAsync();
+  res.json({
+    success: true,
+    data: { sent: true, otp: process.env.NODE_ENV === 'production' ? undefined : otp.raw },
+  });
+});
+
+app.post('/api/auth/verify-phone', requireAuth, authLimiter, (req: AuthenticatedRequest, res: Response) => {
+  const consumed = consumeAuthToken(dbEngine.db, 'PHONE_OTP', String(req.body.otp || ''));
+  if (!consumed || consumed.userId !== req.user!.id) {
+    return res.status(400).json({ success: false, error: { message: 'Invalid or expired OTP.' } });
+  }
+  req.user!.phoneVerifiedAt = new Date().toISOString();
+  void dbEngine.saveAsync();
+  res.json({ success: true, data: { user: publicUser(req.user!) } });
 });
 
 // GET /api/auth/me
@@ -166,7 +344,7 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res: Response) 
   res.json({
     success: true,
     data: {
-      user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, status: user.status, avatarUrl: user.avatarUrl },
+      user: publicUser(user),
       vendorProfile,
       hostProfile,
     },
@@ -356,86 +534,79 @@ app.post('/api/shelves', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authen
 // ==========================================
 
 // POST /api/bookings (Vendor books a shelf)
-app.post('/api/bookings', requireAuth, requireRole('VENDOR', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/bookings', requireAuth, requireRole('VENDOR', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
   const { shelfId, durationMonths, startDate, notes } = req.body;
   const user = req.user!;
+
+  if (user.status !== 'ACTIVE' || !user.emailVerifiedAt) {
+    return res.status(403).json({ success: false, error: { message: 'Verify your email before booking a shelf.' } });
+  }
 
   const shelf = dbEngine.db.shelves.find((s) => s.id === shelfId);
   if (!shelf) {
     return res.status(404).json({ success: false, error: { message: 'Shelf not found.' } });
   }
 
-  const months = Math.max(1, Number(durationMonths) || 1);
-  const start = startDate ? new Date(startDate) : new Date();
-  const end = new Date(start);
-  end.setMonth(end.getMonth() + months);
-  const startKey = start.toISOString().split('T')[0];
-  const endKey = end.toISOString().split('T')[0];
-
-  const overlapping = dbEngine.db.bookings.find((b) => {
-    if (b.shelfId !== shelfId) return false;
-    if (['CANCELLED', 'REJECTED', 'COMPLETED', 'DISPUTED'].includes(b.status)) return false;
-    return startKey < b.endDate && b.startDate < endKey;
+  const quote = calculateBookingQuote({
+    monthlyPriceTzs: shelf.monthlyPriceTzs,
+    durationMonths,
+    commissionPercentage: dbEngine.db.settings.commissionPercentage,
   });
-  if (overlapping) {
-    return res.status(400).json({
-      success: false,
-      error: { message: `This shelf is already reserved from ${overlapping.startDate} to ${overlapping.endDate}.` },
+  const startKey = startDate ? String(startDate).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const endKey = addMonthsIsoDate(startKey, quote.durationMonths);
+
+  try {
+    const newBooking = await dbEngine.withLock(() => {
+      const overlapping = dbEngine.db.bookings.find((b) => {
+        if (b.shelfId !== shelfId) return false;
+        if (!BLOCKING_BOOKING_STATUSES.includes(b.status as any)) return false;
+        return datesOverlap(startKey, endKey, b.startDate, b.endDate);
+      });
+      if (overlapping) {
+        throw Object.assign(new Error(`This shelf is already reserved from ${overlapping.startDate} to ${overlapping.endDate}.`), { status: 400 });
+      }
+
+      const shop = dbEngine.db.shops.find((s) => s.id === shelf.shopId);
+      const hostId = shop ? shop.hostId : shelf.shopId;
+      const bookingId = newId('bk');
+      const now = new Date().toISOString();
+      const status = initialBookingStatus(Boolean(dbEngine.db.settings.autoApproveBookings));
+
+      const booking = {
+        id: bookingId,
+        vendorId: user.id,
+        vendorName: user.name,
+        vendorBusinessName: user.name,
+        shelfId,
+        shelfName: shelf.name,
+        shopName: shelf.shopName || shop?.name || 'Retail Shop',
+        shopCity: shelf.shopCity || shop?.city || 'Dar es Salaam',
+        hostId,
+        startDate: startKey,
+        endDate: endKey,
+        durationMonths: quote.durationMonths,
+        monthlyPriceTzs: quote.monthlyPriceTzs,
+        totalPriceTzs: quote.totalPriceTzs,
+        platformFeeTzs: quote.platformFeeTzs,
+        hostEarningsTzs: quote.hostEarningsTzs,
+        status,
+        paymentStatus: 'PENDING' as const,
+        notes: notes || '',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      dbEngine.db.bookings.push(booking);
+      recordBookingHistory(bookingId, undefined, status, user.id, user.role, 'Booking created');
+      notify(hostId, 'New Booking Request 📦', `${user.name} requested to book "${shelf.name}" for ${quote.durationMonths} month(s).`);
+      return booking;
     });
+
+    logAuditEvent(user.id, user.name, user.role, 'BOOKING_CREATED', 'Booking', newBooking.id, `Booked shelf ${shelf.name} for ${quote.totalPriceTzs} TZS`);
+    res.json({ success: true, data: newBooking });
+  } catch (err: any) {
+    return res.status(err.status || 500).json({ success: false, error: { message: err.message } });
   }
-
-  const shop = dbEngine.db.shops.find((s) => s.id === shelf.shopId);
-  const hostId = shop ? shop.hostId : 'usr_host_1';
-
-  const monthlyPrice = shelf.monthlyPriceTzs;
-  const totalPrice = monthlyPrice * months;
-  const commissionRate = dbEngine.db.settings.commissionPercentage / 100;
-  const platformFee = Math.round(totalPrice * commissionRate);
-  const hostEarnings = totalPrice - platformFee;
-
-  const bookingId = `bk_${Date.now()}`;
-  const now = new Date().toISOString();
-
-  const newBooking = {
-    id: bookingId,
-    vendorId: user.id,
-    vendorName: user.name,
-    vendorBusinessName: user.name,
-    shelfId,
-    shelfName: shelf.name,
-    shopName: shelf.shopName || shop?.name || 'Retail Shop',
-    shopCity: shelf.shopCity || shop?.city || 'Dar es Salaam',
-    hostId,
-    startDate: start.toISOString().split('T')[0],
-    endDate: end.toISOString().split('T')[0],
-    durationMonths: months,
-    monthlyPriceTzs: monthlyPrice,
-    totalPriceTzs: totalPrice,
-    platformFeeTzs: platformFee,
-    hostEarningsTzs: hostEarnings,
-    status: (dbEngine.db.settings.autoApproveBookings ? 'PAYMENT_PENDING' : 'PENDING_APPROVAL') as BookingStatus,
-    paymentStatus: 'PENDING' as const,
-    notes: notes || '',
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  dbEngine.db.bookings.push(newBooking);
-
-  // Notify Host
-  dbEngine.db.notifications.push({
-    id: `notif_${Date.now()}`,
-    userId: hostId,
-    title: 'New Booking Request 📦',
-    message: `${user.name} requested to book "${shelf.name}" for ${months} month(s).`,
-    type: 'INFO',
-    createdAt: now,
-  });
-
-  dbEngine.save();
-  logAuditEvent(user.id, user.name, user.role, 'BOOKING_CREATED', 'Booking', bookingId, `Booked shelf ${shelf.name} for ${totalPrice} TZS`);
-
-  res.json({ success: true, data: newBooking });
 });
 
 // GET /api/bookings
@@ -447,6 +618,8 @@ app.get('/api/bookings', requireAuth, (req: AuthenticatedRequest, res: Response)
     bookings = bookings.filter((b) => b.vendorId === user.id);
   } else if (user.role === 'HOST') {
     bookings = bookings.filter((b) => b.hostId === user.id);
+  } else if (user.role !== 'ADMIN') {
+    bookings = [];
   }
 
   res.json({ success: true, data: bookings });
@@ -465,20 +638,21 @@ app.put('/api/bookings/:id/status', requireAuth, requireRole('HOST', 'ADMIN'), (
     return res.status(403).json({ success: false, error: { message: 'You can only update bookings for your own shops.' } });
   }
 
-  const allowedTransitions: Record<string, BookingStatus[]> = {
-    PENDING_APPROVAL: ['APPROVED', 'PAYMENT_PENDING', 'REJECTED', 'CANCELLED'],
-    APPROVED: ['PAYMENT_PENDING', 'CANCELLED', 'REJECTED'],
-    PAYMENT_PENDING: ['CANCELLED', 'REJECTED'],
-    ACTIVE: ['CANCELLED', 'COMPLETED', 'DISPUTED'],
-  };
-  const nextStatus = status === 'APPROVED' ? 'PAYMENT_PENDING' : status;
-  const allowed = allowedTransitions[booking.status] || [];
-  if (!nextStatus || !allowed.includes(nextStatus)) {
-    return res.status(400).json({ success: false, error: { message: `Cannot change booking from ${booking.status} to ${status}.` } });
+  const nextStatus = status ? normalizeHostApproval(status) : undefined;
+  try {
+    if (!nextStatus) throw new Error('Status is required.');
+    assertTransition(booking.status, nextStatus, user.role);
+  } catch (err: any) {
+    return res.status(400).json({ success: false, error: { message: err.message } });
+  }
+  if (['PAID', 'ACTIVE', 'EXPIRING', 'COMPLETED'].includes(booking.status) && nextStatus === 'REJECTED') {
+    return res.status(400).json({ success: false, error: { message: 'A paid booking cannot be rejected. Use cancellation or a dispute.' } });
   }
 
+  const fromStatus = booking.status;
   booking.status = nextStatus;
   booking.updatedAt = new Date().toISOString();
+  recordBookingHistory(booking.id, fromStatus, nextStatus, user.id, user.role);
 
   dbEngine.db.notifications.push({
     id: `notif_${Date.now()}_bk`,
@@ -511,8 +685,88 @@ app.get('/api/payouts', requireAuth, (req: AuthenticatedRequest, res: Response) 
   res.json({ success: true, data: payouts });
 });
 
-// POST /api/payments/initiate-session (Initiates secure PesaPal transaction session with backend reference)
-app.post('/api/payments/initiate-session', requireAuth, requireRole('VENDOR', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+async function applyVerifiedPayment(paymentId: string, trackingId: string, source: string) {
+  const payment = dbEngine.db.payments.find((p) => p.id === paymentId);
+  if (!payment) throw new Error('Payment not found.');
+  const booking = dbEngine.db.bookings.find((b) => b.id === payment.bookingId);
+  if (!booking) throw new Error('Booking not found.');
+
+  if (payment.status === 'PAID' && (booking.status === 'PAID' || booking.status === 'ACTIVE')) {
+    return { payment, booking, alreadySettled: true };
+  }
+
+  const now = new Date().toISOString();
+  payment.status = 'PAID';
+  payment.paidAt = now;
+  payment.pesapalTrackingId = trackingId || payment.pesapalTrackingId;
+  dbEngine.db.paymentAttempts.push({
+    id: newId('pa'),
+    paymentId: payment.id,
+    status: 'COMPLETED',
+    payload: { source, trackingId },
+    createdAt: now,
+  });
+
+  const from = booking.status;
+  booking.paymentStatus = 'PAID';
+  if (booking.status === 'PAYMENT_PENDING' || booking.status === 'PAYMENT_FAILED' || booking.status === 'APPROVED') {
+    booking.status = 'PAID';
+    recordBookingHistory(booking.id, from, 'PAID', undefined, 'SYSTEM', source);
+  }
+  if (booking.status === 'PAID') {
+    booking.status = 'ACTIVE';
+    recordBookingHistory(booking.id, 'PAID', 'ACTIVE', undefined, 'SYSTEM', source);
+  }
+  booking.updatedAt = now;
+
+  const shelf = dbEngine.db.shelves.find((s) => s.id === booking.shelfId);
+  if (shelf) shelf.availabilityStatus = 'BOOKED';
+
+  capturePaymentInLedger(dbEngine.db, booking, payment.id);
+  notify(booking.vendorId, 'Payment confirmed', `TZS ${booking.totalPriceTzs.toLocaleString()} received for ${booking.shelfName}.`, 'SUCCESS');
+  notify(booking.hostId, 'New paid booking', `${booking.vendorName} paid for ${booking.shelfName}. TZS ${booking.hostEarningsTzs.toLocaleString()} is pending until the booking completes.`, 'SUCCESS');
+  await dbEngine.saveAsync();
+  return { payment, booking, alreadySettled: false };
+}
+
+async function verifyPesapalAndSettle(orderTrackingId: string) {
+  const status = await getTransactionStatus(orderTrackingId);
+  const payment = dbEngine.db.payments.find(
+    (p) => p.pesapalTrackingId === orderTrackingId || p.transactionReference === status.merchant_reference
+  );
+  if (!payment) {
+    throw Object.assign(new Error('No payment matches this PesaPal reference.'), { status: 404 });
+  }
+  if (!amountsMatch(payment.amountTzs, status.amount) || (status.currency && status.currency !== payment.currency)) {
+    dbEngine.db.paymentAttempts.push({
+      id: newId('pa'),
+      paymentId: payment.id,
+      status: 'AMOUNT_MISMATCH',
+      payload: status as any,
+      createdAt: new Date().toISOString(),
+    });
+    await dbEngine.saveAsync();
+    throw Object.assign(new Error('PesaPal amount/currency does not match the booking.'), { status: 409 });
+  }
+  const mapped = mapPesapalStatus(status.status_code);
+  if (mapped === 'PAID') {
+    return applyVerifiedPayment(payment.id, orderTrackingId, 'pesapal_get_transaction_status');
+  }
+  if (mapped === 'FAILED') {
+    payment.status = 'FAILED';
+    const booking = dbEngine.db.bookings.find((b) => b.id === payment.bookingId);
+    if (booking && booking.status === 'PAYMENT_PENDING') {
+      const from = booking.status;
+      booking.status = 'PAYMENT_FAILED';
+      recordBookingHistory(booking.id, from, 'PAYMENT_FAILED', undefined, 'SYSTEM', 'pesapal_failed');
+    }
+    await dbEngine.saveAsync();
+  }
+  return { payment, booking: dbEngine.db.bookings.find((b) => b.id === payment.bookingId), alreadySettled: false, status };
+}
+
+// POST /api/payments/initiate-session
+app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireRole('VENDOR', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
   const { bookingId } = req.body;
   const user = req.user!;
 
@@ -520,228 +774,261 @@ app.post('/api/payments/initiate-session', requireAuth, requireRole('VENDOR', 'A
   if (!booking) {
     return res.status(404).json({ success: false, error: { message: 'Booking not found or access denied.' } });
   }
+  if (!['APPROVED', 'PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(booking.status)) {
+    return res.status(400).json({ success: false, error: { message: `Booking is ${booking.status} and cannot be paid yet.` } });
+  }
 
-  const transactionReference = `PESA-TZ-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const orderTrackingId = `trk_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 mins
+  const existing = dbEngine.db.payments.find((p) => p.bookingId === booking.id && p.status === 'PENDING');
+  const transactionReference = existing?.transactionReference || `SHELFY-${booking.id}-${Date.now()}`;
+  const now = new Date().toISOString();
+  const payment = existing || {
+    id: newId('pay'),
+    bookingId: booking.id,
+    vendorId: booking.vendorId,
+    amountTzs: booking.totalPriceTzs,
+    currency: 'TZS',
+    provider: 'PESAPAL' as const,
+    transactionReference,
+    status: 'PENDING' as const,
+    createdAt: now,
+  };
+  if (!existing) dbEngine.db.payments.push(payment);
+
+  let redirectUrl: string | undefined;
+  let orderTrackingId = payment.pesapalTrackingId;
+  let mode: 'PESAPAL' | 'PENDING_GATEWAY' = 'PENDING_GATEWAY';
+
+  if (pesapalConfigured()) {
+    try {
+      const ipnId = await registerIpn(`${appUrl()}/api/payments/pesapal/ipn`);
+      const submitted = await submitOrderRequest({
+        id: transactionReference,
+        currency: 'TZS',
+        amount: booking.totalPriceTzs,
+        description: `Shelfy shelf rental ${booking.shelfName}`,
+        callbackUrl: `${appUrl()}/api/payments/pesapal/callback`,
+        notificationId: ipnId,
+        billingAddress: {
+          email_address: user.email,
+          phone_number: user.phone,
+          first_name: user.name.split(' ')[0] || user.name,
+          last_name: user.name.split(' ').slice(1).join(' ') || 'Vendor',
+        },
+      });
+      orderTrackingId = submitted.orderTrackingId;
+      redirectUrl = submitted.redirectUrl;
+      payment.pesapalTrackingId = submitted.orderTrackingId;
+      mode = 'PESAPAL';
+    } catch (err: any) {
+      dbEngine.db.paymentAttempts.push({
+        id: newId('pa'),
+        paymentId: payment.id,
+        status: 'SUBMIT_FAILED',
+        payload: { message: err.message },
+        createdAt: now,
+      });
+    }
+  }
+
+  dbEngine.db.paymentAttempts.push({
+    id: newId('pa'),
+    paymentId: payment.id,
+    status: 'INITIATED',
+    payload: { mode, transactionReference },
+    createdAt: now,
+  });
+  if (booking.status === 'APPROVED') {
+    const from = booking.status;
+    booking.status = 'PAYMENT_PENDING';
+    recordBookingHistory(booking.id, from, 'PAYMENT_PENDING', user.id, user.role, 'Checkout started');
+  }
+  await dbEngine.saveAsync();
 
   res.json({
     success: true,
     data: {
+      paymentId: payment.id,
       bookingId: booking.id,
       transactionReference,
       orderTrackingId,
+      redirectUrl,
+      mode,
+      pesapalEnvironment: pesapalEnvironment(),
       amountTzs: booking.totalPriceTzs,
       platformFeeTzs: booking.platformFeeTzs,
       hostEarningsTzs: booking.hostEarningsTzs,
       currency: 'TZS',
       merchantName: 'Shelfy Tanzania Ltd',
-      merchantEmail: 'payments@shelfy.co.tz',
       customerName: user.name,
       customerEmail: user.email,
-      customerPhone: user.phone || '+255 754 000 000',
       shelfName: booking.shelfName,
       shopName: booking.shopName,
       durationMonths: booking.durationMonths,
       startDate: booking.startDate,
       endDate: booking.endDate,
-      expiresAt,
-      status: 'SESSION_INITIALIZED',
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      status: payment.status,
+      message:
+        mode === 'PESAPAL'
+          ? 'Continue on PesaPal to complete payment. Shelfy will activate the booking only after GetTransactionStatus confirms COMPLETED.'
+          : 'Payment is pending gateway confirmation. This environment has no PesaPal keys; completion requires IPN verification or a signed sandbox complete.',
     },
   });
 });
 
-// POST /api/payments/callback-verify (Handles and verifies PesaPal transaction completion callback securely)
-app.post('/api/payments/callback-verify', requireAuth, requireRole('VENDOR', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-  const { bookingId, transactionReference, orderTrackingId, paymentProvider, phoneOrCardNumber } = req.body;
-  const user = req.user!;
+app.post('/api/payments/callback-verify', paymentLimiter, requireAuth, (_req: AuthenticatedRequest, res: Response) => {
+  return res.status(410).json({
+    success: false,
+    error: { message: 'Client-side payment confirmation is disabled. Shelfy verifies PesaPal via GetTransactionStatus / IPN only.' },
+  });
+});
 
-  const booking = dbEngine.db.bookings.find((b) => b.id === bookingId && (user.role === 'ADMIN' || b.vendorId === user.id));
-  if (!booking) {
+app.get('/api/payments/pesapal/ipn', paymentLimiter, handlePesapalIpn);
+app.post('/api/payments/pesapal/ipn', paymentLimiter, handlePesapalIpn);
+
+async function handlePesapalIpn(req: Request, res: Response) {
+  const orderTrackingId = String(req.query.OrderTrackingId || req.body?.OrderTrackingId || req.body?.orderTrackingId || '');
+  if (!orderTrackingId) {
+    return res.status(400).json({ orderNotificationType: 'IPNCHANGE', status: 500 });
+  }
+  try {
+    if (!pesapalConfigured()) {
+      return res.json({ orderNotificationType: 'IPNCHANGE', orderTrackingId, status: 500 });
+    }
+    const result = await verifyPesapalAndSettle(orderTrackingId);
+    return res.json({
+      orderNotificationType: 'IPNCHANGE',
+      orderTrackingId,
+      orderMerchantReference: result.payment.transactionReference,
+      status: 200,
+    });
+  } catch {
+    return res.json({ orderNotificationType: 'IPNCHANGE', orderTrackingId, status: 500 });
+  }
+}
+
+app.get('/api/payments/pesapal/callback', paymentLimiter, async (req: Request, res: Response) => {
+  const orderTrackingId = String(req.query.OrderTrackingId || '');
+  try {
+    if (orderTrackingId && pesapalConfigured()) {
+      await verifyPesapalAndSettle(orderTrackingId);
+    }
+  } catch (err) {
+    console.error('PesaPal callback verify failed:', err);
+  }
+  res.redirect(`/?payment=returned&tracking=${encodeURIComponent(orderTrackingId)}`);
+});
+
+app.post('/api/payments/:id/sync', paymentLimiter, requireAuth, requireRole('VENDOR', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+  const payment = dbEngine.db.payments.find((p) => p.id === req.params.id);
+  if (!payment || (req.user!.role !== 'ADMIN' && payment.vendorId !== req.user!.id)) {
+    return res.status(404).json({ success: false, error: { message: 'Payment not found.' } });
+  }
+  if (!payment.pesapalTrackingId || !pesapalConfigured()) {
+    return res.json({ success: true, data: { payment, booking: dbEngine.db.bookings.find((b) => b.id === payment.bookingId), pending: true } });
+  }
+  try {
+    const result = await verifyPesapalAndSettle(payment.pesapalTrackingId);
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(err.status || 400).json({ success: false, error: { message: err.message } });
+  }
+});
+
+app.get('/api/payments/by-booking/:bookingId', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const booking = dbEngine.db.bookings.find((b) => b.id === req.params.bookingId);
+  if (!booking || !canAccessBooking(req.user!, booking)) {
     return res.status(404).json({ success: false, error: { message: 'Booking not found.' } });
   }
+  const payments = dbEngine.db.payments.filter((p) => p.bookingId === booking.id);
+  res.json({ success: true, data: { booking, payments } });
+});
 
+app.post('/api/payments/sandbox-complete', paymentLimiter, async (req: Request, res: Response) => {
+  const paymentId = String(req.body.paymentId || '');
+  const signature = String(req.headers['x-sandbox-signature'] || req.body.signature || '');
+  if (!verifySandboxSignature(paymentId, signature)) {
+    return res.status(403).json({ success: false, error: { message: 'Invalid sandbox signature.' } });
+  }
+  try {
+    const result = await applyVerifiedPayment(paymentId, `sandbox_${paymentId}`, 'signed_sandbox');
+    res.json({ success: true, data: result });
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: { message: err.message } });
+  }
+});
+
+app.post('/api/admin/payments/:id/reconcile', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+  const payment = dbEngine.db.payments.find((p) => p.id === req.params.id);
+  if (!payment) return res.status(404).json({ success: false, error: { message: 'Payment not found.' } });
+  if (payment.pesapalTrackingId && pesapalConfigured()) {
+    try {
+      const result = await verifyPesapalAndSettle(payment.pesapalTrackingId);
+      return res.json({ success: true, data: result });
+    } catch (err: any) {
+      return res.status(400).json({ success: false, error: { message: err.message } });
+    }
+  }
+  return res.status(400).json({ success: false, error: { message: 'No PesaPal tracking id to reconcile. Use signed sandbox complete in non-live setups.' } });
+});
+
+app.get('/api/finance/summary', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user!;
+  if (user.role === 'HOST') {
+    return res.json({ success: true, data: financeSummaryForHost(dbEngine.db, user.id) });
+  }
+  if (user.role === 'ADMIN') {
+    const hosts = dbEngine.db.users.filter((u) => u.role === 'HOST').map((h) => ({
+      hostId: h.id,
+      name: h.name,
+      ...financeSummaryForHost(dbEngine.db, h.id),
+    }));
+    return res.json({ success: true, data: { hosts } });
+  }
+  return res.status(403).json({ success: false, error: { message: 'Finance summary is available to hosts and admins.' } });
+});
+
+app.post('/api/admin/agents', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const { name, email, phone, password } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ success: false, error: { message: 'Name and email are required.' } });
+  }
+  if (dbEngine.db.users.some((u) => u.email.toLowerCase() === String(email).toLowerCase())) {
+    return res.status(400).json({ success: false, error: { message: 'Email already in use.' } });
+  }
+  const rawPassword = password || `Agent${Math.floor(100000 + Math.random() * 900000)}!`;
+  const passwordCheck = validatePassword(rawPassword);
+  if (passwordCheck.ok === false) {
+    return res.status(400).json({ success: false, error: { message: passwordCheck.message } });
+  }
   const now = new Date().toISOString();
-  const txnRef = transactionReference || `PESA-TZ-${Date.now()}`;
-  const trackingId = orderTrackingId || `trk_${Date.now()}`;
-
-  // Check if payment already exists
-  let payment = dbEngine.db.payments.find((p) => p.transactionReference === txnRef);
-  if (!payment) {
-    payment = {
-      id: `pay_${Date.now()}`,
-      bookingId: booking.id,
-      vendorId: user.id,
-      amountTzs: booking.totalPriceTzs,
-      currency: 'TZS',
-      provider: (paymentProvider || 'PESAPAL') as any,
-      transactionReference: txnRef,
-      pesapalTrackingId: trackingId,
-      status: 'PAID',
-      paidAt: now,
-      createdAt: now,
-    };
-    dbEngine.db.payments.push(payment);
-  } else {
-    payment.status = 'PAID';
-    payment.paidAt = now;
-  }
-
-  // Update booking status
-  booking.status = 'ACTIVE';
-  booking.paymentStatus = 'PAID';
-  booking.updatedAt = now;
-
-  // Mark shelf as booked if entire period occupied
-  const shelf = dbEngine.db.shelves.find((s) => s.id === booking.shelfId);
-  if (shelf) {
-    shelf.availabilityStatus = 'BOOKED';
-  }
-
-  // Create Host Payout record
-  const existingPayout = dbEngine.db.payouts.find((p) => p.payoutReference === `payout_for_${booking.id}`);
-  if (!existingPayout) {
-    dbEngine.db.payouts.push({
-      id: `payout_${Date.now()}`,
-      hostId: booking.hostId,
-      grossAmountTzs: booking.totalPriceTzs,
-      commissionTzs: booking.platformFeeTzs,
-      netAmountTzs: booking.hostEarningsTzs,
-      status: 'PENDING',
-      payoutReference: `payout_for_${booking.id}`,
-      createdAt: now,
-    });
-  }
-
-  // Notifications
-  dbEngine.db.notifications.push({
-    id: `notif_${Date.now()}_v`,
-    userId: booking.vendorId,
-    title: 'PesaPal Payment Confirmed! 💳🇹🇿',
-    message: `Receipt #${txnRef.slice(-8)}: TZS ${booking.totalPriceTzs.toLocaleString()} received for ${booking.shelfName}. Your space is now ACTIVE!`,
-    type: 'SUCCESS',
+  const user = {
+    id: newId('usr'),
+    name,
+    email: String(email).toLowerCase(),
+    phone: phone || '',
+    passwordHash: bcrypt.hashSync(rawPassword, 10),
+    role: 'FIELD_AGENT' as const,
+    status: 'ACTIVE' as const,
+    emailVerifiedAt: now,
+    failedLoginCount: 0,
     createdAt: now,
-  });
-
-  dbEngine.db.notifications.push({
-    id: `notif_${Date.now()}_h`,
-    userId: booking.hostId,
-    title: 'New Paid Shelf Booking! 🎉',
-    message: `${booking.vendorName} completed payment for ${booking.shelfName}. TZS ${booking.hostEarningsTzs.toLocaleString()} has been credited to your host balance.`,
-    type: 'SUCCESS',
-    createdAt: now,
-  });
-
-  dbEngine.save();
-  logAuditEvent(user.id, user.name, user.role, 'PESAPAL_PAYMENT_VERIFIED', 'Payment', payment.id, `Verified PesaPal reference ${txnRef} for ${booking.totalPriceTzs} TZS`);
-
+    updatedAt: now,
+  };
+  dbEngine.db.users.push(user);
+  void dbEngine.saveAsync();
+  logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'AGENT_INVITED', 'User', user.id);
   res.json({
     success: true,
-    data: {
-      verified: true,
-      payment,
-      booking,
-      receipt: {
-        receiptNumber: txnRef,
-        trackingId,
-        bookingId: booking.id,
-        shelfName: booking.shelfName,
-        shopName: booking.shopName,
-        shopCity: booking.shopCity,
-        amountTzs: booking.totalPriceTzs,
-        platformFeeTzs: booking.platformFeeTzs,
-        hostEarningsTzs: booking.hostEarningsTzs,
-        paidAt: now,
-        customerName: user.name,
-        customerEmail: user.email,
-        paymentMethod: paymentProvider || 'PesaPal (M-Pesa / Card)',
-        accountIdentifier: phoneOrCardNumber ? `***${phoneOrCardNumber.slice(-4)}` : undefined,
-      },
-    },
+    data: { user: publicUser(user), temporaryPassword: password ? undefined : rawPassword },
   });
 });
 
-// POST /api/payments/checkout (PesaPal Checkout Simulation / Initiation)
-app.post('/api/payments/checkout', requireAuth, requireRole('VENDOR', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-  const { bookingId, paymentProvider } = req.body;
-  const user = req.user!;
-
-  const booking = dbEngine.db.bookings.find((b) => b.id === bookingId && (user.role === 'ADMIN' || b.vendorId === user.id));
-  if (!booking) {
-    return res.status(404).json({ success: false, error: { message: 'Booking not found or access denied.' } });
-  }
-
-  const txnRef = `PESA-TZ-${Date.now()}`;
-  const now = new Date().toISOString();
-
-  // Create payment record
-  const payment = {
-    id: `pay_${Date.now()}`,
-    bookingId: booking.id,
-    vendorId: user.id,
-    amountTzs: booking.totalPriceTzs,
-    currency: 'TZS',
-    provider: (paymentProvider || 'PESAPAL') as any,
-    transactionReference: txnRef,
-    pesapalTrackingId: `pesapal-track-${Date.now()}`,
-    status: 'PAID' as const,
-    paidAt: now,
-    createdAt: now,
-  };
-
-  dbEngine.db.payments.push(payment);
-
-  // Update booking status
-  booking.status = 'ACTIVE';
-  booking.paymentStatus = 'PAID';
-  booking.updatedAt = now;
-
-  // Mark shelf as booked
-  const shelf = dbEngine.db.shelves.find((s) => s.id === booking.shelfId);
-  if (shelf) {
-    shelf.availabilityStatus = 'BOOKED';
-  }
-
-  // Create Host Payout record
-  dbEngine.db.payouts.push({
-    id: `payout_${Date.now()}`,
-    hostId: booking.hostId,
-    grossAmountTzs: booking.totalPriceTzs,
-    commissionTzs: booking.platformFeeTzs,
-    netAmountTzs: booking.hostEarningsTzs,
-    status: 'PENDING',
-    createdAt: now,
-  });
-
-  // Notify Vendor & Host
-  dbEngine.db.notifications.push({
-    id: `notif_${Date.now()}_v`,
-    userId: booking.vendorId,
-    title: 'Payment Successful 💳',
-    message: `Payment of TZS ${booking.totalPriceTzs.toLocaleString()} confirmed for ${booking.shelfName}.`,
-    type: 'SUCCESS',
-    createdAt: now,
-  });
-
-  dbEngine.db.notifications.push({
-    id: `notif_${Date.now()}_h`,
-    userId: booking.hostId,
-    title: 'New Active Vendor Booking! 💼',
-    message: `${booking.vendorName} paid TZS ${booking.totalPriceTzs.toLocaleString()}. Earnings of TZS ${booking.hostEarningsTzs.toLocaleString()} credited to your balance.`,
-    type: 'SUCCESS',
-    createdAt: now,
-  });
-
-  dbEngine.save();
-  logAuditEvent(user.id, user.name, user.role, 'PAYMENT_COMPLETED', 'Payment', payment.id, `Confirmed payment of ${booking.totalPriceTzs} TZS for booking ${booking.id}`);
-
-  res.json({
-    success: true,
-    data: {
-      payment,
-      booking,
-      pesapalRedirectUrl: `/vendor/bookings?paid=true&ref=${txnRef}`,
-    },
+// POST /api/payments/checkout — no longer marks paid from the client
+app.post('/api/payments/checkout', paymentLimiter, requireAuth, requireRole('VENDOR', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  return res.status(410).json({
+    success: false,
+    error: { message: 'Use POST /api/payments/initiate-session. The server will not mark a booking paid because the client said so.' },
   });
 });
 
@@ -980,6 +1267,16 @@ app.post('/api/messages', requireAuth, (req: AuthenticatedRequest, res: Response
   if (!receiverId || !content) {
     return res.status(400).json({ success: false, error: { message: 'Receiver and message content required.' } });
   }
+  const booking = bookingId ? dbEngine.db.bookings.find((b) => b.id === bookingId) : undefined;
+  const allowed = canMessageBookingCounterparties({
+    senderId: user.id,
+    senderRole: user.role,
+    receiverId,
+    booking,
+  });
+  if (allowed.ok === false) {
+    return res.status(403).json({ success: false, error: { message: allowed.message } });
+  }
 
   const msgId = `msg_${Date.now()}`;
   const now = new Date().toISOString();
@@ -1057,7 +1354,7 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
 
 // GET /api/admin/users
 app.get('/api/admin/users', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-  res.json({ success: true, data: dbEngine.db.users });
+  res.json({ success: true, data: publicUsers(dbEngine.db.users) });
 });
 
 // PUT /api/admin/users/:id/status
@@ -1074,7 +1371,7 @@ app.put('/api/admin/users/:id/status', requireAuth, requireRole('ADMIN'), (req: 
   dbEngine.save();
 
   logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'USER_STATUS_UPDATED', 'User', targetUser.id, `Set status to ${status}`);
-  res.json({ success: true, data: targetUser });
+  res.json({ success: true, data: publicUser(targetUser) });
 });
 
 // GET /api/admin/audit-logs
@@ -1149,7 +1446,7 @@ app.put('/api/admin/settings', requireAuth, requireRole('ADMIN'), (req: Authenti
 // ==========================================
 
 // POST /api/ai/analyze-shelf
-app.post('/api/ai/analyze-shelf', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/ai/analyze-shelf', requireAuth, requireRole('FIELD_AGENT', 'ADMIN', 'HOST'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { photoUrl } = req.body;
     const result = await analyzeShelfPhoto(photoUrl || 'https://images.unsplash.com/photo-1583258292688-d02132382025?w=800');
@@ -1180,7 +1477,7 @@ app.post('/api/ai/shelf-match', requireAuth, async (req: AuthenticatedRequest, r
 });
 
 // POST /api/ai/vendor-insights
-app.post('/api/ai/vendor-insights', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/ai/vendor-insights', requireAuth, requireRole('VENDOR', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const user = req.user!;
     const products = dbEngine.db.products.filter((p) => p.vendorId === user.id);

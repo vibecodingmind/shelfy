@@ -7,6 +7,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { dbEngine } from './db.js';
 import { User, UserRole } from '../types/index.js';
+import { PENDING_ALLOWED_PATHS, isActiveForApi } from './domain/rbac.js';
 
 function resolveJwtSecret(): string {
   const fromEnv = process.env.JWT_SECRET?.trim();
@@ -31,9 +32,6 @@ export interface AuthenticatedRequest extends Request {
   user?: User;
 }
 
-/**
- * Generate JWT token for user session
- */
 export function generateToken(user: User): string {
   const payload = {
     id: user.id,
@@ -44,9 +42,6 @@ export function generateToken(user: User): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }
 
-/**
- * Verify JWT token and attach user to request
- */
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -59,7 +54,7 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: UserRole };
-    const user = dbEngine.db.users.find((u) => u.id === decoded.id && u.status === 'ACTIVE');
+    const user = dbEngine.db.users.find((u) => u.id === decoded.id);
 
     if (!user) {
       return res.status(401).json({
@@ -68,9 +63,23 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
       });
     }
 
+    const allowPending = PENDING_ALLOWED_PATHS.some((path) => req.path.startsWith(path));
+    if (!isActiveForApi(user, allowPending)) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: user.status === 'PENDING' ? 'EMAIL_UNVERIFIED' : 'SUSPENDED',
+          message:
+            user.status === 'PENDING'
+              ? 'Verify your email before using the marketplace.'
+              : 'Your account has been suspended.',
+        },
+      });
+    }
+
     req.user = user;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({
       success: false,
       error: { code: 'INVALID_TOKEN', message: 'Session expired or invalid token.' },
@@ -78,9 +87,6 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   }
 }
 
-/**
- * Require specific user role(s) for server endpoint
- */
 export function requireRole(...roles: UserRole[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -104,9 +110,6 @@ export function requireRole(...roles: UserRole[]) {
   };
 }
 
-/**
- * Audit log helper
- */
 export function logAuditEvent(
   userId: string,
   userName: string,
@@ -128,5 +131,5 @@ export function logAuditEvent(
     timestamp: new Date().toISOString(),
   };
   dbEngine.db.auditLogs.unshift(log);
-  dbEngine.save();
+  void dbEngine.saveAsync();
 }
