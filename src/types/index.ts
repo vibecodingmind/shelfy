@@ -6,7 +6,7 @@ export type UserRole = 'ADMIN' | 'VENDOR' | 'HOST' | 'FIELD_AGENT';
 
 export type UserStatus = 'ACTIVE' | 'PENDING' | 'SUSPENDED';
 
-export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
 
 export interface User {
   id: string;
@@ -64,6 +64,7 @@ export interface Shop {
   photos: string[];
   status: 'ACTIVE' | 'INACTIVE';
   verificationStatus: VerificationStatus;
+  listingStatus?: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'SUSPENDED';
   footTrafficScore?: number; // 1 to 10
   shopType: 'SUPERMARKET' | 'MINI_MARKET' | 'CONVENIENCE' | 'BOUTIQUE' | 'PHARMACY' | 'SPECIALTY';
   createdAt: string;
@@ -83,6 +84,8 @@ export interface Shelf {
   shopLatitude?: number;
   shopLongitude?: number;
   hostVerificationStatus?: VerificationStatus;
+  verificationStatus?: VerificationStatus;
+  listingStatus?: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'SUSPENDED';
   name: string;
   description: string;
   widthCm: number;
@@ -216,6 +219,9 @@ export interface FieldVisit {
   status: VisitStatus;
   latitude?: number;
   longitude?: number;
+  shopLatitude?: number;
+  shopLongitude?: number;
+  checkedInAt?: string;
   notes?: string;
   createdAt: string;
 }
@@ -286,6 +292,18 @@ export interface Review {
   rating: number; // 1 to 5
   comment: string;
   createdAt: string;
+}
+
+export interface VerificationRequest {
+  id: string;
+  subjectType: 'USER' | 'HOST' | 'VENDOR' | 'SHOP' | 'SHELF';
+  subjectId: string;
+  requestedBy: string;
+  status: 'PENDING' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+  notes?: string;
+  reviewedBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Dispute {

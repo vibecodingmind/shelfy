@@ -495,8 +495,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <span>Shelfy 🇹🇿</span>
             <span className="text-slate-500 font-normal">| The Retail Expansion Platform for Tanzania</span>
           </div>
-          <div className="text-slate-500 text-center md:text-right">
-            PesaPal Tanzania • M-Pesa • Tigo Pesa • Airtel Money • Escrow Protected Host Payouts
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 text-slate-500">
+            <a href="/legal/terms" className="hover:text-emerald-400">Terms</a>
+            <a href="/legal/privacy" className="hover:text-emerald-400">Privacy</a>
+            <a href="/legal/cancellation" className="hover:text-emerald-400">Cancellation</a>
+            <a href="/legal/payout" className="hover:text-emerald-400">Payouts</a>
+            <span>PesaPal Tanzania • M-Pesa • Tigo Pesa • Airtel Money</span>
           </div>
         </div>
       </footer>

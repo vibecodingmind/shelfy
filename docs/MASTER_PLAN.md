@@ -271,9 +271,13 @@ Re-run the quality gate in the original instruction: business E2E, security, mon
 
 1. Security · 2. Authentication · 3. Authorization · 4. Relational DB · 5. Booking integrity · 6. Payment architecture · 7. Ledger · 8. Tests
 
-### P1 (next)
+### P1 (this branch, in progress)
 
-Verification, shop/shelf management, uploads, cancel/complete, withdrawals/payouts, notifications, field ops, admin ops
+Verification, shop/shelf management, uploads, cancel/complete, withdrawals/payouts, notifications, field ops, admin ops.
+
+Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders.
+
+Still open in P1: multi-step listing wizard, S3, email/SMS, payment reconciliation job.
 
 ### P2
 

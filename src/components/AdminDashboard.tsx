@@ -2,7 +2,7 @@
  * Shelfy 🇹🇿 — Main Admin Platform Dashboard & Control Panel
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Shield,
   Users,
@@ -24,8 +24,10 @@ import {
   Trash2,
   Check,
   Package,
+  CreditCard,
 } from 'lucide-react';
 import { User, AuditLog, PlatformSettings, Shop, Shelf, Booking, ShelfTypeOption } from '../types/index.js';
+import { api } from '../lib/api.js';
 
 interface AdminDashboardProps {
   stats: any;
@@ -50,8 +52,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateUserStatus,
   onUpdateSettings,
 }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'SHOPS' | 'CATEGORIES' | 'BOOKINGS' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'SHOPS' | 'CATEGORIES' | 'BOOKINGS' | 'VERIFY' | 'PAYOUTS' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
   const [commissionInput, setCommissionInput] = useState<number>(settings?.commissionPercentage || 10);
+  const [verifications, setVerifications] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [payoutRef, setPayoutRef] = useState('');
+
+  useEffect(() => {
+    api.getVerifications().then((res) => {
+      if (res.success && res.data) setVerifications(res.data);
+    });
+    api.getWithdrawals().then((res) => {
+      if (res.success && res.data) setWithdrawals(res.data);
+    });
+  }, [activeTab]);
 
   // Shelf Category Management State
   const defaultCategories = [
@@ -179,6 +193,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               { id: 'USERS', label: 'User Management', icon: Users },
               { id: 'SHOPS', label: 'Shops & Shelves', icon: Store },
               { id: 'BOOKINGS', label: 'Bookings & Financials', icon: DollarSign },
+              { id: 'VERIFY', label: 'Verification Queue', icon: UserCheck },
+              { id: 'PAYOUTS', label: 'Withdrawals & Payouts', icon: CreditCard },
               { id: 'SETTINGS', label: 'Commission & Rules', icon: Sliders },
               { id: 'AUDIT', label: 'Security Audit Logs', icon: FileText },
             ].map((item) => {
@@ -406,7 +422,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                 <div className="text-slate-400 text-xs font-semibold mb-1">Total Gross GMV</div>
                 <div className="text-2xl font-black text-emerald-400">
-                  TZS {(stats?.totalRevenueTzs || 225000).toLocaleString()}
+                  TZS {(stats?.totalRevenueTzs || 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-emerald-400 font-medium mt-1">PesaPal Verified Payments</div>
               </div>
@@ -414,7 +430,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
                 <div className="text-slate-400 text-xs font-semibold mb-1">Platform Commission Earnings</div>
                 <div className="text-2xl font-black text-teal-300">
-                  TZS {(stats?.totalCommissionsTzs || 22500).toLocaleString()}
+                  TZS {(stats?.totalCommissionsTzs || 0).toLocaleString()}
                 </div>
                 <div className="text-[11px] text-teal-400 font-medium mt-1">
                   Rate: {settings?.commissionPercentage || 10}%
@@ -455,18 +471,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <Building className="w-4 h-4 text-amber-400" /> Geographic Retail Distribution
                 </h3>
                 <div className="space-y-3">
-                  {[
-                    { city: 'Dar es Salaam', count: 3, gmv: 'TZS 315,000' },
-                    { city: 'Mwanza', count: 1, gmv: 'TZS 60,000' },
-                    { city: 'Arusha', count: 1, gmv: 'TZS 80,000' },
-                    { city: 'Zanzibar', count: 1, gmv: 'TZS 110,000' },
-                  ].map((loc, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
-                      <div className="font-bold text-white">{loc.city}</div>
-                      <div className="text-right">
-                        <div className="font-mono text-emerald-400 font-bold">{loc.gmv}</div>
-                        <div className="text-[10px] text-slate-400">{loc.count} Active Shop(s)</div>
+                  {(stats?.cityBreakdown || []).map((row: any) => (
+                    <div key={row.city} className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+                      <div>
+                        <div className="font-bold text-white">{row.city}</div>
+                        <div className="text-[10px] text-slate-400">{row.shops} shops</div>
                       </div>
+                      <div className="font-mono text-emerald-400">TZS {(row.gmv || 0).toLocaleString()}</div>
                     </div>
                   ))}
                 </div>
@@ -601,6 +612,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'VERIFY' && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-white">Verification queue</h2>
+            <p className="text-xs text-slate-400">Approve shops and shelves before they appear in the public marketplace.</p>
+            {verifications.length === 0 ? (
+              <div className="text-xs text-slate-500">No verification requests.</div>
+            ) : (
+              verifications.map((v) => (
+                <div key={v.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-white">{v.subjectType} · {v.subjectId}</div>
+                    <div className="text-slate-400">{v.status} · {new Date(v.createdAt).toLocaleString()}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={async () => { await api.decideVerification(v.id, 'VERIFIED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded">Verify</button>
+                    <button onClick={async () => { await api.decideVerification(v.id, 'REJECTED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-rose-500/20 text-rose-400 font-bold rounded">Reject</button>
+                    <button onClick={async () => { await api.decideVerification(v.id, 'SUSPENDED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-amber-500/20 text-amber-400 font-bold rounded">Suspend</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'PAYOUTS' && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-white">Host withdrawals</h2>
+            <input value={payoutRef} onChange={(e) => setPayoutRef(e.target.value)} placeholder="Payout reference" className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white w-full max-w-sm" />
+            {withdrawals.length === 0 ? (
+              <div className="text-xs text-slate-500">No withdrawal requests.</div>
+            ) : (
+              withdrawals.map((w) => (
+                <div key={w.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-white">TZS {w.amountTzs.toLocaleString()} · {w.status}</div>
+                    <div className="text-slate-400">{w.hostId} · {w.method} {w.payoutReference ? `· ${w.payoutReference}` : ''}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    {w.status === 'PENDING' && <button onClick={async () => { await api.approveWithdrawal(w.id); const res = await api.getWithdrawals(); if (res.data) setWithdrawals(res.data); }} className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded">Approve</button>}
+                    {['APPROVED', 'PROCESSING'].includes(w.status) && <button onClick={async () => { await api.processWithdrawal(w.id, payoutRef || `PO-${w.id}`); const res = await api.getWithdrawals(); if (res.data) setWithdrawals(res.data); }} className="px-2 py-1 bg-teal-500 text-slate-950 font-bold rounded">Process</button>}
+                    {['PENDING', 'APPROVED', 'PROCESSING'].includes(w.status) && <button onClick={async () => { await api.failWithdrawal(w.id, 'Admin marked failed'); const res = await api.getWithdrawals(); if (res.data) setWithdrawals(res.data); }} className="px-2 py-1 bg-rose-500/20 text-rose-400 font-bold rounded">Fail</button>}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         )}

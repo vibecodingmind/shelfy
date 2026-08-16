@@ -413,15 +413,17 @@ model LedgerEntry {
 }
 
 model Withdrawal {
-  id         String           @id
-  hostId     String
-  host       User             @relation(fields: [hostId], references: [id])
-  amountTzs  Int
-  method     String           @default("MOBILE_MONEY")
-  status     WithdrawalStatus @default(PENDING)
-  createdAt  DateTime
-  updatedAt  DateTime
-  payouts    Payout[]
+  id              String           @id
+  hostId          String
+  host            User             @relation(fields: [hostId], references: [id])
+  amountTzs       Int
+  method          String           @default("MOBILE_MONEY")
+  status          WithdrawalStatus @default(PENDING)
+  payoutReference String?
+  failureReason   String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  payouts         Payout[]
 
   @@index([hostId, status])
 }
@@ -445,25 +447,28 @@ model Payout {
 }
 
 model FieldVisit {
-  id          String   @id
-  agentId     String
-  agent       User     @relation(fields: [agentId], references: [id])
-  agentName   String?
-  shopId      String
-  shopName    String?
-  shopAddress String?
-  shopCity    String?
-  shelfId     String
-  shelfName   String?
-  scheduledAt DateTime
-  startedAt   DateTime?
-  completedAt DateTime?
-  status      String
-  latitude    Float?
-  longitude   Float?
-  notes       String?
-  createdAt   DateTime
-  reports     FieldReport[]
+  id            String    @id
+  agentId       String
+  agent         User      @relation(fields: [agentId], references: [id])
+  agentName     String?
+  shopId        String
+  shopName      String?
+  shopAddress   String?
+  shopCity      String?
+  shopLatitude  Float?
+  shopLongitude Float?
+  shelfId       String
+  shelfName     String?
+  scheduledAt   DateTime
+  startedAt     DateTime?
+  completedAt   DateTime?
+  checkedInAt   DateTime?
+  status        String
+  latitude      Float?
+  longitude     Float?
+  notes         String?
+  createdAt     DateTime
+  reports       FieldReport[]
 }
 
 model FieldReport {

@@ -10,6 +10,7 @@ import { VendorDashboard } from './components/VendorDashboard.js';
 import { HostDashboard } from './components/HostDashboard.js';
 import { AgentDashboard } from './components/AgentDashboard.js';
 import { AuthModal } from './components/AuthModal.js';
+import { LegalPage, LEGAL_SLUGS } from './components/LegalPage.js';
 import { PesapalPaymentModal } from './components/PesapalPaymentModal.js';
 import { api, getStoredToken, setStoredToken, clearStoredToken } from './lib/api.js';
 import {
@@ -70,7 +71,6 @@ export function App() {
   const [activePesapalShelf, setActivePesapalShelf] = useState<Shelf | null>(null);
   const [showPesapalModal, setShowPesapalModal] = useState<boolean>(false);
 
-  // Load Initial Market Data & Platform Settings
   const loadPublicData = async () => {
     const shopsRes = await api.getShops();
     if (shopsRes.success && shopsRes.data) setShops(shopsRes.data);
@@ -215,6 +215,20 @@ export function App() {
       alert(res.error?.message || 'Failed to initialize shelf reservation. Please try again.');
     }
   };
+
+  const legalSlug = window.location.pathname.replace(/^\/legal\/?/, '');
+  const showLegal = window.location.pathname.startsWith('/legal');
+  if (showLegal) {
+    return (
+      <LegalPage
+        slug={LEGAL_SLUGS.includes(legalSlug) ? legalSlug : 'terms'}
+        onBack={() => {
+          window.history.pushState({}, '', '/');
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 font-sans text-white flex flex-col">

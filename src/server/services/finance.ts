@@ -6,6 +6,10 @@ import {
   hostBalances,
   paymentCapturedPostings,
   releaseHostPayablePostings,
+  refundCapturedPostings,
+  withdrawalHoldPostings,
+  payoutCompletedPostings,
+  payoutFailedPostings,
 } from '../domain/ledger.js';
 
 export function applyPostings(
@@ -67,11 +71,58 @@ export function releaseHostEarnings(db: DatabaseSchema, booking: { id: string; h
   });
 }
 
+export function refundBookingInLedger(
+  db: DatabaseSchema,
+  booking: { id: string; vendorId: string; hostId: string; refundVendorTzs: number; reverseHostTzs: number; reverseCommissionTzs: number; cancellationFeeTzs: number },
+  hostShareAlreadyReleased = false
+): boolean {
+  if (booking.refundVendorTzs + booking.reverseHostTzs + booking.reverseCommissionTzs + booking.cancellationFeeTzs <= 0) {
+    return false;
+  }
+  return applyPostings(
+    db,
+    refundCapturedPostings({ ...booking, hostShareAlreadyReleased }),
+    {
+      refType: 'Booking',
+      refId: booking.id,
+      idempotencyPrefix: `booking:${booking.id}:refund`,
+      memo: `Cancellation refund for ${booking.id}`,
+    }
+  );
+}
+
+export function holdWithdrawalInLedger(db: DatabaseSchema, hostId: string, amountTzs: number, withdrawalId: string): boolean {
+  return applyPostings(db, withdrawalHoldPostings(hostId, amountTzs), {
+    refType: 'Withdrawal',
+    refId: withdrawalId,
+    idempotencyPrefix: `withdrawal:${withdrawalId}:hold`,
+    memo: `Hold for withdrawal ${withdrawalId}`,
+  });
+}
+
+export function completePayoutInLedger(db: DatabaseSchema, hostId: string, amountTzs: number, withdrawalId: string): boolean {
+  return applyPostings(db, payoutCompletedPostings(hostId, amountTzs), {
+    refType: 'Withdrawal',
+    refId: withdrawalId,
+    idempotencyPrefix: `withdrawal:${withdrawalId}:paid`,
+    memo: `Payout completed ${withdrawalId}`,
+  });
+}
+
+export function failPayoutInLedger(db: DatabaseSchema, hostId: string, amountTzs: number, withdrawalId: string): boolean {
+  return applyPostings(db, payoutFailedPostings(hostId, amountTzs), {
+    refType: 'Withdrawal',
+    refId: withdrawalId,
+    idempotencyPrefix: `withdrawal:${withdrawalId}:failed`,
+    memo: `Payout failed ${withdrawalId}`,
+  });
+}
+
 export function financeSummaryForHost(db: DatabaseSchema, hostId: string) {
   const balances = hostBalances({ hostId, accounts: db.ledgerAccounts, entries: db.ledgerEntries });
-  const withdrawnTzs = db.payouts
-    .filter((p) => p.hostId === hostId && p.status === 'COMPLETED')
-    .reduce((sum, p) => sum + p.netAmountTzs, 0);
+  const withdrawnTzs = (db.withdrawals || [])
+    .filter((w) => w.hostId === hostId && w.status === 'COMPLETED')
+    .reduce((sum, w) => sum + w.amountTzs, 0);
   return {
     ...balances,
     withdrawnTzs,

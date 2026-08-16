@@ -175,45 +175,50 @@ export function payoutFailedPostings(hostId: string, amountTzs: number): LedgerP
   ];
 }
 
-export function fullRefundPostings(input: {
+export function refundCapturedPostings(input: {
+  vendorId: string;
   hostId: string;
-  totalPriceTzs: number;
-  platformFeeTzs: number;
-  hostEarningsTzs: number;
+  refundVendorTzs: number;
+  reverseHostTzs: number;
+  reverseCommissionTzs: number;
+  cancellationFeeTzs: number;
   hostShareAlreadyReleased: boolean;
 }): LedgerPosting[] {
-  const posts: LedgerPosting[] = [
-    {
-      account: { ownerType: 'PLATFORM', ownerId: 'platform', type: 'PLATFORM_CLEARING' },
-      amountTzs: input.totalPriceTzs,
-      direction: 'CREDIT',
-      type: 'REFUND',
-    },
-    {
-      account: { ownerType: 'PLATFORM', ownerId: 'platform', type: 'PLATFORM_COMMISSION' },
-      amountTzs: input.platformFeeTzs,
-      direction: 'DEBIT',
-      type: 'REFUND',
-    },
-    {
-      account: { ownerType: 'VENDOR', ownerId: 'vendor', type: 'VENDOR_REFUND' },
-      amountTzs: input.totalPriceTzs,
-      direction: 'DEBIT',
-      type: 'REFUND',
-    },
-  ];
-  if (input.hostShareAlreadyReleased) {
+  const posts: LedgerPosting[] = [];
+  if (input.reverseCommissionTzs > 0) {
     posts.push({
-      account: { ownerType: 'HOST', ownerId: input.hostId, type: 'HOST_AVAILABLE' },
-      amountTzs: input.hostEarningsTzs,
+      account: { ownerType: 'PLATFORM', ownerId: 'platform', type: 'PLATFORM_COMMISSION' },
+      amountTzs: input.reverseCommissionTzs,
       direction: 'DEBIT',
       type: 'REFUND',
     });
-  } else {
+  }
+  if (input.reverseHostTzs > 0) {
     posts.push({
-      account: { ownerType: 'HOST', ownerId: input.hostId, type: 'HOST_PENDING' },
-      amountTzs: input.hostEarningsTzs,
+      account: {
+        ownerType: 'HOST',
+        ownerId: input.hostId,
+        type: input.hostShareAlreadyReleased ? 'HOST_AVAILABLE' : 'HOST_PENDING',
+      },
+      amountTzs: input.reverseHostTzs,
       direction: 'DEBIT',
+      type: 'REFUND',
+    });
+  }
+  if (input.cancellationFeeTzs > 0) {
+    posts.push({
+      account: { ownerType: 'PLATFORM', ownerId: 'platform', type: 'PLATFORM_CANCELLATION_FEE' },
+      amountTzs: input.cancellationFeeTzs,
+      direction: 'CREDIT',
+      type: 'CANCELLATION_FEE',
+    });
+  }
+  const clearingOut = input.refundVendorTzs;
+  if (clearingOut > 0) {
+    posts.push({
+      account: { ownerType: 'PLATFORM', ownerId: 'platform', type: 'PLATFORM_CLEARING' },
+      amountTzs: clearingOut,
+      direction: 'CREDIT',
       type: 'REFUND',
     });
   }

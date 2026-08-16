@@ -30,7 +30,7 @@ const TRANSITIONS: Record<BookingStatus, Partial<Record<BookingStatus, BookingAc
   },
   PAID: {
     ACTIVE: ['ADMIN', 'SYSTEM'],
-    CANCELLED: ['VENDOR', 'ADMIN'],
+    CANCELLED: ['VENDOR', 'HOST', 'ADMIN'],
   },
   ACTIVE: {
     EXPIRING: ['ADMIN', 'SYSTEM'],

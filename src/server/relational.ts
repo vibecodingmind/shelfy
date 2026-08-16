@@ -20,6 +20,11 @@ function jsonValue(value: unknown): Prisma.InputJsonValue {
   return (value ?? []) as Prisma.InputJsonValue;
 }
 
+function listingStatusForWrite(entity: { listingStatus?: string; verificationStatus?: string }) {
+  if (entity.listingStatus) return entity.listingStatus as any;
+  return entity.verificationStatus === 'VERIFIED' ? 'PUBLISHED' : 'DRAFT';
+}
+
 export async function relationalUserCount(prisma: PrismaClient): Promise<number> {
   return prisma.user.count();
 }
@@ -52,6 +57,8 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
     authTokens,
     ledgerAccounts,
     ledgerEntries,
+    withdrawals,
+    verificationRequests,
     settingsRow,
   ] = await Promise.all([
     prisma.user.findMany(),
@@ -76,11 +83,13 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
     prisma.authToken.findMany(),
     prisma.ledgerAccount.findMany(),
     prisma.ledgerEntry.findMany(),
+    prisma.withdrawal.findMany(),
+    prisma.verificationRequest.findMany(),
     prisma.platformSetting.findUnique({ where: { id: 'main' } }),
   ]);
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     users: users.map((u) => ({
       id: u.id,
       name: u.name,
@@ -134,6 +143,7 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
       photos: (s.photos as string[]) || [],
       status: s.status,
       verificationStatus: s.verificationStatus as any,
+      listingStatus: s.listingStatus as any,
       footTrafficScore: s.footTrafficScore || undefined,
       shopType: s.shopType,
       createdAt: s.createdAt.toISOString(),
@@ -160,6 +170,8 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
       allowedCategories: (s.allowedCategories as string[]) || [],
       photos: (s.photos as string[]) || [],
       status: s.status,
+      verificationStatus: s.verificationStatus as any,
+      listingStatus: s.listingStatus as any,
       avgRating: s.avgRating || undefined,
       reviewCount: s.reviewCount,
       createdAt: s.createdAt.toISOString(),
@@ -266,11 +278,14 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
       shopName: v.shopName || undefined,
       shopAddress: v.shopAddress || undefined,
       shopCity: v.shopCity || undefined,
+      shopLatitude: v.shopLatitude || undefined,
+      shopLongitude: v.shopLongitude || undefined,
       shelfId: v.shelfId,
       shelfName: v.shelfName || undefined,
       scheduledAt: v.scheduledAt.toISOString(),
       startedAt: iso(v.startedAt),
       completedAt: iso(v.completedAt),
+      checkedInAt: iso(v.checkedInAt),
       status: v.status as any,
       latitude: v.latitude || undefined,
       longitude: v.longitude || undefined,
@@ -374,6 +389,28 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
       memo: e.memo || undefined,
       createdAt: e.createdAt.toISOString(),
     })),
+    withdrawals: withdrawals.map((w) => ({
+      id: w.id,
+      hostId: w.hostId,
+      amountTzs: w.amountTzs,
+      method: w.method,
+      status: w.status as any,
+      payoutReference: w.payoutReference || undefined,
+      failureReason: w.failureReason || undefined,
+      createdAt: w.createdAt.toISOString(),
+      updatedAt: w.updatedAt.toISOString(),
+    })),
+    verificationRequests: verificationRequests.map((v) => ({
+      id: v.id,
+      subjectType: v.subjectType as any,
+      subjectId: v.subjectId,
+      requestedBy: v.requestedBy,
+      status: v.status as any,
+      notes: v.notes || undefined,
+      reviewedBy: v.reviewedBy || undefined,
+      createdAt: v.createdAt.toISOString(),
+      updatedAt: v.updatedAt.toISOString(),
+    })),
     settings: ((settingsRow?.value as unknown) as DatabaseSchema['settings']) || ({} as DatabaseSchema['settings']),
   };
 }
@@ -445,7 +482,7 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           photos: jsonValue(shop.photos),
           status: shop.status,
           verificationStatus: shop.verificationStatus as any,
-          listingStatus: shop.verificationStatus === 'VERIFIED' ? 'PUBLISHED' : 'DRAFT',
+          listingStatus: listingStatusForWrite(shop),
           footTrafficScore: shop.footTrafficScore,
           shopType: shop.shopType,
           createdAt: mustDate(shop.createdAt),
@@ -455,6 +492,7 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           name: shop.name,
           status: shop.status,
           verificationStatus: shop.verificationStatus as any,
+          listingStatus: listingStatusForWrite(shop),
           photos: jsonValue(shop.photos),
           updatedAt: mustDate(shop.updatedAt),
         },
@@ -484,7 +522,8 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           allowedCategories: jsonValue(shelf.allowedCategories),
           photos: jsonValue(shelf.photos),
           status: shelf.status,
-          listingStatus: 'PUBLISHED',
+          verificationStatus: (shelf.verificationStatus || 'PENDING') as any,
+          listingStatus: listingStatusForWrite(shelf),
           avgRating: shelf.avgRating,
           reviewCount: shelf.reviewCount || 0,
           createdAt: mustDate(shelf.createdAt),
@@ -494,6 +533,8 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           name: shelf.name,
           availabilityStatus: shelf.availabilityStatus,
           status: shelf.status,
+          verificationStatus: (shelf.verificationStatus || 'PENDING') as any,
+          listingStatus: listingStatusForWrite(shelf),
           monthlyPriceTzs: shelf.monthlyPriceTzs,
           photos: jsonValue(shelf.photos),
           updatedAt: mustDate(shelf.updatedAt),
@@ -670,11 +711,14 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           shopName: visit.shopName,
           shopAddress: visit.shopAddress,
           shopCity: visit.shopCity,
+          shopLatitude: visit.shopLatitude,
+          shopLongitude: visit.shopLongitude,
           shelfId: visit.shelfId,
           shelfName: visit.shelfName,
           scheduledAt: mustDate(visit.scheduledAt),
           startedAt: asDate(visit.startedAt),
           completedAt: asDate(visit.completedAt),
+          checkedInAt: asDate(visit.checkedInAt),
           status: visit.status,
           latitude: visit.latitude,
           longitude: visit.longitude,
@@ -685,8 +729,11 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           status: visit.status,
           startedAt: asDate(visit.startedAt),
           completedAt: asDate(visit.completedAt),
+          checkedInAt: asDate(visit.checkedInAt),
           latitude: visit.latitude,
           longitude: visit.longitude,
+          shopLatitude: visit.shopLatitude,
+          shopLongitude: visit.shopLongitude,
         },
       });
     }
@@ -843,6 +890,50 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           createdAt: mustDate(entry.createdAt),
         },
         update: {},
+      });
+    }
+    for (const withdrawal of data.withdrawals || []) {
+      await tx.withdrawal.upsert({
+        where: { id: withdrawal.id },
+        create: {
+          id: withdrawal.id,
+          hostId: withdrawal.hostId,
+          amountTzs: withdrawal.amountTzs,
+          method: withdrawal.method,
+          status: withdrawal.status as any,
+          payoutReference: withdrawal.payoutReference,
+          failureReason: withdrawal.failureReason,
+          createdAt: mustDate(withdrawal.createdAt),
+          updatedAt: mustDate(withdrawal.updatedAt),
+        },
+        update: {
+          status: withdrawal.status as any,
+          payoutReference: withdrawal.payoutReference,
+          failureReason: withdrawal.failureReason,
+          updatedAt: mustDate(withdrawal.updatedAt),
+        },
+      });
+    }
+    for (const request of data.verificationRequests || []) {
+      await tx.verificationRequest.upsert({
+        where: { id: request.id },
+        create: {
+          id: request.id,
+          subjectType: request.subjectType,
+          subjectId: request.subjectId,
+          requestedBy: request.requestedBy,
+          status: request.status,
+          notes: request.notes,
+          reviewedBy: request.reviewedBy,
+          createdAt: mustDate(request.createdAt),
+          updatedAt: mustDate(request.updatedAt),
+        },
+        update: {
+          status: request.status,
+          notes: request.notes,
+          reviewedBy: request.reviewedBy,
+          updatedAt: mustDate(request.updatedAt),
+        },
       });
     }
     await tx.platformSetting.upsert({

@@ -87,6 +87,19 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   }
 }
 
+export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
+  try {
+    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as { id: string };
+    const user = dbEngine.db.users.find((u) => u.id === decoded.id);
+    if (user && isActiveForApi(user, true)) req.user = user;
+  } catch {
+    // public route — ignore bad tokens
+  }
+  next();
+}
+
 export function requireRole(...roles: UserRole[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {

@@ -6,10 +6,11 @@ import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { dbEngine } from './src/server/db.js';
-import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRequest } from './src/server/auth.js';
+import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRequest, optionalAuth } from './src/server/auth.js';
 import { analyzeShelfPhoto, recommendShelves, generateVendorInsights } from './src/server/ai.js';
 import { BookingStatus, UserRole } from './src/types/index.js';
 import { validatePassword, demoLoginAllowed, isDemoEmail } from './src/server/domain/passwords.js';
@@ -20,6 +21,8 @@ import { canMessageBookingCounterparties } from './src/server/domain/messages.js
 import { canAccessBooking } from './src/server/domain/rbac.js';
 import { newId } from './src/server/domain/ids.js';
 import { capturePaymentInLedger, financeSummaryForHost } from './src/server/services/finance.js';
+import { publicShops, publicShelves } from './src/server/domain/listings.js';
+import { registerP1Routes, runBookingMaintenance } from './src/server/p1Routes.js';
 import { createAuthToken, consumeAuthToken, verifySandboxSignature } from './src/server/services/tokens.js';
 import {
   amountsMatch,
@@ -356,8 +359,8 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res: Response) 
 // ==========================================
 
 // GET /api/shops
-app.get('/api/shops', (req: Request, res: Response) => {
-  let shops = [...dbEngine.db.shops];
+app.get('/api/shops', optionalAuth, (req: AuthenticatedRequest, res: Response) => {
+  let shops = publicShops(dbEngine.db.shops, req.user);
   const { city, hostId, search } = req.query;
 
   if (city) shops = shops.filter((s) => s.city.toLowerCase() === String(city).toLowerCase());
@@ -391,11 +394,12 @@ app.post('/api/shops', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authenti
     address,
     city,
     region: region || city,
-    latitude: latitude || -6.7924,
-    longitude: longitude || 39.2083,
+    latitude: Number.isFinite(Number(latitude)) ? Number(latitude) : -6.7924,
+    longitude: Number.isFinite(Number(longitude)) ? Number(longitude) : 39.2083,
     photos: photos && photos.length ? photos : ['https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=800'],
     status: 'ACTIVE' as const,
     verificationStatus: 'PENDING' as const,
+    listingStatus: 'DRAFT' as const,
     footTrafficScore: 8,
     shopType: shopType || 'SUPERMARKET',
     createdAt: now,
@@ -410,8 +414,8 @@ app.post('/api/shops', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authenti
 });
 
 // GET /api/shelves (Public Search & Filter)
-app.get('/api/shelves', (req: Request, res: Response) => {
-  let shelves = [...dbEngine.db.shelves];
+app.get('/api/shelves', optionalAuth, (req: AuthenticatedRequest, res: Response) => {
+  let shelves = publicShelves(dbEngine.db.shelves, dbEngine.db.shops, req.user);
   const { city, category, minPrice, maxPrice, shelfType, availability, search, shopId } = req.query;
 
   if (shopId) shelves = shelves.filter((s) => s.shopId === String(shopId));
@@ -433,9 +437,14 @@ app.get('/api/shelves', (req: Request, res: Response) => {
 });
 
 // GET /api/shelves/:id
-app.get('/api/shelves/:id', (req: Request, res: Response) => {
+app.get('/api/shelves/:id', optionalAuth, (req: AuthenticatedRequest, res: Response) => {
   const shelf = dbEngine.db.shelves.find((s) => s.id === req.params.id);
   if (!shelf) {
+    return res.status(404).json({ success: false, error: { message: 'Shelf not found.' } });
+  }
+  const shopForShelf = dbEngine.db.shops.find((s) => s.id === shelf.shopId);
+  const visible = publicShelves([shelf], dbEngine.db.shops, req.user);
+  if (!visible.length && shopForShelf && req.user?.role !== 'ADMIN' && shopForShelf.hostId !== req.user?.id) {
     return res.status(404).json({ success: false, error: { message: 'Shelf listing not found.' } });
   }
 
@@ -516,6 +525,8 @@ app.post('/api/shelves', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authen
     allowedCategories: allowedCategories || ['Food & Beverages', 'General Merchandise'],
     photos: photos && photos.length ? photos : shop.photos,
     status: 'ACTIVE' as const,
+    verificationStatus: 'PENDING' as const,
+    listingStatus: 'DRAFT' as const,
     avgRating: 5.0,
     reviewCount: 0,
     createdAt: now,
@@ -545,6 +556,9 @@ app.post('/api/bookings', requireAuth, requireRole('VENDOR', 'ADMIN'), async (re
   const shelf = dbEngine.db.shelves.find((s) => s.id === shelfId);
   if (!shelf) {
     return res.status(404).json({ success: false, error: { message: 'Shelf not found.' } });
+  }
+  if (user.role !== 'ADMIN' && !publicShelves([shelf], dbEngine.db.shops, user).length) {
+    return res.status(400).json({ success: false, error: { message: 'This shelf is not published yet.' } });
   }
 
   const quote = calculateBookingQuote({
@@ -1140,6 +1154,8 @@ app.post('/api/field-visits', requireAuth, requireRole('ADMIN'), (req: Authentic
     shopCity: shop.city,
     shelfId,
     shelfName: shelf.name,
+    shopLatitude: shop.latitude,
+    shopLongitude: shop.longitude,
     scheduledAt: scheduledAt || now,
     status: 'SCHEDULED' as const,
     notes: notes || '',
@@ -1166,6 +1182,16 @@ app.post('/api/reports', requireAuth, requireRole('FIELD_AGENT', 'ADMIN'), async
   try {
     const { visitId, shelfId, shopId, stockLevelPercent, shelfCondition, notes, photos } = req.body;
     const user = req.user!;
+
+    const visit = visitId ? dbEngine.db.fieldVisits.find((v) => v.id === visitId) : undefined;
+    if (user.role === 'FIELD_AGENT') {
+      if (!visit || visit.agentId !== user.id) {
+        return res.status(403).json({ success: false, error: { message: 'Submit reports only for visits assigned to you.' } });
+      }
+      if (!visit.checkedInAt) {
+        return res.status(400).json({ success: false, error: { message: 'Check in at the shop GPS coordinates before submitting a report.' } });
+      }
+    }
 
     const reportPhotos = photos && photos.length ? photos : ['https://images.unsplash.com/photo-1583258292688-d02132382025?w=800'];
 
@@ -1330,6 +1356,18 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
     .filter((b) => b.paymentStatus === 'PAID')
     .reduce((sum, b) => sum + b.platformFeeTzs, 0);
 
+  const cityBreakdown = Object.values(
+    dbEngine.db.shops.reduce((acc, shop) => {
+      acc[shop.city] = acc[shop.city] || { city: shop.city, shops: 0, gmv: 0 };
+      acc[shop.city].shops += 1;
+      return acc;
+    }, {} as Record<string, { city: string; shops: number; gmv: number }>)
+  );
+  for (const booking of dbEngine.db.bookings.filter((b) => b.paymentStatus === 'PAID')) {
+    const row = cityBreakdown.find((c) => c.city === booking.shopCity);
+    if (row) row.gmv += booking.totalPriceTzs;
+  }
+
   const stats = {
     usersCount,
     vendorsCount,
@@ -1340,6 +1378,9 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
     activeBookings,
     totalRevenueTzs,
     totalCommissionsTzs,
+    pendingVerifications: dbEngine.db.verificationRequests.filter((v) => v.status === 'PENDING' || v.status === 'UNDER_REVIEW').length,
+    pendingWithdrawals: dbEngine.db.withdrawals.filter((w) => w.status === 'PENDING' || w.status === 'APPROVED').length,
+    cityBreakdown,
   };
 
   res.json({
@@ -1503,6 +1544,18 @@ app.post('/api/ai/vendor-insights', requireAuth, requireRole('VENDOR', 'ADMIN'),
 
 async function startServer() {
   await dbEngine.ready;
+  registerP1Routes(app);
+  const uploadDir = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'data'), 'uploads');
+  fs.mkdirSync(uploadDir, { recursive: true });
+  app.use('/uploads', express.static(uploadDir));
+  setInterval(() => {
+    try {
+      runBookingMaintenance();
+    } catch (err) {
+      console.error('Booking maintenance failed:', err);
+    }
+  }, 15 * 60 * 1000);
+  runBookingMaintenance();
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({

@@ -183,27 +183,31 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
 
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude, accuracy } = position.coords;
         setGpsLocation({ latitude, longitude, accuracy });
 
-        // Calculate distance to shop if shop coordinates are available
         if (activeVisit) {
-          // Haversine formula
-          const shopLat = -6.7644; // Default Dar coordinates
-          const shopLng = 39.2483;
-          const R = 6371e3; // metres
-          const phi1 = (latitude * Math.PI) / 180;
-          const phi2 = (shopLat * Math.PI) / 180;
-          const deltaPhi = ((shopLat - latitude) * Math.PI) / 180;
-          const deltaLambda = ((shopLng - longitude) * Math.PI) / 180;
-
-          const a =
-            Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-            Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          const dist = Math.round(R * c);
-          setGpsDistanceMeters(dist);
+          const shopLat = activeVisit.shopLatitude;
+          const shopLng = activeVisit.shopLongitude;
+          if (typeof shopLat === 'number' && typeof shopLng === 'number') {
+            const R = 6371e3;
+            const phi1 = (latitude * Math.PI) / 180;
+            const phi2 = (shopLat * Math.PI) / 180;
+            const deltaPhi = ((shopLat - latitude) * Math.PI) / 180;
+            const deltaLambda = ((shopLng - longitude) * Math.PI) / 180;
+            const a =
+              Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            setGpsDistanceMeters(Math.round(R * c));
+          }
+          const check = await api.checkInVisit(activeVisit.id, latitude, longitude);
+          if (!check.success) {
+            alert(check.error?.message || 'Check-in failed. You must be at the shop coordinates.');
+          } else if (check.data?.gps?.meters !== undefined) {
+            setGpsDistanceMeters(check.data.gps.meters);
+          }
         }
         setGpsLoading(false);
       },

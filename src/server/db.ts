@@ -13,7 +13,7 @@ import { capturePaymentInLedger } from './services/finance.js';
 import { getPrisma } from './prisma.js';
 import { importSchemaToPrisma, loadSchemaFromPrisma, persistSchemaToPrisma, relationalUserCount } from './relational.js';
 
-export const SEED_SCHEMA_VERSION = 4;
+export const SEED_SCHEMA_VERSION = 5;
 
 const DATA_DIR = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || process.cwd(), process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH ? '' : 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'shelfy.json');
@@ -92,6 +92,8 @@ const EMPTY_COLLECTIONS: Array<keyof DatabaseSchema> = [
   'payments',
   'paymentAttempts',
   'payouts',
+  'withdrawals',
+  'verificationRequests',
   'fieldVisits',
   'shelfReports',
   'notifications',
@@ -150,6 +152,27 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
       };
     }
     return catsChanged ? { ...shelf, allowedCategories: normalizedCats } : shelf;
+  });
+
+  next.shops = next.shops.map((shop) => {
+    if (shop.listingStatus) return shop;
+    changed = true;
+    return {
+      ...shop,
+      listingStatus: shop.verificationStatus === 'VERIFIED' ? 'PUBLISHED' : 'DRAFT',
+    };
+  });
+
+  next.shelves = next.shelves.map((shelf) => {
+    if (shelf.listingStatus && shelf.verificationStatus) return shelf;
+    const shop = next.shops.find((s) => s.id === shelf.shopId);
+    const verified = shelf.verificationStatus === 'VERIFIED' || shelf.hostVerificationStatus === 'VERIFIED' || shop?.verificationStatus === 'VERIFIED';
+    changed = true;
+    return {
+      ...shelf,
+      verificationStatus: shelf.verificationStatus || (verified ? 'VERIFIED' : 'PENDING'),
+      listingStatus: shelf.listingStatus || (verified ? 'PUBLISHED' : 'DRAFT'),
+    };
   });
 
   const demoPassword = 'Password123!';

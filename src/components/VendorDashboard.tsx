@@ -265,8 +265,20 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                             </button>
                           ) : (
                             <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 font-bold rounded text-[10px] flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Paid & Active
+                              <CheckCircle2 className="w-3 h-3" /> {b.status}
                             </span>
+                          )}
+                          {['PENDING_APPROVAL', 'APPROVED', 'PAYMENT_PENDING', 'PAYMENT_FAILED', 'PAID', 'ACTIVE', 'EXPIRING'].includes(b.status) && (
+                            <button
+                              onClick={async () => {
+                                const res = await api.cancelBooking(b.id);
+                                if (!res.success) alert(res.error?.message || 'Cancel failed.');
+                                onRefreshData();
+                              }}
+                              className="block mt-2 text-[10px] text-rose-400"
+                            >
+                              Cancel
+                            </button>
                           )}
                         </div>
                       </div>

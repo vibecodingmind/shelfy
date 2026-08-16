@@ -21,8 +21,10 @@ import {
   BookingStatusHistory,
   AuthToken,
   PaymentAttempt,
+  VerificationRequest,
 } from '../types/index.js';
 import { LedgerAccount, LedgerEntry, accountKey, paymentCapturedPostings } from './domain/ledger.js';
+import { Withdrawal } from './domain/withdrawals.js';
 
 export interface DatabaseSchema {
   schemaVersion?: number;
@@ -38,6 +40,8 @@ export interface DatabaseSchema {
   payments: Payment[];
   paymentAttempts: PaymentAttempt[];
   payouts: Payout[];
+  withdrawals: Withdrawal[];
+  verificationRequests: VerificationRequest[];
   fieldVisits: FieldVisit[];
   shelfReports: ShelfReport[];
   notifications: Notification[];
@@ -1829,7 +1833,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
   }
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     users,
     vendorProfiles,
     hostProfiles,
@@ -1842,6 +1846,8 @@ export function buildCompleteSeedData(): DatabaseSchema {
     payments,
     paymentAttempts: [],
     payouts,
+    withdrawals: [],
+    verificationRequests: [],
     fieldVisits,
     shelfReports,
     notifications,
