@@ -2,17 +2,15 @@
  * Shelfy 🇹🇿 — Express Server & API Gateway
  */
 
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import { dbEngine } from './src/server/db.js';
 import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRequest } from './src/server/auth.js';
 import { analyzeShelfPhoto, recommendShelves, generateVendorInsights } from './src/server/ai.js';
 import { BookingStatus, UserRole } from './src/types/index.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;

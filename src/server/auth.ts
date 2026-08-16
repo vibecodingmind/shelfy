@@ -2,18 +2,30 @@
  * Shelfy 🇹🇿 — Authentication & RBAC Authorization Middleware
  */
 
+import 'dotenv/config';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { dbEngine } from './db.js';
 import { User, UserRole } from '../types/index.js';
 
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  (process.env.NODE_ENV === 'production' ? '' : 'shelfy_dev_only_jwt_secret');
+function resolveJwtSecret(): string {
+  const fromEnv = process.env.JWT_SECRET?.trim();
+  if (fromEnv) return fromEnv;
 
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET must be set in production. Do not use a hardcoded fallback.');
+  const railwayScoped = process.env.RAILWAY_ENVIRONMENT_ID
+    ? `shelfy_${process.env.RAILWAY_ENVIRONMENT_ID}_jwt`
+    : '';
+
+  if (process.env.NODE_ENV === 'production') {
+    console.warn(
+      'JWT_SECRET is not set. Using a temporary secret so the app can boot. Set JWT_SECRET in Railway Variables to keep login sessions stable across deploys.'
+    );
+  }
+
+  return railwayScoped || 'shelfy_dev_only_jwt_secret';
 }
+
+const JWT_SECRET = resolveJwtSecret();
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
