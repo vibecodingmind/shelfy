@@ -279,7 +279,7 @@ Verification, shop/shelf management, uploads, cancel/complete, withdrawals/payou
 
 Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders, listing wizard, payment reconcile job, reviews/disputes, SEO slugs, occupancy analytics, PWA shell, shop/shelf archive, S3-capable uploads, notification dispatcher, health/ops flags, request logs, refresh tokens, backup runbook.
 
-Still open: live PesaPal keys + stable `JWT_SECRET` (Railway ops). Not launch-ready.
+Still open: live PesaPal keys + stable `JWT_SECRET` (Railway ops). Not launch-ready. HTTP API tests now hit Express (login, refresh, 410 client-confirm, booking IDOR).
 
 ### P2 (this branch)
 

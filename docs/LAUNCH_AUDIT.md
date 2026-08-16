@@ -35,13 +35,13 @@ This is a code-and-rules audit, not a legal, tax, or PesaPal go-live review.
 | Field ops | 250m GPS check-in; reports require check-in |
 | Uploads | JPEG/PNG/WebP ≤2.5MB; filename sanitised; optional S3 |
 | Ops | Health flags (always 200), JSON request logs, [RUNBOOK.md](./RUNBOOK.md) |
-| Tests | Vitest domain suites P0–P14; `tsc --noEmit` |
+| Tests | Vitest domain suites P0–P14 plus HTTP API tests; `tsc --noEmit` |
 
 ---
 
 ## Remaining product/QA gaps (not Railway secrets)
 
-- Browser E2E (Playwright) for login → book → pay sandbox → complete is not in CI.
+- Browser E2E (Playwright) for login → book → pay sandbox → complete is not in CI. HTTP route tests cover login, refresh, 410 payment stubs, and booking IDOR.
 - Postgres integration test runs only when `DATABASE_URL` is reachable; it skips otherwise.
 - SMTP is detected in health but not a live mail transport (Resend is the wired sender).
 - No full APM; monitoring is JSON logs + health flags.

@@ -1683,4 +1683,19 @@ async function startServer() {
   });
 }
 
-startServer();
+let httpPrepared = false;
+
+export async function prepareHttpApp() {
+  await dbEngine.ready;
+  if (!httpPrepared) {
+    registerP1Routes(app);
+    httpPrepared = true;
+  }
+  return app;
+}
+
+export { app };
+
+if (!process.env.VITEST) {
+  void startServer();
+}

@@ -2,7 +2,7 @@
 
 Update this file as work lands. Do not mark a line done unless tests (or an explicit exception) exist.
 
-Last updated: 2026-08-16 — P14 launch audit: security hardening, money-journey tests, `docs/LAUNCH_AUDIT.md` on `cursor/p0-marketplace-foundation-b9de`
+Last updated: 2026-08-16 — HTTP API tests (auth, 410 payments, IDOR) on `cursor/p0-marketplace-foundation-b9de`
 
 ---
 
@@ -101,7 +101,7 @@ Last updated: 2026-08-16 — P14 launch audit: security hardening, money-journey
 ## QA
 
 - [x] Unit tests (rules, machine, ledger, payments, P1 listings/cancel/GPS/withdrawals)
-- [x] API/auth tests (vitest)
+- [x] API/auth tests (vitest HTTP: login, refresh, 410 client-confirm, booking IDOR)
 - [x] Integration tests against Postgres (skipped unless `DATABASE_URL` is reachable)
 - [x] E2E critical journeys (domain money path capture → release → withdraw; no Playwright UI suite yet)
 
