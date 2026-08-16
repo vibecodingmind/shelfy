@@ -5,6 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
+import { Pool } from 'pg';
 import { PlatformSettings, Shelf } from '../types/index.js';
 import { buildCompleteSeedData, DatabaseSchema } from './seedData.js';
 
@@ -180,9 +181,41 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
 
 class DatabaseEngine {
   private data: DatabaseSchema;
+  private driver: 'file' | 'postgres' = 'file';
+  private pool: Pool | null = null;
+  public readonly ready: Promise<void>;
 
   constructor() {
-    this.data = this.loadOrInitialize();
+    this.data = normalizeDatabase(buildCompleteSeedData()).data;
+    this.ready = this.init();
+  }
+
+  private async init() {
+    if (process.env.DATABASE_URL) {
+      this.driver = 'postgres';
+      const internal = process.env.DATABASE_URL.includes('railway.internal') || process.env.DATABASE_URL.includes('sslmode=disable');
+      this.pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: internal ? false : { rejectUnauthorized: false },
+      });
+      await this.ensurePostgres();
+      const loaded = await this.loadFromPostgres();
+      if (loaded) {
+        const { data, changed } = normalizeDatabase(loaded);
+        this.data = data;
+        if (changed) await this.persist(data);
+      } else {
+        const seeded = normalizeDatabase(buildCompleteSeedData()).data;
+        this.data = seeded;
+        await this.persist(seeded);
+      }
+      console.log('🗄️  Shelfy database driver: postgres');
+      return;
+    }
+
+    this.driver = 'file';
+    this.data = this.loadFromFile();
+    console.log('🗄️  Shelfy database driver: file');
   }
 
   private ensureDir() {
@@ -191,7 +224,7 @@ class DatabaseEngine {
     }
   }
 
-  private loadOrInitialize(): DatabaseSchema {
+  private loadFromFile(): DatabaseSchema {
     this.ensureDir();
     if (fs.existsSync(DB_FILE)) {
       try {
@@ -199,7 +232,7 @@ class DatabaseEngine {
         const parsed = JSON.parse(raw);
         if (parsed.users && parsed.shops && parsed.shelves && parsed.shelves.length >= 15) {
           const { data, changed } = normalizeDatabase(parsed as DatabaseSchema);
-          if (changed) this.saveData(data);
+          if (changed) this.saveFile(data);
           return data;
         }
       } catch (err) {
@@ -208,11 +241,29 @@ class DatabaseEngine {
     }
 
     const seeded = normalizeDatabase(buildCompleteSeedData()).data;
-    this.saveData(seeded);
+    this.saveFile(seeded);
     return seeded;
   }
 
-  private saveData(dataToSave?: DatabaseSchema) {
+  private async ensurePostgres() {
+    if (!this.pool) return;
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS shelfy_store (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+  }
+
+  private async loadFromPostgres(): Promise<DatabaseSchema | null> {
+    if (!this.pool) return null;
+    const result = await this.pool.query('SELECT data FROM shelfy_store WHERE id = $1', ['main']);
+    if (!result.rows[0]?.data) return null;
+    return result.rows[0].data as DatabaseSchema;
+  }
+
+  private saveFile(dataToSave?: DatabaseSchema) {
     try {
       this.ensureDir();
       const target = dataToSave || this.data;
@@ -222,8 +273,24 @@ class DatabaseEngine {
     }
   }
 
+  private async persist(dataToSave?: DatabaseSchema) {
+    const target = dataToSave || this.data;
+    if (this.driver === 'postgres' && this.pool) {
+      await this.pool.query(
+        `INSERT INTO shelfy_store (id, data, updated_at)
+         VALUES ('main', $1::jsonb, NOW())
+         ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+        [JSON.stringify(target)]
+      );
+      return;
+    }
+    this.saveFile(target);
+  }
+
   public save() {
-    this.saveData();
+    void this.persist().catch((err) => {
+      console.error('Failed to persist Shelfy database:', err);
+    });
   }
 
   public get db(): DatabaseSchema {
@@ -232,6 +299,7 @@ class DatabaseEngine {
 
   public stats() {
     return {
+      driver: this.driver,
       schemaVersion: this.data.schemaVersion || 0,
       users: this.data.users.length,
       shops: this.data.shops.length,
@@ -243,7 +311,7 @@ class DatabaseEngine {
       payouts: this.data.payouts.length,
       fieldVisits: this.data.fieldVisits.length,
       settingsCategories: this.data.settings.shelfCategories?.length || 0,
-      dataFile: DB_FILE,
+      dataFile: this.driver === 'file' ? DB_FILE : 'postgres:shelfy_store',
     };
   }
 }

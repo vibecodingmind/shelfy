@@ -1205,6 +1205,7 @@ app.post('/api/ai/vendor-insights', requireAuth, async (req: AuthenticatedReques
 // ==========================================
 
 async function startServer() {
+  await dbEngine.ready;
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
