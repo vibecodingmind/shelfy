@@ -65,6 +65,8 @@ export interface Shop {
   status: 'ACTIVE' | 'INACTIVE';
   verificationStatus: VerificationStatus;
   listingStatus?: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'SUSPENDED';
+  slug?: string;
+  deletedAt?: string;
   footTrafficScore?: number; // 1 to 10
   shopType: 'SUPERMARKET' | 'MINI_MARKET' | 'CONVENIENCE' | 'BOUTIQUE' | 'PHARMACY' | 'SPECIALTY';
   createdAt: string;
@@ -86,6 +88,8 @@ export interface Shelf {
   hostVerificationStatus?: VerificationStatus;
   verificationStatus?: VerificationStatus;
   listingStatus?: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'SUSPENDED';
+  slug?: string;
+  deletedAt?: string;
   name: string;
   description: string;
   widthCm: number;

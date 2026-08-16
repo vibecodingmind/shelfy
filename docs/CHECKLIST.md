@@ -2,7 +2,7 @@
 
 Update this file as work lands. Do not mark a line done unless tests (or an explicit exception) exist.
 
-Last updated: 2026-08-16 — P1 listing wizard, reconcile, reviews/disputes on `cursor/p0-marketplace-foundation-b9de`
+Last updated: 2026-08-16 — P2 slugs, occupancy, PWA, soft-delete on `cursor/p0-marketplace-foundation-b9de`
 
 ---
 
@@ -32,7 +32,7 @@ Last updated: 2026-08-16 — P1 listing wizard, reconcile, reviews/disputes on `
 - [x] Enums for statuses
 - [x] Import from JSON / `shelfy_store` on first boot
 - [x] Production path stops writing JSONB after import
-- [ ] Soft-delete pass on all catalogue entities (P1)
+- [x] Soft-delete pass on shops/shelves (archive; blocked by active bookings)
 - [ ] Backup/restore runbook (Phase 13)
 
 ## MARKETPLACE
@@ -44,7 +44,7 @@ Last updated: 2026-08-16 — P1 listing wizard, reconcile, reviews/disputes on `
 - [x] Search / filter (existing)
 - [x] Booking create + overlap
 - [x] Public published-only filter
-- [ ] Slugs / SEO URLs (P2)
+- [x] Slugs / SEO URLs (`/s/:slug`, unique slugify)
 
 ## BOOKING
 
@@ -111,7 +111,8 @@ Last updated: 2026-08-16 — P1 listing wizard, reconcile, reviews/disputes on `
 - [ ] Object storage (S3) for uploads
 - [ ] Email/SMS provider for expiration and OTP
 - [x] Reviews & disputes (API + admin resolve; no automatic money invention)
-- [ ] Analytics from real aggregates (admin GMV now uses paid payments; occupancy/PWA later)
+- [x] Analytics from real aggregates (paid occupancy 30d + GMV from paid payments)
 - [x] Legal page placeholders (`LEGAL_REVIEW_REQUIRED`)
+- [x] PWA shell (manifest + service worker; `/api` is never cached)
 - [ ] Production monitoring
 - [ ] Live PesaPal keys + stable `JWT_SECRET` (Railway ops)

@@ -8,3 +8,12 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    if (window.location.protocol !== 'https:') return;
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Offline shell is optional; API traffic is never cached.
+    });
+  });
+}

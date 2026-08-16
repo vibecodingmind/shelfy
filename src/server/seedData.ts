@@ -1833,7 +1833,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
   }
 
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     users,
     vendorProfiles,
     hostProfiles,

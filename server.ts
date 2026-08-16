@@ -22,6 +22,8 @@ import { canAccessBooking } from './src/server/domain/rbac.js';
 import { newId } from './src/server/domain/ids.js';
 import { capturePaymentInLedger, financeSummaryForHost } from './src/server/services/finance.js';
 import { publicShops, publicShelves } from './src/server/domain/listings.js';
+import { uniqueSlug, findByIdOrSlug } from './src/server/domain/slugs.js';
+import { occupancySummary, occupancyWindow } from './src/server/domain/occupancy.js';
 import { registerP1Routes, runBookingMaintenance } from './src/server/p1Routes.js';
 import { paymentsDueForReconcile } from './src/server/domain/reconcile.js';
 import { createAuthToken, consumeAuthToken, verifySandboxSignature } from './src/server/services/tokens.js';
@@ -401,6 +403,7 @@ app.post('/api/shops', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authenti
     status: 'ACTIVE' as const,
     verificationStatus: 'PENDING' as const,
     listingStatus: 'DRAFT' as const,
+    slug: uniqueSlug(`${city} ${name}`, dbEngine.db.shops.map((s) => s.slug || '')),
     footTrafficScore: 8,
     shopType: shopType || 'SUPERMARKET',
     createdAt: now,
@@ -439,7 +442,7 @@ app.get('/api/shelves', optionalAuth, (req: AuthenticatedRequest, res: Response)
 
 // GET /api/shelves/:id
 app.get('/api/shelves/:id', optionalAuth, (req: AuthenticatedRequest, res: Response) => {
-  const shelf = dbEngine.db.shelves.find((s) => s.id === req.params.id);
+  const shelf = findByIdOrSlug(dbEngine.db.shelves, req.params.id);
   if (!shelf) {
     return res.status(404).json({ success: false, error: { message: 'Shelf not found.' } });
   }
@@ -528,6 +531,7 @@ app.post('/api/shelves', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authen
     status: 'ACTIVE' as const,
     verificationStatus: 'PENDING' as const,
     listingStatus: 'DRAFT' as const,
+    slug: uniqueSlug(`${shop.city} ${shop.name} ${name}`, dbEngine.db.shelves.map((s) => s.slug || '')),
     avgRating: 5.0,
     reviewCount: 0,
     createdAt: now,
@@ -1391,6 +1395,15 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
     if (row) row.gmv += booking.totalPriceTzs;
   }
 
+  const window = occupancyWindow();
+  const liveShelves = publicShelves(dbEngine.db.shelves, dbEngine.db.shops);
+  const occupancy = occupancySummary({
+    shelves: liveShelves,
+    bookings: dbEngine.db.bookings,
+    windowStart: window.windowStart,
+    windowEnd: window.windowEnd,
+  });
+
   const stats = {
     usersCount,
     vendorsCount,
@@ -1404,6 +1417,7 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
     pendingVerifications: dbEngine.db.verificationRequests.filter((v) => v.status === 'PENDING' || v.status === 'UNDER_REVIEW').length,
     pendingWithdrawals: dbEngine.db.withdrawals.filter((w) => w.status === 'PENDING' || w.status === 'APPROVED').length,
     cityBreakdown,
+    occupancy,
   };
 
   res.json({

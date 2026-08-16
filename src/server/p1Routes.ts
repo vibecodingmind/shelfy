@@ -10,6 +10,7 @@ import { canOpenDispute, canReviewBooking, validRating } from './domain/reviews.
 import { gpsWithinRadius } from './domain/gps.js';
 import { quoteWithdrawal } from './domain/withdrawals.js';
 import { isDataUrlImage, shelfShouldBeAvailable, tickBookingStatuses } from './domain/operations.js';
+import { BLOCKING_BOOKING_STATUSES } from './domain/pricing.js';
 import { assertTransition } from './domain/bookingMachine.js';
 import {
   completePayoutInLedger,
@@ -560,5 +561,57 @@ export function registerP1Routes(app: Express) {
     await dbEngine.saveAsync();
     logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'DISPUTE_RESOLVED', 'Dispute', dispute.id, dispute.status);
     res.json({ success: true, data: dispute });
+  });
+
+  app.delete('/api/shops/:id', requireAuth, requireRole('HOST', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+    const shop = dbEngine.db.shops.find((s) => s.id === req.params.id && !s.deletedAt);
+    if (!shop) return res.status(404).json({ success: false, error: { message: 'Shop not found.' } });
+    if (req.user!.role !== 'ADMIN' && shop.hostId !== req.user!.id) {
+      return res.status(403).json({ success: false, error: { message: 'You do not own this shop.' } });
+    }
+    const shelfIds = dbEngine.db.shelves.filter((s) => s.shopId === shop.id && !s.deletedAt).map((s) => s.id);
+    const blocking = dbEngine.db.bookings.some(
+      (b) => shelfIds.includes(b.shelfId) && (BLOCKING_BOOKING_STATUSES as readonly string[]).includes(b.status)
+    );
+    if (blocking) {
+      return res.status(400).json({ success: false, error: { message: 'Archive is blocked while this shop has an active or reserved booking.' } });
+    }
+    const now = new Date().toISOString();
+    shop.deletedAt = now;
+    shop.status = 'INACTIVE';
+    shop.listingStatus = 'SUSPENDED';
+    shop.updatedAt = now;
+    for (const shelf of dbEngine.db.shelves.filter((s) => s.shopId === shop.id && !s.deletedAt)) {
+      shelf.deletedAt = now;
+      shelf.status = 'INACTIVE';
+      shelf.listingStatus = 'SUSPENDED';
+      shelf.updatedAt = now;
+    }
+    await dbEngine.saveAsync();
+    logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'SHOP_ARCHIVED', 'Shop', shop.id);
+    res.json({ success: true, data: shop });
+  });
+
+  app.delete('/api/shelves/:id', requireAuth, requireRole('HOST', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+    const shelf = dbEngine.db.shelves.find((s) => s.id === req.params.id && !s.deletedAt);
+    if (!shelf) return res.status(404).json({ success: false, error: { message: 'Shelf not found.' } });
+    const shop = dbEngine.db.shops.find((s) => s.id === shelf.shopId);
+    if (req.user!.role !== 'ADMIN' && shop?.hostId !== req.user!.id) {
+      return res.status(403).json({ success: false, error: { message: 'You do not own this shelf.' } });
+    }
+    const blocking = dbEngine.db.bookings.some(
+      (b) => b.shelfId === shelf.id && (BLOCKING_BOOKING_STATUSES as readonly string[]).includes(b.status)
+    );
+    if (blocking) {
+      return res.status(400).json({ success: false, error: { message: 'Archive is blocked while this shelf has an active or reserved booking.' } });
+    }
+    const now = new Date().toISOString();
+    shelf.deletedAt = now;
+    shelf.status = 'INACTIVE';
+    shelf.listingStatus = 'SUSPENDED';
+    shelf.updatedAt = now;
+    await dbEngine.saveAsync();
+    logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'SHELF_ARCHIVED', 'Shelf', shelf.id);
+    res.json({ success: true, data: shelf });
   });
 }

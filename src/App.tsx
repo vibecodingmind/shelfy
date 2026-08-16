@@ -218,6 +218,7 @@ export function App() {
 
   const legalSlug = window.location.pathname.replace(/^\/legal\/?/, '');
   const showLegal = window.location.pathname.startsWith('/legal');
+  const shelfSlugMatch = window.location.pathname.match(/^\/s\/([^/]+)/);
   if (showLegal) {
     return (
       <LegalPage
@@ -268,6 +269,7 @@ export function App() {
             shelfTypes={platformSettings?.shelfTypes}
             onBookShelf={handleBookShelfAction}
             onLoginClick={() => handleOpenAuthModal('LOGIN')}
+            initialShelfSlug={shelfSlugMatch?.[1]}
           />
         )}
 

@@ -10,7 +10,7 @@
  * - Clean role-based navigation (AI Match & List Shelf moved to authenticated Host/Vendor dashboards)
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -47,6 +47,7 @@ interface LandingPageProps {
   shelfTypes?: { id: string; name: string }[];
   onBookShelf: (shelf: Shelf, startDate?: string, endDate?: string, durationMonths?: number, category?: string) => void;
   onLoginClick: () => void;
+  initialShelfSlug?: string;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -59,6 +60,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   shelfTypes,
   onBookShelf,
   onLoginClick,
+  initialShelfSlug,
 }) => {
   // State for search and filters
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -77,6 +79,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // Active shelf for full Airbnb Detail View
   const [activeDetailShelf, setActiveDetailShelf] = useState<Shelf | null>(null);
+
+  useEffect(() => {
+    if (!initialShelfSlug) return;
+    const found = shelves.find((s) => s.slug === initialShelfSlug || s.id === initialShelfSlug);
+    if (found) setActiveDetailShelf(found);
+  }, [initialShelfSlug, shelves]);
+
+  const openShelf = (shelf: Shelf) => {
+    setActiveDetailShelf(shelf);
+    const slug = shelf.slug || shelf.id;
+    window.history.pushState({}, '', `/s/${slug}`);
+  };
+
+  const closeShelf = () => {
+    setActiveDetailShelf(null);
+    window.history.pushState({}, '', '/');
+  };
 
   // Category scroll reference
   const categoryScrollRef = useRef<HTMLDivElement>(null);
@@ -165,7 +184,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <AirbnbShelfDetail
         shelf={activeDetailShelf}
         currentUser={user}
-        onBack={() => setActiveDetailShelf(null)}
+        onBack={closeShelf}
         onInitiateBooking={(shelf, start, end, months, cat) => {
           onBookShelf(shelf, start, end, months, cat);
         }}
@@ -427,7 +446,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <AirbnbMapSplitView
                 shelves={filteredShelves}
                 shops={shops}
-                onSelectShelf={(shelf) => setActiveDetailShelf(shelf)}
+                onSelectShelf={openShelf}
                 onBookShelf={(shelf) => onBookShelf(shelf)}
               />
             )}
@@ -439,7 +458,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <AirbnbShelfListCard
                     key={shelf.id}
                     shelf={shelf}
-                    onSelectShelf={(s) => setActiveDetailShelf(s)}
+                    onSelectShelf={openShelf}
                     onBookDirect={(s) => onBookShelf(s)}
                   />
                 ))}
@@ -453,7 +472,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <AirbnbShelfCard
                     key={shelf.id}
                     shelf={shelf}
-                    onSelectShelf={(s) => setActiveDetailShelf(s)}
+                    onSelectShelf={openShelf}
                     onBookDirect={(s) => onBookShelf(s)}
                   />
                 ))}

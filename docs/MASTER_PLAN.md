@@ -275,13 +275,13 @@ Re-run the quality gate in the original instruction: business E2E, security, mon
 
 Verification, shop/shelf management, uploads, cancel/complete, withdrawals/payouts, notifications, field ops, admin ops.
 
-Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders, listing wizard, payment reconcile job, reviews/disputes.
+Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders, listing wizard, payment reconcile job, reviews/disputes, SEO slugs, occupancy analytics, PWA shell, shop/shelf archive.
 
 Still open: S3, email/SMS, live PesaPal keys.
 
-### P2
+### P2 (this branch)
 
-Reviews, disputes, analytics, messaging+, PWA, SEO, reporting
+Slugs/SEO URLs, occupancy analytics from bookings, PWA shell, shop/shelf soft-delete.
 
 ### P3
 

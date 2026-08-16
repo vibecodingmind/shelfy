@@ -10,10 +10,11 @@ import { PlatformSettings, Shelf } from '../types/index.js';
 import { execSync } from 'child_process';
 import { buildCompleteSeedData, DatabaseSchema } from './seedData.js';
 import { capturePaymentInLedger } from './services/finance.js';
+import { uniqueSlug } from './domain/slugs.js';
 import { getPrisma } from './prisma.js';
 import { importSchemaToPrisma, loadSchemaFromPrisma, persistSchemaToPrisma, relationalUserCount } from './relational.js';
 
-export const SEED_SCHEMA_VERSION = 5;
+export const SEED_SCHEMA_VERSION = 6;
 
 const DATA_DIR = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || process.cwd(), process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH ? '' : 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'shelfy.json');
@@ -173,6 +174,23 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
       verificationStatus: shelf.verificationStatus || (verified ? 'VERIFIED' : 'PENDING'),
       listingStatus: shelf.listingStatus || (verified ? 'PUBLISHED' : 'DRAFT'),
     };
+  });
+
+  const shopSlugs: string[] = next.shops.map((s) => s.slug).filter((s): s is string => Boolean(s));
+  next.shops = next.shops.map((shop) => {
+    if (shop.slug) return shop;
+    changed = true;
+    const slug = uniqueSlug(`${shop.city} ${shop.name}`, shopSlugs);
+    shopSlugs.push(slug);
+    return { ...shop, slug };
+  });
+  const shelfSlugs: string[] = next.shelves.map((s) => s.slug).filter((s): s is string => Boolean(s));
+  next.shelves = next.shelves.map((shelf) => {
+    if (shelf.slug) return shelf;
+    changed = true;
+    const slug = uniqueSlug(`${shelf.shopCity || ''} ${shelf.shopName || ''} ${shelf.name}`, shelfSlugs);
+    shelfSlugs.push(slug);
+    return { ...shelf, slug };
   });
 
   const demoPassword = 'Password123!';

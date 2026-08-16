@@ -412,7 +412,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="text-slate-400 text-xs font-semibold mb-1">Total Users Registered</div>
                 <div className="text-2xl font-black text-white">{stats?.usersCount || users.length}</div>
                 <div className="text-[11px] text-emerald-400 font-medium mt-1">
-                  Vendors: {stats?.vendorsCount || 2} | Hosts: {stats?.hostsCount || 2}
+                  Vendors: {stats?.vendorsCount || 0} | Hosts: {stats?.hostsCount || 0}
                 </div>
               </div>
 
@@ -420,7 +420,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="text-slate-400 text-xs font-semibold mb-1">Active Retail Shops</div>
                 <div className="text-2xl font-black text-amber-400">{shops.length}</div>
                 <div className="text-[11px] text-slate-400 font-medium mt-1">
-                  Shelves Listed: {shelves.length}
+                  Paid occupancy {stats?.occupancy?.windowDays || 30}d: {stats?.occupancy?.paidPercent ?? 0}%
                 </div>
               </div>
 
@@ -480,7 +480,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div key={row.city} className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
                       <div>
                         <div className="font-bold text-white">{row.city}</div>
-                        <div className="text-[10px] text-slate-400">{row.shops} shops</div>
+                        <div className="text-[10px] text-slate-400">{row.shops} shops · occupancy uses paid GMV</div>
                       </div>
                       <div className="font-mono text-emerald-400">TZS {(row.gmv || 0).toLocaleString()}</div>
                     </div>

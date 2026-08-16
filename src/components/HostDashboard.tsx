@@ -96,8 +96,8 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
     }
   };
 
-  const myShops = shops.filter((s) => s.hostId === user.id);
-  const myShelves = shelves.filter((sh) => myShops.some((s) => s.id === sh.shopId));
+  const myShops = shops.filter((s) => s.hostId === user.id && !s.deletedAt);
+  const myShelves = shelves.filter((sh) => myShops.some((s) => s.id === sh.shopId) && !sh.deletedAt);
   const myBookings = bookings.filter((b) => b.hostId === user.id);
 
   useEffect(() => {
@@ -352,6 +352,16 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                           Submit for verification
                         </button>
                       )}
+                      <button
+                        onClick={async () => {
+                          const res = await api.archiveShop(sp.id);
+                          if (!res.success) alert(res.error?.message || 'Could not archive shop.');
+                          onRefreshData();
+                        }}
+                        className="ml-2 text-[10px] text-slate-500"
+                      >
+                        Archive
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -390,6 +400,16 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                     {sh.listingStatus !== 'PUBLISHED' && sh.verificationStatus !== 'VERIFIED' && sh.hostVerificationStatus !== 'VERIFIED' && sh.listingStatus !== 'SUBMITTED' && (
                       <button onClick={async () => { await api.submitListing('shelf', sh.id); onRefreshData(); }} className="mt-2 text-[10px] px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold">Submit for verification</button>
                     )}
+                    <button
+                      onClick={async () => {
+                        const res = await api.archiveShelf(sh.id);
+                        if (!res.success) alert(res.error?.message || 'Could not archive shelf.');
+                        onRefreshData();
+                      }}
+                      className="mt-2 ml-2 text-[10px] text-slate-500"
+                    >
+                      Archive
+                    </button>
                   </div>
                 ))}
               </div>

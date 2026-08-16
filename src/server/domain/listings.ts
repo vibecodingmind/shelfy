@@ -11,11 +11,13 @@ export function listingStatusOf(entity: { listingStatus?: string; verificationSt
 }
 
 export function isPublishedShop(shop: Shop): boolean {
+  if (shop.deletedAt) return false;
   const listing = listingStatusOf(shop);
   return shop.status === 'ACTIVE' && listing === 'PUBLISHED';
 }
 
 export function isPublishedShelf(shelf: Shelf, shop?: Shop): boolean {
+  if (shelf.deletedAt) return false;
   if (shelf.status !== 'ACTIVE') return false;
   if (shop && !isPublishedShop(shop)) return false;
   return listingStatusOf(shelf) === 'PUBLISHED';
@@ -27,12 +29,17 @@ export function canSeeUnpublished(user: User | undefined, hostId: string): boole
 }
 
 export function publicShops(shops: Shop[], user?: User): Shop[] {
-  return shops.filter((shop) => isPublishedShop(shop) || canSeeUnpublished(user, shop.hostId));
+  return shops.filter((shop) => {
+    if (shop.deletedAt) return user?.role === 'ADMIN';
+    return isPublishedShop(shop) || canSeeUnpublished(user, shop.hostId);
+  });
 }
 
 export function publicShelves(shelves: Shelf[], shops: Shop[], user?: User): Shelf[] {
   return shelves.filter((shelf) => {
+    if (shelf.deletedAt) return user?.role === 'ADMIN';
     const shop = shops.find((s) => s.id === shelf.shopId);
+    if (shop?.deletedAt && user?.role !== 'ADMIN') return false;
     if (shop && canSeeUnpublished(user, shop.hostId)) return true;
     return isPublishedShelf(shelf, shop);
   });
