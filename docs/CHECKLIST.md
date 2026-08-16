@@ -2,7 +2,7 @@
 
 Update this file as work lands. Do not mark a line done unless tests (or an explicit exception) exist.
 
-Last updated: 2026-08-16 — HTTP API tests (auth, 410 payments, IDOR) on `cursor/p0-marketplace-foundation-b9de`
+Last updated: 2026-08-16 — PR #9 prelaunch hardening merged; legal copy + Playwright E2E on `cursor/launch-complete-b9de`
 
 ---
 
@@ -103,7 +103,7 @@ Last updated: 2026-08-16 — HTTP API tests (auth, 410 payments, IDOR) on `curso
 - [x] Unit tests (rules, machine, ledger, payments, P1 listings/cancel/GPS/withdrawals)
 - [x] API/auth tests (vitest HTTP: login, refresh, 410 client-confirm, booking IDOR)
 - [x] Integration tests against Postgres (skipped unless `DATABASE_URL` is reachable)
-- [x] E2E critical journeys (domain money path capture → release → withdraw; no Playwright UI suite yet)
+- [x] E2E critical journeys (Playwright: landing, legal, demo login API; domain money path in Vitest)
 
 ## P1 remaining / P2+
 
@@ -112,7 +112,7 @@ Last updated: 2026-08-16 — HTTP API tests (auth, 410 payments, IDOR) on `curso
 - [x] Email/SMS provider for expiration and OTP (dispatcher; sends when keys exist, otherwise skip)
 - [x] Reviews & disputes (API + admin resolve; no automatic money invention)
 - [x] Analytics from real aggregates (paid occupancy 30d + GMV from paid payments)
-- [x] Legal page placeholders (`LEGAL_REVIEW_REQUIRED`)
+- [x] Legal page copy (substantive draft; counsel review recommended)
 - [x] PWA shell (manifest + service worker; `/api` is never cached)
 - [x] Production monitoring (JSON `/api` request logs + health flags; not a full APM)
 - [ ] Live PesaPal keys + stable `JWT_SECRET` (Railway ops)

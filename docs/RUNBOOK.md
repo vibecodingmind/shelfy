@@ -27,7 +27,9 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 | `GEMINI_API_KEY` | Optional | AI features. Marketplace money path does not depend on it. |
 | `PORT` | Railway sets | Listen port. |
 
-`GET /api/health` stays **200** even when secrets are missing. It reports `jwt.ephemeral`, `pesapal.configured`, `storage.driver`, and email/SMS flags so boot checks do not fail. Treat missing secrets as a **release blocker**, not a crash.
+`GET /api/health` stays **200** even when secrets are missing. It reports `jwt.ephemeral`, `pesapal.configured`, `storage.driver`, email/SMS flags, and onboarding flags so boot checks do not fail. Treat missing secrets as a **release blocker**, not a crash.
+
+After deploy, run `npm run smoke:prod` (or `node scripts/prod-smoke.mjs https://your-app.up.railway.app`) for read-only production checks.
 
 ---
 

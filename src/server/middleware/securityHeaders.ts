@@ -17,6 +17,10 @@ export function securityHeadersMiddleware(_req: Request, res: Response, next: Ne
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data: https: blob:; connect-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; font-src 'self' data:;"
+    );
   }
   next();
 }
