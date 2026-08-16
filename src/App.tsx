@@ -28,6 +28,7 @@ import {
   PlatformSettings,
   Notification,
   Message,
+  Payout,
 } from './types/index.js';
 
 export function App() {
@@ -49,11 +50,15 @@ export function App() {
   const [adminStats, setAdminStats] = useState<any>(null);
   const [adminUsers, setAdminUsers] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
     commissionPercentage: 10,
     autoApproveBookings: true,
-    requireFieldVerification: true,
-    pesapalEnvironment: 'DEMO',
+    pesapalEnvironment: 'sandbox',
+    currency: 'TZS',
+    maintenanceMode: false,
+    shelfCategories: [],
+    shelfTypes: [],
   });
 
   // UI Modals & Auth Props
@@ -88,7 +93,9 @@ export function App() {
       // Fetch Role-Specific Collections
       if (meRes.data.user.role === 'ADMIN') {
         const statsRes = await api.getAdminDashboard();
-        if (statsRes.success) setAdminStats(statsRes.data.stats);
+        if (statsRes.success && statsRes.data) {
+          setAdminStats(statsRes.data.stats || statsRes.data);
+        }
 
         const usersRes = await api.getAdminUsers();
         if (usersRes.success && usersRes.data) setAdminUsers(usersRes.data);
@@ -113,6 +120,11 @@ export function App() {
         if (repRes.success && repRes.data) setFieldReports(repRes.data);
       }
 
+      if (meRes.data.user.role === 'HOST' || meRes.data.user.role === 'ADMIN') {
+        const payRes = await api.getPayouts();
+        if (payRes.success && payRes.data) setPayouts(payRes.data);
+      }
+
       const bookRes = await api.getBookings();
       if (bookRes.success && bookRes.data) setBookings(bookRes.data);
 
@@ -134,7 +146,7 @@ export function App() {
 
   // Demo Login Handler
   const handleDemoLogin = async (email: string) => {
-    const res = await api.login({ email, password: 'password123' });
+    const res = await api.login({ email, password: 'Password123!' });
     if (res.success && res.data) {
       setStoredToken(res.data.token);
       setUser(res.data.user);
@@ -153,6 +165,17 @@ export function App() {
     setVendorProfile(null);
     setHostProfile(null);
     setActiveRoleView('MARKETPLACE');
+    setBookings([]);
+    setProducts([]);
+    setInventory([]);
+    setFieldVisits([]);
+    setFieldReports([]);
+    setNotifications([]);
+    setMessages([]);
+    setAdminStats(null);
+    setAdminUsers([]);
+    setAuditLogs([]);
+    setPayouts([]);
   };
 
   const handleOpenAuthModal = (initialMode: 'LOGIN' | 'REGISTER' = 'LOGIN', initialRole: UserRole = 'VENDOR') => {
@@ -209,7 +232,13 @@ export function App() {
         onDemoLogin={handleDemoLogin}
         onLogout={handleLogout}
         onSwitchView={(view) => setActiveRoleView(view)}
-        notificationsCount={notifications.filter((n) => !n.isRead).length}
+        notificationsCount={notifications.filter((n) => !n.readAt).length}
+        onNotificationsClick={async () => {
+          if (!user) return;
+          await api.markNotificationsRead();
+          const notifRes = await api.getNotifications();
+          if (notifRes.success && notifRes.data) setNotifications(notifRes.data);
+        }}
       />
 
       {/* Main View Router */}
@@ -219,6 +248,8 @@ export function App() {
             shelves={shelves}
             shops={shops}
             user={user}
+            searchQuery={globalSearchQuery}
+            onSearchChange={setGlobalSearchQuery}
             shelfCategories={platformSettings?.shelfCategories}
             shelfTypes={platformSettings?.shelfTypes}
             onBookShelf={handleBookShelfAction}
@@ -267,7 +298,7 @@ export function App() {
             shops={shops}
             shelves={shelves}
             bookings={bookings}
-            payouts={[]}
+            payouts={payouts}
             shelfCategories={platformSettings?.shelfCategories}
             shelfTypes={platformSettings?.shelfTypes}
             onRefreshData={() => {

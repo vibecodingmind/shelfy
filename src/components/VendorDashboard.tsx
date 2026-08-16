@@ -364,6 +364,85 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
           </div>
         )}
 
+        {activeTab === 'BOOKINGS' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="text-lg font-bold text-white mb-4">My Shelf Bookings</h2>
+            {bookings.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-400">No bookings yet. Find a shelf to start expanding.</div>
+            ) : (
+              <div className="space-y-3">
+                {bookings.map((b) => (
+                  <div key={b.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-white">{b.shelfName}</div>
+                      <div className="text-emerald-400">{b.shopName} • {b.shopCity}</div>
+                      <div className="text-slate-400 mt-1">{b.startDate} → {b.endDate} • {b.status}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-amber-400">TZS {b.totalPriceTzs.toLocaleString()}</div>
+                      {b.paymentStatus === 'PENDING' && b.status !== 'REJECTED' && b.status !== 'CANCELLED' && (
+                        <button
+                          onClick={() => setCheckoutBooking(b)}
+                          className="mt-2 px-3 py-1.5 bg-emerald-500 text-slate-950 font-extrabold rounded-lg"
+                        >
+                          Pay now
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'INVENTORY' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="text-lg font-bold text-white mb-4">Shelf Stock Inventory</h2>
+            {inventory.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-400">No inventory records yet. Book a shelf and add products to track stock.</div>
+            ) : (
+              <div className="space-y-3">
+                {inventory.map((inv) => (
+                  <div key={inv.id} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-white">{inv.productName}</div>
+                      <div className="text-slate-400">SKU: {inv.productSku} • Shelf {inv.shelfId}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-amber-400">{inv.quantity} units</div>
+                      <div className={inv.stockStatus === 'LOW_STOCK' || inv.stockStatus === 'OUT_OF_STOCK' ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                        {inv.stockStatus.replace('_', ' ')}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'MESSAGES' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="text-lg font-bold text-white mb-4">Host Messages</h2>
+            {messages.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-400">No messages yet. Field agents and hosts will appear here after inspections.</div>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((m) => (
+                  <div key={m.id} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-white">{m.senderName}</span>
+                      <span className="text-[10px] text-slate-500">{new Date(m.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="text-slate-300">{m.content}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB 6: AI INSIGHTS */}
         {activeTab === 'AI_INSIGHTS' && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">

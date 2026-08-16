@@ -58,7 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleQuickDemoLogin = async (demoEmail: string) => {
     setErrorMsg('');
     setLoading(true);
-    const res = await api.login({ email: demoEmail, password: 'password123' });
+    const res = await api.login({ email: demoEmail, password: 'Password123!' });
     if (res.success && res.data) {
       onSuccess(res.data);
       onClose();
@@ -289,11 +289,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <form onSubmit={handleRegister} className="space-y-3 text-xs">
             <div>
               <label className="text-slate-300 font-semibold block mb-1.5">I want to join as a:</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'VENDOR', label: 'Brand Vendor', desc: 'Rent shelves for products', icon: ShoppingBag },
                   { id: 'HOST', label: 'Shop Host', desc: 'Monetize store space', icon: Store },
-                  { id: 'FIELD_AGENT', label: 'Field Agent', desc: 'Perform audit checks', icon: UserIcon },
                 ].map((r) => {
                   const Icon = r.icon;
                   const isSel = role === r.id;

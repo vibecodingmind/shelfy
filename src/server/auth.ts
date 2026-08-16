@@ -7,7 +7,13 @@ import jwt from 'jsonwebtoken';
 import { dbEngine } from './db.js';
 import { User, UserRole } from '../types/index.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'shelfy_tanzania_jwt_secret_key_2026';
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  (process.env.NODE_ENV === 'production' ? '' : 'shelfy_dev_only_jwt_secret');
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET must be set in production. Do not use a hardcoded fallback.');
+}
 
 export interface AuthenticatedRequest extends Request {
   user?: User;

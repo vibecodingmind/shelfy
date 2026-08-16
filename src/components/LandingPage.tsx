@@ -41,6 +41,8 @@ interface LandingPageProps {
   shelves: Shelf[];
   shops: Shop[];
   user: User | null;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   shelfCategories?: string[];
   shelfTypes?: { id: string; name: string }[];
   onBookShelf: (shelf: Shelf, startDate?: string, endDate?: string, durationMonths?: number, category?: string) => void;
@@ -51,13 +53,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   shelves,
   shops,
   user,
+  searchQuery: externalSearchQuery,
+  onSearchChange,
   shelfCategories,
   shelfTypes,
   onBookShelf,
   onLoginClick,
 }) => {
   // State for search and filters
-  const [searchQuery, setSearchQuery] = useState('');
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : localSearchQuery;
+  const setSearchQuery = (value: string) => {
+    setLocalSearchQuery(value);
+    onSearchChange?.(value);
+  };
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedType, setSelectedType] = useState('');
