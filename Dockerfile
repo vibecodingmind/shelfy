@@ -3,11 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package descriptors
-COPY package*.json ./
-
-# Install dependencies (will use package-lock.json)
-RUN npm install --no-audit
+# Copy package descriptors (lockfile required — do not use package*.json glob alone)
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit
 
 # Copy full application source code
 COPY . .
@@ -24,8 +22,8 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 # Copy package files and install production-only dependencies
-COPY package*.json ./
-RUN npm install --omit=dev --no-audit
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit
 
 # Copy compiled build output from builder
 COPY --from=builder /app/dist ./dist
