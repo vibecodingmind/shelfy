@@ -1,5 +1,5 @@
 {
-  "name": "Shelfy 🇹🇿",
+  "name": "Shelfy",
   "description": "The retail expansion platform for Tanzania connecting vendors, hosts, field agents, and admins.",
   "requestFramePermissions": ["camera", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
