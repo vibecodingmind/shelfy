@@ -553,7 +553,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="text-[11px] text-emerald-400">{sp.city} • {sp.address}</div>
                       <div className="text-[10px] text-slate-400 mt-1">Host: {sp.hostName}</div>
                       <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold">Verified</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${sp.verificationStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                          {sp.verificationStatus}
+                        </span>
                         <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold">Traffic: {sp.footTrafficScore}/10</span>
                       </div>
                     </div>
@@ -561,6 +563,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'BOOKINGS' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="text-base font-bold text-white mb-4">Bookings & Financials ({bookings.length})</h2>
+            {bookings.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-400">No bookings recorded yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider font-bold">
+                    <tr>
+                      <th className="p-3">Shelf</th>
+                      <th className="p-3">Vendor</th>
+                      <th className="p-3">Dates</th>
+                      <th className="p-3">Amount</th>
+                      <th className="p-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {bookings.map((b) => (
+                      <tr key={b.id} className="hover:bg-slate-800/40">
+                        <td className="p-3">
+                          <div className="font-bold text-white">{b.shelfName}</div>
+                          <div className="text-[10px] text-slate-400">{b.shopName} • {b.shopCity}</div>
+                        </td>
+                        <td className="p-3">{b.vendorName}</td>
+                        <td className="p-3 font-mono">{b.startDate} → {b.endDate}</td>
+                        <td className="p-3 font-mono text-emerald-400">TZS {b.totalPriceTzs.toLocaleString()}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-amber-400">{b.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

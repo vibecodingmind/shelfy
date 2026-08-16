@@ -49,7 +49,26 @@ class DatabaseEngine {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         if (parsed.users && parsed.shops && parsed.shelves && parsed.shelves.length >= 30) {
-          return parsed as DatabaseSchema;
+          const data = parsed as DatabaseSchema;
+          if (Array.isArray(data.fieldVisits) && !data.fieldVisits.some((v) => v.id === 'fv_2')) {
+            data.fieldVisits.push({
+              id: 'fv_2',
+              shopId: 'shop_1',
+              shopName: 'Juma Mini Market — Mikocheni',
+              shopAddress: 'Old Bagamoyo Road, Mikocheni B',
+              shopCity: 'Dar es Salaam',
+              shelfId: 'shelf_1',
+              shelfName: 'Eye-Level Prime Front Bay A1',
+              agentId: 'usr_agent_1',
+              agentName: 'Baraka John',
+              scheduledAt: '2026-08-18T09:00:00.000Z',
+              status: 'SCHEDULED',
+              notes: 'Follow-up restock verification after first month of vendor placement.',
+              createdAt: new Date().toISOString(),
+            });
+            this.saveData(data);
+          }
+          return data;
         }
       } catch (err) {
         console.error('Failed to parse database file, reinitializing seed data:', err);

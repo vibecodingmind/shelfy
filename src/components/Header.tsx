@@ -17,6 +17,7 @@ interface HeaderProps {
   onSwitchView?: (roleView: string) => void;
   onOpenFilter?: () => void;
   notificationsCount: number;
+  onNotificationsClick?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSwitchView,
   onOpenFilter,
   notificationsCount,
+  onNotificationsClick,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -175,14 +177,19 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               {/* Notification Bell */}
-              <div className="relative p-2 text-slate-300 hover:text-white cursor-pointer rounded-full hover:bg-slate-800 transition-colors">
+              <button
+                type="button"
+                onClick={onNotificationsClick}
+                className="relative p-2 text-slate-300 hover:text-white cursor-pointer rounded-full hover:bg-slate-800 transition-colors"
+                title="Mark notifications as read"
+              >
                 <Bell className="w-5 h-5" />
                 {notificationsCount > 0 && (
                   <span className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 text-slate-950 text-[10px] font-extrabold rounded-full flex items-center justify-center">
                     {notificationsCount}
                   </span>
                 )}
-              </div>
+              </button>
 
               {/* User Avatar & Menu */}
               <div className="relative">

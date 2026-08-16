@@ -79,6 +79,8 @@ export const api = {
   // Bookings & Payments
   createBooking: (bookingData: any) => apiFetch<Booking>('/api/bookings', { method: 'POST', body: JSON.stringify(bookingData) }),
   getBookings: () => apiFetch<Booking[]>('/api/bookings'),
+  updateBookingStatus: (bookingId: string, status: string) => apiFetch<Booking>(`/api/bookings/${bookingId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  getPayouts: () => apiFetch<Payout[]>('/api/payouts'),
   initiatePesapalSession: (bookingId: string) => apiFetch<any>('/api/payments/initiate-session', { method: 'POST', body: JSON.stringify({ bookingId }) }),
   verifyPesapalCallback: (payload: { bookingId: string; transactionReference: string; orderTrackingId?: string; paymentProvider?: string; phoneOrCardNumber?: string }) => apiFetch<any>('/api/payments/callback-verify', { method: 'POST', body: JSON.stringify(payload) }),
   checkoutPayment: (paymentData: any) => apiFetch<{ payment: Payment; booking: Booking }>('/api/payments/checkout', { method: 'POST', body: JSON.stringify(paymentData) }),
@@ -96,6 +98,7 @@ export const api = {
 
   // Notifications & Messages
   getNotifications: () => apiFetch<Notification[]>('/api/notifications'),
+  markNotificationsRead: (ids?: string[]) => apiFetch<Notification[]>('/api/notifications/read', { method: 'POST', body: JSON.stringify({ ids }) }),
   getMessages: () => apiFetch<Message[]>('/api/messages'),
   sendMessage: (msgData: any) => apiFetch<Message>('/api/messages', { method: 'POST', body: JSON.stringify(msgData) }),
 

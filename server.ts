@@ -43,6 +43,14 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: { message: 'Missing required registration fields.' } });
     }
 
+    const allowedSelfRegisterRoles: UserRole[] = ['VENDOR', 'HOST'];
+    if (!allowedSelfRegisterRoles.includes(role as UserRole)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Self-registration is only available for Vendors and Hosts. Field agents and admins are invited by the platform.' },
+      });
+    }
+
     const existing = dbEngine.db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (existing) {
       return res.status(400).json({ success: false, error: { message: 'An account with this email already exists.' } });
@@ -358,15 +366,24 @@ app.post('/api/bookings', requireAuth, requireRole('VENDOR', 'ADMIN'), (req: Aut
     return res.status(404).json({ success: false, error: { message: 'Shelf not found.' } });
   }
 
-  // Prevent double booking
-  if (shelf.availabilityStatus === 'BOOKED') {
-    return res.status(400).json({ success: false, error: { message: 'This shelf is currently booked by another vendor.' } });
-  }
-
   const months = Math.max(1, Number(durationMonths) || 1);
   const start = startDate ? new Date(startDate) : new Date();
   const end = new Date(start);
   end.setMonth(end.getMonth() + months);
+  const startKey = start.toISOString().split('T')[0];
+  const endKey = end.toISOString().split('T')[0];
+
+  const overlapping = dbEngine.db.bookings.find((b) => {
+    if (b.shelfId !== shelfId) return false;
+    if (['CANCELLED', 'REJECTED', 'COMPLETED', 'DISPUTED'].includes(b.status)) return false;
+    return startKey < b.endDate && b.startDate < endKey;
+  });
+  if (overlapping) {
+    return res.status(400).json({
+      success: false,
+      error: { message: `This shelf is already reserved from ${overlapping.startDate} to ${overlapping.endDate}.` },
+    });
+  }
 
   const shop = dbEngine.db.shops.find((s) => s.id === shelf.shopId);
   const hostId = shop ? shop.hostId : 'usr_host_1';
@@ -397,7 +414,7 @@ app.post('/api/bookings', requireAuth, requireRole('VENDOR', 'ADMIN'), (req: Aut
     totalPriceTzs: totalPrice,
     platformFeeTzs: platformFee,
     hostEarningsTzs: hostEarnings,
-    status: 'PAYMENT_PENDING' as BookingStatus,
+    status: (dbEngine.db.settings.autoApproveBookings ? 'PAYMENT_PENDING' : 'PENDING_APPROVAL') as BookingStatus,
     paymentStatus: 'PENDING' as const,
     notes: notes || '',
     createdAt: now,
@@ -434,6 +451,65 @@ app.get('/api/bookings', requireAuth, (req: AuthenticatedRequest, res: Response)
   }
 
   res.json({ success: true, data: bookings });
+});
+
+// PUT /api/bookings/:id/status (Host approve/reject or admin override)
+app.put('/api/bookings/:id/status', requireAuth, requireRole('HOST', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const { status } = req.body as { status?: BookingStatus };
+  const user = req.user!;
+  const booking = dbEngine.db.bookings.find((b) => b.id === req.params.id);
+
+  if (!booking) {
+    return res.status(404).json({ success: false, error: { message: 'Booking not found.' } });
+  }
+  if (user.role === 'HOST' && booking.hostId !== user.id) {
+    return res.status(403).json({ success: false, error: { message: 'You can only update bookings for your own shops.' } });
+  }
+
+  const allowedTransitions: Record<string, BookingStatus[]> = {
+    PENDING_APPROVAL: ['APPROVED', 'PAYMENT_PENDING', 'REJECTED', 'CANCELLED'],
+    APPROVED: ['PAYMENT_PENDING', 'CANCELLED', 'REJECTED'],
+    PAYMENT_PENDING: ['CANCELLED', 'REJECTED'],
+    ACTIVE: ['CANCELLED', 'COMPLETED', 'DISPUTED'],
+  };
+  const nextStatus = status === 'APPROVED' ? 'PAYMENT_PENDING' : status;
+  const allowed = allowedTransitions[booking.status] || [];
+  if (!nextStatus || !allowed.includes(nextStatus)) {
+    return res.status(400).json({ success: false, error: { message: `Cannot change booking from ${booking.status} to ${status}.` } });
+  }
+
+  booking.status = nextStatus;
+  booking.updatedAt = new Date().toISOString();
+
+  dbEngine.db.notifications.push({
+    id: `notif_${Date.now()}_bk`,
+    userId: booking.vendorId,
+    title: nextStatus === 'REJECTED' ? 'Booking declined' : 'Booking update',
+    message:
+      nextStatus === 'PAYMENT_PENDING'
+        ? `${user.name} approved your request for ${booking.shelfName}. Complete payment to activate the shelf.`
+        : `Your booking for ${booking.shelfName} is now ${nextStatus}.`,
+    type: nextStatus === 'REJECTED' ? 'WARNING' : 'SUCCESS',
+    createdAt: booking.updatedAt,
+  });
+
+  dbEngine.save();
+  logAuditEvent(user.id, user.name, user.role, 'BOOKING_STATUS_UPDATED', 'Booking', booking.id, `Set status to ${booking.status}`);
+  res.json({ success: true, data: booking });
+});
+
+// GET /api/payouts
+app.get('/api/payouts', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user!;
+  let payouts = [...dbEngine.db.payouts];
+
+  if (user.role === 'HOST') {
+    payouts = payouts.filter((p) => p.hostId === user.id);
+  } else if (user.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, error: { message: 'Payouts are only available to hosts and admins.' } });
+  }
+
+  res.json({ success: true, data: payouts });
 });
 
 // POST /api/payments/initiate-session (Initiates secure PesaPal transaction session with backend reference)
@@ -681,6 +757,8 @@ app.get('/api/products', requireAuth, (req: AuthenticatedRequest, res: Response)
 
   if (user.role === 'VENDOR') {
     products = products.filter((p) => p.vendorId === user.id);
+  } else if (user.role !== 'ADMIN') {
+    products = [];
   }
 
   res.json({ success: true, data: products });
@@ -727,6 +805,8 @@ app.get('/api/inventory', requireAuth, (req: AuthenticatedRequest, res: Response
 
   if (user.role === 'VENDOR') {
     inv = inv.filter((i) => i.vendorId === user.id);
+  } else if (user.role !== 'ADMIN') {
+    inv = [];
   }
 
   res.json({ success: true, data: inv });
@@ -846,7 +926,20 @@ app.post('/api/reports', requireAuth, requireRole('FIELD_AGENT', 'ADMIN'), async
 
 // GET /api/reports
 app.get('/api/reports', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  res.json({ success: true, data: dbEngine.db.shelfReports });
+  const user = req.user!;
+  let reports = [...dbEngine.db.shelfReports];
+
+  if (user.role === 'FIELD_AGENT') {
+    reports = reports.filter((r) => r.agentId === user.id);
+  } else if (user.role === 'VENDOR') {
+    const myShelfIds = new Set(dbEngine.db.bookings.filter((b) => b.vendorId === user.id).map((b) => b.shelfId));
+    reports = reports.filter((r) => myShelfIds.has(r.shelfId));
+  } else if (user.role === 'HOST') {
+    const myShopIds = new Set(dbEngine.db.shops.filter((s) => s.hostId === user.id).map((s) => s.id));
+    reports = reports.filter((r) => myShopIds.has(r.shopId));
+  }
+
+  res.json({ success: true, data: reports });
 });
 
 // ==========================================
@@ -857,6 +950,20 @@ app.get('/api/reports', requireAuth, (req: AuthenticatedRequest, res: Response) 
 app.get('/api/notifications', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const notifs = dbEngine.db.notifications.filter((n) => n.userId === req.user!.id);
   res.json({ success: true, data: notifs });
+});
+
+// POST /api/notifications/read
+app.post('/api/notifications/read', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const { ids } = req.body as { ids?: string[] };
+  const now = new Date().toISOString();
+  const mine = dbEngine.db.notifications.filter((n) => n.userId === req.user!.id);
+  mine.forEach((n) => {
+    if (!ids || ids.length === 0 || ids.includes(n.id)) {
+      n.readAt = now;
+    }
+  });
+  dbEngine.save();
+  res.json({ success: true, data: mine });
 });
 
 // GET /api/messages
@@ -927,18 +1034,23 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
     .filter((b) => b.paymentStatus === 'PAID')
     .reduce((sum, b) => sum + b.platformFeeTzs, 0);
 
+  const stats = {
+    usersCount,
+    vendorsCount,
+    hostsCount,
+    agentsCount,
+    shopsCount,
+    shelvesCount,
+    activeBookings,
+    totalRevenueTzs,
+    totalCommissionsTzs,
+  };
+
   res.json({
     success: true,
     data: {
-      usersCount,
-      vendorsCount,
-      hostsCount,
-      agentsCount,
-      shopsCount,
-      shelvesCount,
-      activeBookings,
-      totalRevenueTzs,
-      totalCommissionsTzs,
+      ...stats,
+      stats,
       settings: dbEngine.db.settings,
     },
   });

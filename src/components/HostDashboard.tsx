@@ -130,6 +130,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
       shelfType,
       monthlyPriceTzs: monthlyPrice,
       widthCm,
+      allowedCategories: selectedAllowedCategories,
     });
     if (res.success) {
       setShowShelfModal(false);
@@ -183,7 +184,12 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
         </div>
 
         <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl mt-6 text-center text-xs text-slate-400">
-          <div>Verified Host: <span className="text-emerald-400 font-bold">YES</span></div>
+          <div>
+            Verified Host:{' '}
+            <span className={hostProfile?.verificationStatus === 'VERIFIED' ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+              {hostProfile?.verificationStatus || 'PENDING'}
+            </span>
+          </div>
           <div>Net Earnings: <span className="text-amber-400 font-bold">TZS {totalEarningsTzs.toLocaleString()}</span></div>
         </div>
       </aside>
@@ -295,6 +301,146 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
 
             </div>
 
+          </div>
+        )}
+
+        {activeTab === 'SHOPS' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">My Shop Locations ({myShops.length})</h2>
+              <button onClick={() => setShowShopModal(true)} className="px-3 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl">
+                Add Shop
+              </button>
+            </div>
+            {myShops.length === 0 ? (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-xs text-slate-400">
+                No shops yet. Add a retail location to start listing shelves.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {myShops.map((sp) => (
+                  <div key={sp.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex gap-4">
+                    <img src={sp.photos[0]} alt={sp.name} className="w-20 h-20 rounded-lg object-cover border border-slate-700" />
+                    <div>
+                      <div className="font-bold text-white text-sm">{sp.name}</div>
+                      <div className="text-[11px] text-emerald-400">{sp.city} • {sp.address}</div>
+                      <div className="text-[10px] text-slate-400 mt-1">Type: {sp.shopType.replace('_', ' ')}</div>
+                      <span className={`mt-2 inline-block text-[10px] px-2 py-0.5 rounded font-bold ${sp.verificationStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                        {sp.verificationStatus}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'SHELVES' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">My Display Shelves ({myShelves.length})</h2>
+              <button onClick={() => setShowShelfModal(true)} className="px-3 py-2 bg-blue-500 text-slate-950 font-bold text-xs rounded-xl">
+                Add Shelf
+              </button>
+            </div>
+            {myShelves.length === 0 ? (
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-xs text-slate-400">
+                No shelves listed yet. Add a display shelf to start earning rent.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {myShelves.map((sh) => (
+                  <div key={sh.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-white text-sm">{sh.name}</div>
+                        <div className="text-[11px] text-emerald-400">{sh.shopName} • {sh.shopCity}</div>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${sh.availabilityStatus === 'AVAILABLE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                        {sh.availabilityStatus}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-300">TZS {sh.monthlyPriceTzs.toLocaleString()}/mo • {sh.shelfType.replace('_', ' ')}</div>
+                    <div className="mt-1 text-[10px] text-slate-500">{sh.allowedCategories.join(', ')}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'BOOKINGS' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="text-lg font-bold text-white mb-4">Vendor Bookings</h2>
+            {myBookings.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-400">No vendor bookings yet.</div>
+            ) : (
+              <div className="space-y-3">
+                {myBookings.map((b) => (
+                  <div key={b.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-white">{b.shelfName}</div>
+                      <div className="text-amber-400">{b.vendorName} • {b.shopCity}</div>
+                      <div className="text-slate-400 mt-1">{b.startDate} → {b.endDate} • {b.status}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-emerald-400">TZS {b.hostEarningsTzs.toLocaleString()}</div>
+                      {b.status === 'PENDING_APPROVAL' && (
+                        <div className="flex gap-2 mt-2 justify-end">
+                          <button
+                            onClick={async () => {
+                              await api.updateBookingStatus(b.id, 'APPROVED');
+                              onRefreshData();
+                            }}
+                            className="px-2.5 py-1 bg-emerald-500 text-slate-950 font-bold rounded"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await api.updateBookingStatus(b.id, 'REJECTED');
+                              onRefreshData();
+                            }}
+                            className="px-2.5 py-1 bg-rose-500/20 text-rose-400 font-bold rounded"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'EARNINGS' && (
+          <div className="space-y-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h2 className="text-lg font-bold text-white mb-1">Earnings & Payouts</h2>
+              <p className="text-xs text-slate-400 mb-4">Net host earnings after platform commission.</p>
+              <div className="text-2xl font-black text-emerald-400 mb-6">TZS {totalEarningsTzs.toLocaleString()}</div>
+              {payouts.length === 0 ? (
+                <div className="text-xs text-slate-400">No payout records yet. Paid bookings will appear here.</div>
+              ) : (
+                <div className="space-y-3">
+                  {payouts.map((p) => (
+                    <div key={p.id} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-white">{p.payoutReference || p.id}</div>
+                        <div className="text-slate-400">Gross TZS {p.grossAmountTzs.toLocaleString()} • Fee TZS {p.commissionTzs.toLocaleString()}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono font-bold text-emerald-400">TZS {p.netAmountTzs.toLocaleString()}</div>
+                        <div className="text-[10px] text-amber-400 font-bold">{p.status}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -1491,6 +1491,21 @@ export function buildCompleteSeedData(): DatabaseSchema {
       notes: 'Monthly Inventory Audit & Shelf Cleanliness Inspection',
       createdAt: now,
     },
+    {
+      id: 'fv_2',
+      shopId: 'shop_1',
+      shopName: 'Juma Mini Market — Mikocheni',
+      shopAddress: 'Old Bagamoyo Road, Mikocheni B',
+      shopCity: 'Dar es Salaam',
+      shelfId: 'shelf_1',
+      shelfName: 'Eye-Level Prime Front Bay A1',
+      agentId: 'usr_agent_1',
+      agentName: 'Baraka John',
+      scheduledAt: '2026-08-18T09:00:00.000Z',
+      status: 'SCHEDULED',
+      notes: 'Follow-up restock verification after first month of vendor placement.',
+      createdAt: now,
+    },
   ];
 
   const shelfReports: ShelfReport[] = [
