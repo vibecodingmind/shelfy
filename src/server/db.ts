@@ -278,7 +278,7 @@ class DatabaseEngine {
       await this.ensurePostgres();
       await this.tryMigrate();
 
-      const prisma = getPrisma();
+      const prisma = await getPrisma();
       if (prisma) {
         try {
           const count = await relationalUserCount(prisma);
@@ -325,7 +325,7 @@ class DatabaseEngine {
       }
     }
     try {
-      runPrismaMigrateDeploy();
+      await runPrismaMigrateDeploy();
     } catch (err) {
       console.warn('prisma migrate deploy did not complete. Relational tables may be created on the next release.', err);
     }
@@ -389,7 +389,7 @@ class DatabaseEngine {
   private async persist(dataToSave?: DatabaseSchema) {
     const target = dataToSave || this.data;
     if (this.driver === 'prisma') {
-      const prisma = getPrisma();
+      const prisma = await getPrisma();
       if (prisma) {
         await persistSchemaToPrisma(prisma, target);
         return;

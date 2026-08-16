@@ -1,17 +1,13 @@
-import { createRequire } from 'module';
 import type { PrismaClient } from '@prisma/client';
 
-const require = createRequire(import.meta.url);
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export function getPrisma(): PrismaClient | null {
+export async function getPrisma(): Promise<PrismaClient | null> {
   if (!process.env.DATABASE_URL) return null;
   try {
     if (!globalForPrisma.prisma) {
-      const { PrismaClient: PrismaClientCtor } = require('@prisma/client') as {
-        PrismaClient: new () => PrismaClient;
-      };
-      globalForPrisma.prisma = new PrismaClientCtor();
+      const { PrismaClient } = await import('@prisma/client');
+      globalForPrisma.prisma = new PrismaClient();
     }
     return globalForPrisma.prisma;
   } catch (err) {

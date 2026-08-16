@@ -1,4 +1,6 @@
-import { execSync } from 'child_process';
+import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Prisma refuses `migrate deploy` (P3005) when the database already has tables
@@ -24,10 +26,38 @@ export async function ensurePrismaMigrationHistory(
   await query(PRISMA_MIGRATIONS_TABLE_SQL);
 }
 
-export function runPrismaMigrateDeploy(env: NodeJS.ProcessEnv = process.env): void {
-  execSync('npx prisma migrate deploy', {
-    stdio: 'inherit',
-    env,
-    timeout: 90_000,
+function prismaCliPath(): string {
+  const local = path.resolve(process.cwd(), 'node_modules/.bin/prisma');
+  if (fs.existsSync(local)) return local;
+  return 'npx';
+}
+
+/**
+ * Run migrate without execSync so the HTTP event loop (Railway /api/health) stays free.
+ */
+export function runPrismaMigrateDeploy(
+  env: NodeJS.ProcessEnv = process.env,
+  timeoutMs = 90_000
+): Promise<void> {
+  const bin = prismaCliPath();
+  const args = bin === 'npx' ? ['prisma', 'migrate', 'deploy'] : ['migrate', 'deploy'];
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, args, {
+      env,
+      stdio: ['ignore', 'inherit', 'inherit'],
+    });
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`prisma migrate deploy timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    child.once('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.once('exit', (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolve();
+      else reject(new Error(`prisma migrate deploy exited ${code}`));
+    });
   });
 }

@@ -32,7 +32,7 @@ export async function ensureJwtSecret(): Promise<JwtSecretState> {
     return { source: 'env', configured: true, ephemeral: false };
   }
 
-  const prisma = getPrisma();
+  const prisma = await getPrisma();
   if (prisma) {
     try {
       const row = await prisma.platformSetting.findUnique({ where: { id: OPS_JWT_SETTING_ID } });

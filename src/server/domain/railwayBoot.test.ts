@@ -32,5 +32,6 @@ describe('Railway production boot', () => {
     expect(docker).toContain('COPY --from=builder /app/prisma ./prisma');
     expect(docker).toContain('COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma');
     expect(docker).toContain('COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma');
+    expect(docker).not.toContain('RUN npx prisma generate');
   });
 });
