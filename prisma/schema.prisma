@@ -1,0 +1,607 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  VENDOR
+  HOST
+  FIELD_AGENT
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum ShopStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ShopType {
+  SUPERMARKET
+  MINI_MARKET
+  CONVENIENCE
+  BOUTIQUE
+  PHARMACY
+  SPECIALTY
+}
+
+enum ShelfType {
+  EYE_LEVEL
+  TOP_SHELF
+  BOTTOM_SHELF
+  COUNTER_DISPLAY
+  ENTRANCE_DISPLAY
+  REFRIGERATED
+  END_CAP
+  WINDOW_DISPLAY
+}
+
+enum ShelfAvailability {
+  AVAILABLE
+  BOOKED
+  MAINTENANCE
+}
+
+enum ListingStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  VERIFIED
+  PUBLISHED
+  REJECTED
+  SUSPENDED
+}
+
+enum BookingStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PAYMENT_PENDING
+  PAYMENT_FAILED
+  PAID
+  ACTIVE
+  EXPIRING
+  COMPLETED
+  CANCELLED
+  REJECTED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+model User {
+  id               String     @id
+  name             String
+  email            String     @unique
+  phone            String     @default("")
+  passwordHash     String
+  role             UserRole
+  status           UserStatus @default(PENDING)
+  avatarUrl        String?
+  emailVerifiedAt  DateTime?
+  phoneVerifiedAt  DateTime?
+  failedLoginCount Int        @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime
+  updatedAt        DateTime
+  deletedAt        DateTime?
+
+  vendorProfile     VendorProfile?
+  hostProfile       HostProfile?
+  fieldAgentProfile FieldAgentProfile?
+  shops             Shop[]             @relation("HostShops")
+  vendorBookings    Booking[]          @relation("VendorBookings")
+  hostBookings      Booking[]          @relation("HostBookings")
+  payments          Payment[]
+  withdrawals       Withdrawal[]
+  notifications     Notification[]
+  sentMessages      Message[]          @relation("SentMessages")
+  auditLogs         AuditLog[]
+  authTokens        AuthToken[]
+  fieldVisits       FieldVisit[]
+
+  @@index([role, status])
+}
+
+model VendorProfile {
+  id                   String             @id
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id])
+  businessName         String
+  businessRegistration String?
+  description          String?
+  category             String
+  address              String
+  city                 String
+  region               String
+  country              String             @default("Tanzania")
+  verificationStatus   VerificationStatus @default(PENDING)
+}
+
+model HostProfile {
+  id                   String             @id
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id])
+  businessName         String
+  businessRegistration String?
+  description          String?
+  phone                String             @default("")
+  verificationStatus   VerificationStatus @default(PENDING)
+}
+
+model FieldAgentProfile {
+  id                 String             @id
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id])
+  region             String?
+  verificationStatus VerificationStatus @default(PENDING)
+}
+
+model Shop {
+  id                 String             @id
+  hostId             String
+  host               User               @relation("HostShops", fields: [hostId], references: [id])
+  hostName           String?
+  name               String
+  slug               String?            @unique
+  description        String
+  address            String
+  city               String
+  region             String
+  latitude           Float
+  longitude          Float
+  photos             Json
+  status             ShopStatus         @default(ACTIVE)
+  verificationStatus VerificationStatus @default(PENDING)
+  listingStatus      ListingStatus      @default(DRAFT)
+  footTrafficScore   Int?
+  shopType           ShopType
+  createdAt          DateTime
+  updatedAt          DateTime
+  deletedAt          DateTime?
+
+  shelves Shelf[]
+  images  ShopImage[]
+
+  @@index([hostId])
+  @@index([city, status])
+  @@index([verificationStatus, listingStatus])
+}
+
+model ShopImage {
+  id         String  @id
+  shopId     String
+  shop       Shop    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  url        String
+  storageKey String?
+  sortOrder  Int     @default(0)
+}
+
+model Shelf {
+  id                      String             @id
+  shopId                  String
+  shop                    Shop               @relation(fields: [shopId], references: [id])
+  shopName                String?
+  shopCity                String?
+  shopAddress             String?
+  shopLatitude            Float?
+  shopLongitude           Float?
+  hostVerificationStatus  VerificationStatus?
+  name                    String
+  slug                    String?            @unique
+  description             String
+  widthCm                 Int
+  heightCm                Int
+  depthCm                 Int
+  shelfType               ShelfType
+  locationInsideShop      String
+  monthlyPriceTzs         Int
+  availabilityStatus      ShelfAvailability  @default(AVAILABLE)
+  allowedCategories       Json
+  photos                  Json
+  status                  ShopStatus         @default(ACTIVE)
+  verificationStatus      VerificationStatus @default(PENDING)
+  listingStatus           ListingStatus      @default(DRAFT)
+  avgRating               Float?
+  reviewCount             Int                @default(0)
+  createdAt               DateTime
+  updatedAt               DateTime
+  deletedAt               DateTime?
+
+  bookings Booking[]
+  images   ShelfImage[]
+
+  @@index([shopId])
+  @@index([availabilityStatus, status])
+  @@index([monthlyPriceTzs])
+}
+
+model ShelfImage {
+  id         String @id
+  shelfId    String
+  shelf      Shelf  @relation(fields: [shelfId], references: [id], onDelete: Cascade)
+  url        String
+  storageKey String?
+  sortOrder  Int    @default(0)
+}
+
+model Product {
+  id            String     @id
+  vendorId      String
+  vendorName    String?
+  name          String
+  description   String
+  category      String
+  sku           String
+  priceTzs      Int
+  images        Json
+  status        ShopStatus @default(ACTIVE)
+  stockQuantity Int        @default(0)
+  createdAt     DateTime
+  updatedAt     DateTime
+
+  inventory InventoryItem[]
+
+  @@index([vendorId])
+}
+
+model InventoryItem {
+  id            String   @id
+  shelfId       String
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  productName   String?
+  productSku    String?
+  vendorId      String
+  quantity      Int
+  minStockLevel Int
+  stockStatus   String
+  lastUpdated   DateTime
+
+  @@index([vendorId, shelfId])
+}
+
+model Booking {
+  id                  String        @id
+  vendorId            String
+  vendor              User          @relation("VendorBookings", fields: [vendorId], references: [id])
+  vendorName          String?
+  vendorBusinessName  String?
+  shelfId             String
+  shelf               Shelf         @relation(fields: [shelfId], references: [id])
+  shelfName           String?
+  shopName            String?
+  shopCity            String?
+  hostId              String
+  host                User          @relation("HostBookings", fields: [hostId], references: [id])
+  startDate           String
+  endDate             String
+  durationMonths      Int
+  monthlyPriceTzs     Int
+  totalPriceTzs       Int
+  platformFeeTzs      Int
+  hostEarningsTzs     Int
+  status              BookingStatus
+  paymentStatus       PaymentStatus @default(PENDING)
+  notes               String?
+  createdAt           DateTime
+  updatedAt           DateTime
+
+  payments      Payment[]
+  statusHistory BookingStatusHistory[]
+  commission    Commission?
+
+  @@index([shelfId, startDate, endDate])
+  @@index([vendorId, status])
+  @@index([hostId, status])
+}
+
+model BookingStatusHistory {
+  id         String        @id
+  bookingId  String
+  booking    Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  actorId    String?
+  actorRole  String
+  reason     String?
+  createdAt  DateTime
+
+  @@index([bookingId, createdAt])
+}
+
+model Payment {
+  id                    String        @id
+  bookingId             String
+  booking               Booking       @relation(fields: [bookingId], references: [id])
+  vendorId              String
+  vendor                User          @relation(fields: [vendorId], references: [id])
+  amountTzs             Int
+  currency              String        @default("TZS")
+  provider              String        @default("PESAPAL")
+  merchantReference     String        @unique
+  transactionReference  String        @unique
+  pesapalTrackingId     String?       @unique
+  status                PaymentStatus @default(PENDING)
+  paidAt                DateTime?
+  createdAt             DateTime
+  idempotencyKey        String?       @unique
+
+  attempts PaymentAttempt[]
+
+  @@index([bookingId, status])
+}
+
+model PaymentAttempt {
+  id         String   @id
+  paymentId  String
+  payment    Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  status     String
+  payload    Json?
+  createdAt  DateTime
+
+  @@index([paymentId, createdAt])
+}
+
+model Commission {
+  id         String @id
+  bookingId  String @unique
+  booking    Booking @relation(fields: [bookingId], references: [id])
+  rateBps    Int
+  amountTzs  Int
+  status     String @default("ACCRUED")
+}
+
+model LedgerAccount {
+  id        String @id
+  ownerType String
+  ownerId   String
+  type      String
+  entries   LedgerEntry[]
+
+  @@unique([ownerType, ownerId, type])
+}
+
+model LedgerEntry {
+  id             String        @id
+  accountId      String
+  account        LedgerAccount @relation(fields: [accountId], references: [id])
+  amountTzs      Int
+  direction      String
+  type           String
+  refType        String
+  refId          String
+  idempotencyKey String        @unique
+  memo           String?
+  createdAt      DateTime
+
+  @@index([accountId, createdAt])
+  @@index([refType, refId])
+}
+
+model Withdrawal {
+  id              String           @id
+  hostId          String
+  host            User             @relation(fields: [hostId], references: [id])
+  amountTzs       Int
+  method          String           @default("MOBILE_MONEY")
+  status          WithdrawalStatus @default(PENDING)
+  payoutReference String?
+  failureReason   String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  payouts         Payout[]
+
+  @@index([hostId, status])
+}
+
+model Payout {
+  id               String     @id
+  hostId           String
+  hostName         String?
+  hostBusinessName String?
+  withdrawalId     String?
+  withdrawal       Withdrawal? @relation(fields: [withdrawalId], references: [id])
+  grossAmountTzs   Int
+  commissionTzs    Int
+  netAmountTzs     Int
+  status           String
+  payoutReference  String?
+  paidAt           DateTime?
+  createdAt        DateTime
+
+  @@index([hostId, status])
+}
+
+model FieldVisit {
+  id            String    @id
+  agentId       String
+  agent         User      @relation(fields: [agentId], references: [id])
+  agentName     String?
+  shopId        String
+  shopName      String?
+  shopAddress   String?
+  shopCity      String?
+  shopLatitude  Float?
+  shopLongitude Float?
+  shelfId       String
+  shelfName     String?
+  scheduledAt   DateTime
+  startedAt     DateTime?
+  completedAt   DateTime?
+  checkedInAt   DateTime?
+  status        String
+  latitude      Float?
+  longitude     Float?
+  notes         String?
+  createdAt     DateTime
+  reports       FieldReport[]
+}
+
+model FieldReport {
+  id                String   @id
+  visitId           String
+  visit             FieldVisit @relation(fields: [visitId], references: [id])
+  agentId           String
+  agentName         String?
+  shelfId           String
+  shopId            String
+  stockLevelPercent Int
+  shelfCondition    String
+  notes             String
+  photos            Json
+  aiAnalysis        Json?
+  createdAt         DateTime
+}
+
+model Notification {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String
+  readAt    DateTime?
+  createdAt DateTime
+
+  @@index([userId, createdAt])
+}
+
+model Message {
+  id          String    @id
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  senderName  String
+  senderRole  String
+  receiverId  String
+  bookingId   String?
+  content     String
+  readAt      DateTime?
+  createdAt   DateTime
+
+  @@index([senderId, receiverId])
+  @@index([bookingId])
+}
+
+model Review {
+  id           String   @id
+  bookingId    String
+  reviewerId   String
+  reviewerName String
+  reviewerRole String
+  targetId     String
+  rating       Int
+  comment      String
+  createdAt    DateTime
+
+  @@unique([bookingId, reviewerId])
+}
+
+model Dispute {
+  id                 String   @id
+  bookingId          String
+  raisedById         String
+  raisedByName       String
+  againstId          String
+  againstName        String
+  reason             String
+  status             String
+  resolutionDetails  String?
+  resolvedById       String?
+  createdAt          DateTime
+  updatedAt          DateTime
+}
+
+model VerificationRequest {
+  id           String   @id
+  subjectType  String
+  subjectId    String
+  requestedBy  String
+  status       String
+  notes        String?
+  reviewedBy   String?
+  createdAt    DateTime
+  updatedAt    DateTime
+
+  @@index([status, subjectType])
+}
+
+model AuditLog {
+  id         String   @id
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  userName   String
+  userRole   String
+  action     String
+  resource   String
+  resourceId String
+  details    String?
+  timestamp  DateTime
+
+  @@index([timestamp])
+}
+
+model AuthToken {
+  id        String    @id
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime
+
+  @@index([userId, type])
+}
+
+model PlatformSetting {
+  id    String @id
+  value Json
+}
+
+model Category {
+  id   String @id
+  name String @unique
+}
+
+model Location {
+  id     String @id
+  city   String
+  region String
+  country String @default("Tanzania")
+
+  @@unique([city, region])
+}

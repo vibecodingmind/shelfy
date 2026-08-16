@@ -88,67 +88,51 @@ export const PesapalPaymentModal: React.FC<PesapalPaymentModalProps> = ({
     };
   }, [isOpen, booking?.id]);
 
-  // Handle countdown during USSD STK push
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (paymentState === 'PROCESSING_PUSH' && ussdTimer > 0) {
       timer = setTimeout(() => setUssdTimer((prev) => prev - 1), 1000);
-    } else if (paymentState === 'PROCESSING_PUSH' && ussdTimer === 0) {
-      handleFinalizePayment();
     }
     return () => clearTimeout(timer);
   }, [paymentState, ussdTimer]);
 
-  // Trigger Pay button
   const handleStartPayment = () => {
-    if (paymentTab === 'MOBILE_MONEY') {
-      if (!phoneNumber || phoneNumber.length < 9) {
-        setErrorMessage('Please enter a valid Tanzanian mobile phone number.');
-        return;
-      }
-      setPaymentState('PROCESSING_PUSH');
-      setUssdTimer(4); // 4 seconds simulated USSD push
-    } else if (paymentTab === 'CARD') {
-      if (!cardNumber || cardNumber.length < 16) {
-        setErrorMessage('Please enter a valid 16-digit card number.');
-        return;
-      }
-      setPaymentState('PROCESSING_PUSH');
-      setUssdTimer(3);
-    } else {
-      setPaymentState('PROCESSING_PUSH');
-      setUssdTimer(3);
+    if (sessionData?.redirectUrl) {
+      window.open(sessionData.redirectUrl, '_blank', 'noopener,noreferrer');
     }
+    setPaymentState('VERIFYING');
+    pollPaymentStatus();
   };
 
-  // Secure Callback Verification
-  const handleFinalizePayment = async () => {
-    setPaymentState('VERIFYING');
-
-    const providerMap = {
-      MOBILE_MONEY: mobileProvider,
-      CARD: 'CARD',
-      BANK: 'BANK_TRANSFER',
-    };
-
-    const payload = {
-      bookingId: booking.id,
-      transactionReference: sessionData?.transactionReference || `PESA-TZ-${Date.now()}`,
-      orderTrackingId: sessionData?.orderTrackingId || `trk_${Date.now()}`,
-      paymentProvider: providerMap[paymentTab] as any,
-      phoneOrCardNumber: paymentTab === 'MOBILE_MONEY' ? phoneNumber : cardNumber,
-    };
-
-    const res = await api.verifyPesapalCallback(payload);
-
-    if (res.success && res.data) {
-      setReceiptData(res.data.receipt);
-      setPaymentState('SUCCESS');
-      onPaymentSuccess(res.data);
-    } else {
-      setErrorMessage(res.error?.message || 'Payment verification failed. Please try again.');
+  const pollPaymentStatus = async () => {
+    const paymentId = sessionData?.paymentId;
+    if (!paymentId) {
+      setErrorMessage('No server payment was created. Close and try again.');
       setPaymentState('FAILED');
+      return;
     }
+
+    for (let i = 0; i < 12; i += 1) {
+      const res = await api.syncPayment(paymentId);
+      const paid = res.data?.payment?.status === 'PAID' || res.data?.booking?.paymentStatus === 'PAID';
+      if (res.success && paid) {
+        setReceiptData({
+          receiptNumber: res.data.payment.transactionReference,
+          trackingId: res.data.payment.pesapalTrackingId,
+          bookingId: booking.id,
+          shelfName: booking.shelfName,
+          amountTzs: booking.totalPriceTzs,
+          paidAt: res.data.payment.paidAt,
+        });
+        setPaymentState('SUCCESS');
+        onPaymentSuccess(res.data);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+
+    setErrorMessage('Payment is still pending server-side verification. Complete PesaPal checkout, then reopen this booking. Shelfy will never mark a payment paid just because this window finished.');
+    setPaymentState('FAILED');
   };
 
   return (

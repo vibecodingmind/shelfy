@@ -76,7 +76,6 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
 
   // PesaPal Checkout
   const [checkoutBooking, setCheckoutBooking] = useState<Booking | null>(null);
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
 
   // Run AI ShelfMatch
   const handleRunMatch = async () => {
@@ -119,17 +118,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
     }
   };
 
-  // Process PesaPal Checkout
-  const handlePesaPalCheckout = async () => {
-    if (!checkoutBooking) return;
-    setLoadingCheckout(true);
-    const res = await api.checkoutPayment({ bookingId: checkoutBooking.id });
-    if (res.success) {
-      setCheckoutBooking(null);
-      onRefreshData();
-    }
-    setLoadingCheckout(false);
-  };
+  // Checkout is handled by PesapalPaymentModal → server initiate + poll.
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
@@ -276,8 +265,48 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                             </button>
                           ) : (
                             <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 font-bold rounded text-[10px] flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Paid & Active
+                              <CheckCircle2 className="w-3 h-3" /> {b.status}
                             </span>
+                          )}
+                          {['PENDING_APPROVAL', 'APPROVED', 'PAYMENT_PENDING', 'PAYMENT_FAILED', 'PAID', 'ACTIVE', 'EXPIRING'].includes(b.status) && (
+                            <button
+                              onClick={async () => {
+                                const res = await api.cancelBooking(b.id);
+                                if (!res.success) alert(res.error?.message || 'Cancel failed.');
+                                onRefreshData();
+                              }}
+                              className="block mt-2 text-[10px] text-rose-400"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                          {['ACTIVE', 'EXPIRING'].includes(b.status) && (
+                            <button
+                              onClick={async () => {
+                                const reason = window.prompt('Describe the dispute (min 10 characters)');
+                                if (!reason) return;
+                                const res = await api.openDispute(b.id, reason);
+                                if (!res.success) alert(res.error?.message || 'Could not open dispute.');
+                                onRefreshData();
+                              }}
+                              className="block mt-1 text-[10px] text-amber-400"
+                            >
+                              Open dispute
+                            </button>
+                          )}
+                          {b.status === 'COMPLETED' && (
+                            <button
+                              onClick={async () => {
+                                const rating = Number(window.prompt('Rating 1–5', '5'));
+                                const comment = window.prompt('Optional comment') || '';
+                                const res = await api.createReview(b.id, rating, comment);
+                                if (!res.success) alert(res.error?.message || 'Review failed.');
+                                onRefreshData();
+                              }}
+                              className="block mt-1 text-[10px] text-emerald-400"
+                            >
+                              Leave review
+                            </button>
                           )}
                         </div>
                       </div>

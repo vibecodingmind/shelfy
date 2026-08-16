@@ -46,7 +46,11 @@ When deploying to **Railway** (or any cloud host), set the following variables i
 
 **Demo accounts** (after deploy): `admin@shelfy.co.tz`, `vendor@shelfy.co.tz`, `host@shelfy.co.tz`, `agent@shelfy.co.tz` with password `Password123!`.
 
-**Database:** set `DATABASE_URL` to the Railway Postgres URL (recommended: `${{Postgres.DATABASE_URL}}`). The frontend already talks to `/api/*`; those routes now read and write Postgres when that variable is present. Locally, if `DATABASE_URL` is empty, the app still uses `data/shelfy.json`.
+**Database:** set `DATABASE_URL` to the Railway Postgres URL (recommended: `${{Postgres.DATABASE_URL}}`). On boot the app runs `prisma migrate deploy`, imports any legacy `shelfy_store` JSONB row once, then uses relational Prisma tables. Locally, if `DATABASE_URL` is empty, the app still uses `data/shelfy.json` (not for production).
+
+**Payments:** never trust the browser. Set `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET`, `PESAPAL_ENVIRONMENT`, and `APP_URL` so IPN/callback can call GetTransactionStatus. Without keys, payments stay pending unless completed with a signed sandbox request.
+
+**Demo login:** in production, set `ALLOW_DEMO_LOGIN=true` only if you still want the seeded demo accounts.
 
 Railway uses the included `railway.json` or `Dockerfile` automatically:
 - **Build Command**: `npm run build`

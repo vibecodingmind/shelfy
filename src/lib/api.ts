@@ -22,20 +22,60 @@ import {
 } from '../types/index.js';
 
 const TOKEN_KEY = 'shelfy_auth_token';
+const REFRESH_KEY = 'shelfy_refresh_token';
 
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function setStoredToken(token: string) {
+export function getStoredRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_KEY);
+}
+
+export function setStoredToken(token: string, refreshToken?: string) {
   localStorage.setItem(TOKEN_KEY, token);
+  if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
 }
 
 export function clearStoredToken() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<{ success: boolean; data?: T; error?: { message: string } }> {
+const AUTH_NO_REFRESH_RETRY = new Set([
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/refresh',
+  '/api/auth/logout',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/auth/verify-email',
+]);
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.success || !json.data?.token) {
+      clearStoredToken();
+      return false;
+    }
+    setStoredToken(json.data.token, json.data.refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retried = false): Promise<{ success: boolean; data?: T; error?: { message: string } }> {
   const token = getStoredToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -48,7 +88,17 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
   try {
     const res = await fetch(endpoint, { ...options, headers });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({ success: false, error: { message: 'Invalid response from server.' } }));
+    if (
+      res.status === 401 &&
+      !retried &&
+      !AUTH_NO_REFRESH_RETRY.has(endpoint) &&
+      getStoredRefreshToken()
+    ) {
+      if (!refreshInFlight) refreshInFlight = refreshAccessToken().finally(() => { refreshInFlight = null; });
+      const ok = await refreshInFlight;
+      if (ok) return apiFetch<T>(endpoint, options, true);
+    }
     return json;
   } catch (err: any) {
     return { success: false, error: { message: err.message || 'Network request failed.' } };
@@ -57,9 +107,10 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
 export const api = {
   // Auth
-  login: (credentials: any) => apiFetch<{ token: string; user: User; vendorProfile?: VendorProfile; hostProfile?: HostProfile }>('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
-  register: (data: any) => apiFetch<{ token: string; user: User }>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (credentials: any) => apiFetch<{ token: string; refreshToken?: string; expiresIn?: number; user: User; vendorProfile?: VendorProfile; hostProfile?: HostProfile }>('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  register: (data: any) => apiFetch<{ token: string; refreshToken?: string; expiresIn?: number; user: User }>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   getMe: () => apiFetch<{ user: User; vendorProfile?: VendorProfile; hostProfile?: HostProfile }>('/api/auth/me'),
+  logout: () => apiFetch<{ loggedOut: boolean }>('/api/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: getStoredRefreshToken() }) }),
 
   // Shops & Shelves
   getShops: (params?: Record<string, string>) => {
@@ -82,8 +133,31 @@ export const api = {
   updateBookingStatus: (bookingId: string, status: string) => apiFetch<Booking>(`/api/bookings/${bookingId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   getPayouts: () => apiFetch<Payout[]>('/api/payouts'),
   initiatePesapalSession: (bookingId: string) => apiFetch<any>('/api/payments/initiate-session', { method: 'POST', body: JSON.stringify({ bookingId }) }),
-  verifyPesapalCallback: (payload: { bookingId: string; transactionReference: string; orderTrackingId?: string; paymentProvider?: string; phoneOrCardNumber?: string }) => apiFetch<any>('/api/payments/callback-verify', { method: 'POST', body: JSON.stringify(payload) }),
-  checkoutPayment: (paymentData: any) => apiFetch<{ payment: Payment; booking: Booking }>('/api/payments/checkout', { method: 'POST', body: JSON.stringify(paymentData) }),
+  syncPayment: (paymentId: string) => apiFetch<any>(`/api/payments/${paymentId}/sync`, { method: 'POST' }),
+  getPaymentsByBooking: (bookingId: string) => apiFetch<{ booking: Booking; payments: Payment[] }>(`/api/payments/by-booking/${bookingId}`),
+  getFinanceSummary: () => apiFetch<any>('/api/finance/summary'),
+  getWithdrawals: () => apiFetch<any[]>('/api/withdrawals'),
+  requestWithdrawal: (amountTzs: number, method?: string) => apiFetch<any>('/api/withdrawals', { method: 'POST', body: JSON.stringify({ amountTzs, method }) }),
+  approveWithdrawal: (id: string) => apiFetch<any>(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' }),
+  processWithdrawal: (id: string, payoutReference: string) => apiFetch<any>(`/api/admin/withdrawals/${id}/process`, { method: 'POST', body: JSON.stringify({ payoutReference }) }),
+  failWithdrawal: (id: string, reason: string) => apiFetch<any>(`/api/admin/withdrawals/${id}/fail`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  cancelBooking: (bookingId: string, reason?: string) => apiFetch<any>(`/api/bookings/${bookingId}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  updateShop: (id: string, data: any) => apiFetch<Shop>(`/api/shops/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  updateShelf: (id: string, data: any) => apiFetch<Shelf>(`/api/shelves/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  submitListing: (type: 'shop' | 'shelf', id: string) => apiFetch<any>(`/api/listings/${type}/${id}/submit`, { method: 'POST' }),
+  getVerifications: () => apiFetch<any[]>('/api/admin/verifications'),
+  decideVerification: (id: string, status: string, notes?: string) => apiFetch<any>(`/api/admin/verifications/${id}/decide`, { method: 'POST', body: JSON.stringify({ status, notes }) }),
+  checkInVisit: (id: string, latitude: number, longitude: number) => apiFetch<any>(`/api/field-visits/${id}/check-in`, { method: 'POST', body: JSON.stringify({ latitude, longitude }) }),
+  uploadImage: (dataUrl: string, kind?: string) => apiFetch<{ url: string }>('/api/uploads', { method: 'POST', body: JSON.stringify({ dataUrl, kind }) }),
+  archiveShop: (id: string) => apiFetch<Shop>(`/api/shops/${id}`, { method: 'DELETE' }),
+  archiveShelf: (id: string) => apiFetch<Shelf>(`/api/shelves/${id}`, { method: 'DELETE' }),
+  createReview: (bookingId: string, rating: number, comment?: string) => apiFetch<any>('/api/reviews', { method: 'POST', body: JSON.stringify({ bookingId, rating, comment }) }),
+  openDispute: (bookingId: string, reason: string) => apiFetch<any>(`/api/bookings/${bookingId}/dispute`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  getDisputes: () => apiFetch<any[]>('/api/disputes'),
+  resolveDispute: (id: string, bookingStatus: string, resolutionDetails?: string) => apiFetch<any>(`/api/admin/disputes/${id}/resolve`, { method: 'POST', body: JSON.stringify({ bookingStatus, resolutionDetails }) }),
+  verifyEmail: (token: string) => apiFetch<any>('/api/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
+  forgotPassword: (email: string) => apiFetch<any>('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) => apiFetch<any>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
 
   // Products & Inventory
   getProducts: () => apiFetch<Product[]>('/api/products'),

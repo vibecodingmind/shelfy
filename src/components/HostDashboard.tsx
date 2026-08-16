@@ -2,7 +2,7 @@
  * Shelfy 🇹🇿 — Host Workspace (Shop & Shelf Owner Dashboard)
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Store,
   Layers,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { User, HostProfile, Shop, Shelf, Booking, Payout } from '../types/index.js';
 import { api } from '../lib/api.js';
+import { ListingWizard } from './ListingWizard.js';
 
 interface HostDashboardProps {
   user: User;
@@ -44,9 +45,12 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
   onRefreshData,
 }) => {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SHOPS' | 'SHELVES' | 'BOOKINGS' | 'EARNINGS'>('OVERVIEW');
+  const [finance, setFinance] = useState<any>(null);
+  const [withdrawAmount, setWithdrawAmount] = useState(20000);
 
   // Add Shop Modal
   const [showShopModal, setShowShopModal] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [shopName, setShopName] = useState('');
   const [shopAddress, setShopAddress] = useState('');
   const [shopCity, setShopCity] = useState('Dar es Salaam');
@@ -92,9 +96,15 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
     }
   };
 
-  const myShops = shops.filter((s) => s.hostId === user.id);
-  const myShelves = shelves.filter((sh) => myShops.some((s) => s.id === sh.shopId));
+  const myShops = shops.filter((s) => s.hostId === user.id && !s.deletedAt);
+  const myShelves = shelves.filter((sh) => myShops.some((s) => s.id === sh.shopId) && !sh.deletedAt);
   const myBookings = bookings.filter((b) => b.hostId === user.id);
+
+  useEffect(() => {
+    api.getFinanceSummary().then((res) => {
+      if (res.success) setFinance(res.data);
+    });
+  }, [activeTab, payouts.length]);
 
   const totalEarningsTzs = myBookings
     .filter((b) => b.paymentStatus === 'PAID')
@@ -205,16 +215,22 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowWizard(true)}
+              className="px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" /> List shop & shelf
+            </button>
+            <button
               onClick={() => setShowShopModal(true)}
               className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5"
             >
-              <Plus className="w-4 h-4 text-emerald-400" /> Add Shop Location
+              <Plus className="w-4 h-4 text-emerald-400" /> Quick add shop
             </button>
             <button
               onClick={() => setShowShelfModal(true)}
               className="px-3.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
             >
-              <Plus className="w-4 h-4" /> Add Display Shelf
+              <Plus className="w-4 h-4" /> Quick add shelf
             </button>
           </div>
         </div>
@@ -326,8 +342,26 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                       <div className="text-[11px] text-emerald-400">{sp.city} • {sp.address}</div>
                       <div className="text-[10px] text-slate-400 mt-1">Type: {sp.shopType.replace('_', ' ')}</div>
                       <span className={`mt-2 inline-block text-[10px] px-2 py-0.5 rounded font-bold ${sp.verificationStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                        {sp.verificationStatus}
+                        {sp.listingStatus || sp.verificationStatus}
                       </span>
+                      {sp.verificationStatus !== 'VERIFIED' && sp.listingStatus !== 'PUBLISHED' && sp.listingStatus !== 'SUBMITTED' && (
+                        <button
+                          onClick={async () => { await api.submitListing('shop', sp.id); onRefreshData(); }}
+                          className="ml-2 text-[10px] px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold"
+                        >
+                          Submit for verification
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => {
+                          const res = await api.archiveShop(sp.id);
+                          if (!res.success) alert(res.error?.message || 'Could not archive shop.');
+                          onRefreshData();
+                        }}
+                        className="ml-2 text-[10px] text-slate-500"
+                      >
+                        Archive
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -362,7 +396,20 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                       </span>
                     </div>
                     <div className="mt-3 text-xs text-slate-300">TZS {sh.monthlyPriceTzs.toLocaleString()}/mo • {sh.shelfType.replace('_', ' ')}</div>
-                    <div className="mt-1 text-[10px] text-slate-500">{sh.allowedCategories.join(', ')}</div>
+                    <div className="mt-1 text-[10px] text-slate-500">{sh.listingStatus || sh.verificationStatus || 'DRAFT'} · {sh.allowedCategories.join(', ')}</div>
+                    {sh.listingStatus !== 'PUBLISHED' && sh.verificationStatus !== 'VERIFIED' && sh.hostVerificationStatus !== 'VERIFIED' && sh.listingStatus !== 'SUBMITTED' && (
+                      <button onClick={async () => { await api.submitListing('shelf', sh.id); onRefreshData(); }} className="mt-2 text-[10px] px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold">Submit for verification</button>
+                    )}
+                    <button
+                      onClick={async () => {
+                        const res = await api.archiveShelf(sh.id);
+                        if (!res.success) alert(res.error?.message || 'Could not archive shelf.');
+                        onRefreshData();
+                      }}
+                      className="mt-2 ml-2 text-[10px] text-slate-500"
+                    >
+                      Archive
+                    </button>
                   </div>
                 ))}
               </div>
@@ -408,6 +455,31 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                           </button>
                         </div>
                       )}
+                      {['PENDING_APPROVAL', 'APPROVED', 'PAYMENT_PENDING', 'PAID', 'ACTIVE', 'EXPIRING'].includes(b.status) && (
+                        <button
+                          onClick={async () => {
+                            await api.cancelBooking(b.id, 'Host cancelled');
+                            onRefreshData();
+                          }}
+                          className="block mt-2 ml-auto text-[10px] text-rose-400"
+                        >
+                          Cancel booking
+                        </button>
+                      )}
+                      {['ACTIVE', 'EXPIRING'].includes(b.status) && (
+                        <button
+                          onClick={async () => {
+                            const reason = window.prompt('Describe the dispute (min 10 characters)');
+                            if (!reason) return;
+                            const res = await api.openDispute(b.id, reason);
+                            if (!res.success) alert(res.error?.message || 'Could not open dispute.');
+                            onRefreshData();
+                          }}
+                          className="block mt-1 ml-auto text-[10px] text-amber-400"
+                        >
+                          Open dispute
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -420,8 +492,32 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
           <div className="space-y-4">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <h2 className="text-lg font-bold text-white mb-1">Earnings & Payouts</h2>
-              <p className="text-xs text-slate-400 mb-4">Net host earnings after platform commission.</p>
-              <div className="text-2xl font-black text-emerald-400 mb-6">TZS {totalEarningsTzs.toLocaleString()}</div>
+              <p className="text-xs text-slate-400 mb-4">Available balance is withdrawable. Pending is still in an active booking.</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 text-xs">
+                <div><div className="text-slate-400">Available</div><div className="text-xl font-black text-emerald-400">TZS {(finance?.availableTzs || 0).toLocaleString()}</div></div>
+                <div><div className="text-slate-400">Pending</div><div className="text-xl font-black text-amber-400">TZS {(finance?.pendingTzs || 0).toLocaleString()}</div></div>
+                <div><div className="text-slate-400">Earned</div><div className="text-xl font-black text-white">TZS {(finance?.totalEarnedTzs || totalEarningsTzs).toLocaleString()}</div></div>
+                <div><div className="text-slate-400">Withdrawn</div><div className="text-xl font-black text-slate-300">TZS {(finance?.withdrawnTzs || 0).toLocaleString()}</div></div>
+              </div>
+              <div className="flex gap-2 mb-6">
+                <input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(Number(e.target.value))} className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white" />
+                <button
+                  onClick={async () => {
+                    await api.requestWithdrawal(withdrawAmount, 'MOBILE_MONEY').then(async (wd) => {
+                      if (!wd.success) {
+                        alert(wd.error?.message || 'Withdrawal failed.');
+                        return;
+                      }
+                      const res = await api.getFinanceSummary();
+                      if (res.data) setFinance(res.data);
+                      onRefreshData();
+                    });
+                  }}
+                  className="px-3 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-lg"
+                >
+                  Request withdrawal
+                </button>
+              </div>
               {payouts.length === 0 ? (
                 <div className="text-xs text-slate-400">No payout records yet. Paid bookings will appear here.</div>
               ) : (
@@ -445,6 +541,16 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
         )}
 
       </main>
+
+      {showWizard && (
+        <ListingWizard
+          shops={myShops}
+          shelfCategories={defaultCategories}
+          shelfTypes={defaultShelfTypesList}
+          onClose={() => setShowWizard(false)}
+          onComplete={onRefreshData}
+        />
+      )}
 
       {/* ADD SHOP MODAL */}
       {showShopModal && (

@@ -6,7 +6,7 @@ export type UserRole = 'ADMIN' | 'VENDOR' | 'HOST' | 'FIELD_AGENT';
 
 export type UserStatus = 'ACTIVE' | 'PENDING' | 'SUSPENDED';
 
-export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
 
 export interface User {
   id: string;
@@ -17,6 +17,11 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   avatarUrl?: string;
+  emailVerifiedAt?: string;
+  phoneVerifiedAt?: string;
+  failedLoginCount?: number;
+  lockedUntil?: string;
+  lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +64,9 @@ export interface Shop {
   photos: string[];
   status: 'ACTIVE' | 'INACTIVE';
   verificationStatus: VerificationStatus;
+  listingStatus?: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'SUSPENDED';
+  slug?: string;
+  deletedAt?: string;
   footTrafficScore?: number; // 1 to 10
   shopType: 'SUPERMARKET' | 'MINI_MARKET' | 'CONVENIENCE' | 'BOUTIQUE' | 'PHARMACY' | 'SPECIALTY';
   createdAt: string;
@@ -78,6 +86,10 @@ export interface Shelf {
   shopLatitude?: number;
   shopLongitude?: number;
   hostVerificationStatus?: VerificationStatus;
+  verificationStatus?: VerificationStatus;
+  listingStatus?: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'SUSPENDED';
+  slug?: string;
+  deletedAt?: string;
   name: string;
   description: string;
   widthCm: number;
@@ -130,6 +142,7 @@ export type BookingStatus =
   | 'PENDING_APPROVAL'
   | 'APPROVED'
   | 'PAYMENT_PENDING'
+  | 'PAYMENT_FAILED'
   | 'PAID'
   | 'ACTIVE'
   | 'EXPIRING'
@@ -210,6 +223,9 @@ export interface FieldVisit {
   status: VisitStatus;
   latitude?: number;
   longitude?: number;
+  shopLatitude?: number;
+  shopLongitude?: number;
+  checkedInAt?: string;
   notes?: string;
   createdAt: string;
 }
@@ -282,6 +298,18 @@ export interface Review {
   createdAt: string;
 }
 
+export interface VerificationRequest {
+  id: string;
+  subjectType: 'USER' | 'HOST' | 'VENDOR' | 'SHOP' | 'SHELF';
+  subjectId: string;
+  requestedBy: string;
+  status: 'PENDING' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
+  notes?: string;
+  reviewedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Dispute {
   id: string;
   bookingId: string;
@@ -312,6 +340,40 @@ export interface PlatformSettings {
   maintenanceMode: boolean;
   shelfCategories: string[];
   shelfTypes: ShelfTypeOption[];
+  minWithdrawalTzs?: number;
+  bookingGraceHours?: number;
+  cancellationFeePercent?: number;
+  freeCancelDays?: number;
+  policies?: Record<string, string>;
+}
+
+export interface BookingStatusHistory {
+  id: string;
+  bookingId: string;
+  fromStatus?: BookingStatus;
+  toStatus: BookingStatus;
+  actorId?: string;
+  actorRole: string;
+  reason?: string;
+  createdAt: string;
+}
+
+export interface AuthToken {
+  id: string;
+  userId: string;
+  type: 'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'PHONE_OTP' | 'REFRESH';
+  tokenHash: string;
+  expiresAt: string;
+  usedAt?: string;
+  createdAt: string;
+}
+
+export interface PaymentAttempt {
+  id: string;
+  paymentId: string;
+  status: string;
+  payload?: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface AuthState {

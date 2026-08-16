@@ -10,6 +10,7 @@ import { VendorDashboard } from './components/VendorDashboard.js';
 import { HostDashboard } from './components/HostDashboard.js';
 import { AgentDashboard } from './components/AgentDashboard.js';
 import { AuthModal } from './components/AuthModal.js';
+import { LegalPage, LEGAL_SLUGS } from './components/LegalPage.js';
 import { PesapalPaymentModal } from './components/PesapalPaymentModal.js';
 import { api, getStoredToken, setStoredToken, clearStoredToken } from './lib/api.js';
 import {
@@ -70,7 +71,6 @@ export function App() {
   const [activePesapalShelf, setActivePesapalShelf] = useState<Shelf | null>(null);
   const [showPesapalModal, setShowPesapalModal] = useState<boolean>(false);
 
-  // Load Initial Market Data & Platform Settings
   const loadPublicData = async () => {
     const shopsRes = await api.getShops();
     if (shopsRes.success && shopsRes.data) setShops(shopsRes.data);
@@ -148,7 +148,7 @@ export function App() {
   const handleDemoLogin = async (email: string) => {
     const res = await api.login({ email, password: 'Password123!' });
     if (res.success && res.data) {
-      setStoredToken(res.data.token);
+      setStoredToken(res.data.token, res.data.refreshToken);
       setUser(res.data.user);
       if (res.data.vendorProfile) setVendorProfile(res.data.vendorProfile);
       if (res.data.hostProfile) setHostProfile(res.data.hostProfile);
@@ -160,6 +160,7 @@ export function App() {
 
   // Logout Handler
   const handleLogout = () => {
+    void api.logout();
     clearStoredToken();
     setUser(null);
     setVendorProfile(null);
@@ -216,6 +217,21 @@ export function App() {
     }
   };
 
+  const legalSlug = window.location.pathname.replace(/^\/legal\/?/, '');
+  const showLegal = window.location.pathname.startsWith('/legal');
+  const shelfSlugMatch = window.location.pathname.match(/^\/s\/([^/]+)/);
+  if (showLegal) {
+    return (
+      <LegalPage
+        slug={LEGAL_SLUGS.includes(legalSlug) ? legalSlug : 'terms'}
+        onBack={() => {
+          window.history.pushState({}, '', '/');
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 font-sans text-white flex flex-col">
       
@@ -254,6 +270,7 @@ export function App() {
             shelfTypes={platformSettings?.shelfTypes}
             onBookShelf={handleBookShelfAction}
             onLoginClick={() => handleOpenAuthModal('LOGIN')}
+            initialShelfSlug={shelfSlugMatch?.[1]}
           />
         )}
 
@@ -347,7 +364,7 @@ export function App() {
           initialRole={authModalRole}
           onClose={() => setShowAuthModal(false)}
           onSuccess={(data) => {
-            setStoredToken(data.token);
+            setStoredToken(data.token, data.refreshToken);
             setUser(data.user);
             if (data.vendorProfile) setVendorProfile(data.vendorProfile);
             if (data.hostProfile) setHostProfile(data.hostProfile);
