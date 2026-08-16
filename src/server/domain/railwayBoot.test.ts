@@ -26,4 +26,11 @@ describe('Railway production boot', () => {
     const schema = fs.readFileSync(path.resolve('prisma/schema.prisma'), 'utf-8');
     expect(schema).toContain('debian-openssl-3.0.x');
   });
+
+  it('copies Prisma schema and generated client into the Docker runner', () => {
+    const docker = fs.readFileSync(path.resolve('Dockerfile'), 'utf-8');
+    expect(docker).toContain('COPY --from=builder /app/prisma ./prisma');
+    expect(docker).toContain('COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma');
+    expect(docker).toContain('COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma');
+  });
 });
