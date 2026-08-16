@@ -1,88 +1,89 @@
 {
+  "schemaVersion": 3,
   "users": [
     {
       "id": "usr_admin",
       "name": "Shelfy Admin",
       "email": "admin@shelfy.co.tz",
       "phone": "+255 700 000 001",
-      "passwordHash": "$2b$10$Y8B6Uw8D1fBnhvJ1jrkN..X0kWcmtzsuy6S3UVIRGjNdV4b5RqLE.",
+      "passwordHash": "$2b$10$AUlJvPjHgIIg59Rrq3iI4uUJcvR/h6YxuIswm0IwK8bNJ5gIxn6MC",
       "role": "ADMIN",
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "usr_vendor_1",
       "name": "Amina Salum (Kilimanjaro Organics)",
       "email": "vendor@shelfy.co.tz",
       "phone": "+255 754 123 456",
-      "passwordHash": "$2b$10$Y8B6Uw8D1fBnhvJ1jrkN..X0kWcmtzsuy6S3UVIRGjNdV4b5RqLE.",
+      "passwordHash": "$2b$10$AUlJvPjHgIIg59Rrq3iI4uUJcvR/h6YxuIswm0IwK8bNJ5gIxn6MC",
       "role": "VENDOR",
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "usr_host_1",
       "name": "Juma Mkwawa",
       "email": "host@shelfy.co.tz",
       "phone": "+255 713 987 654",
-      "passwordHash": "$2b$10$Y8B6Uw8D1fBnhvJ1jrkN..X0kWcmtzsuy6S3UVIRGjNdV4b5RqLE.",
+      "passwordHash": "$2b$10$AUlJvPjHgIIg59Rrq3iI4uUJcvR/h6YxuIswm0IwK8bNJ5gIxn6MC",
       "role": "HOST",
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "usr_agent_1",
       "name": "Baraka John",
       "email": "agent@shelfy.co.tz",
       "phone": "+255 782 555 111",
-      "passwordHash": "$2b$10$Y8B6Uw8D1fBnhvJ1jrkN..X0kWcmtzsuy6S3UVIRGjNdV4b5RqLE.",
+      "passwordHash": "$2b$10$AUlJvPjHgIIg59Rrq3iI4uUJcvR/h6YxuIswm0IwK8bNJ5gIxn6MC",
       "role": "FIELD_AGENT",
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "usr_vendor_2",
       "name": "Neema Joseph (Serengeti Teas & Spices)",
       "email": "neema@serengetitea.co.tz",
       "phone": "+255 768 222 333",
-      "passwordHash": "$2b$10$Y8B6Uw8D1fBnhvJ1jrkN..X0kWcmtzsuy6S3UVIRGjNdV4b5RqLE.",
+      "passwordHash": "$2b$10$AUlJvPjHgIIg59Rrq3iI4uUJcvR/h6YxuIswm0IwK8bNJ5gIxn6MC",
       "role": "VENDOR",
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "usr_host_2",
       "name": "Hassan Rashid",
       "email": "hassan@kariakoomart.co.tz",
       "phone": "+255 745 444 888",
-      "passwordHash": "$2b$10$Y8B6Uw8D1fBnhvJ1jrkN..X0kWcmtzsuy6S3UVIRGjNdV4b5RqLE.",
+      "passwordHash": "$2b$10$AUlJvPjHgIIg59Rrq3iI4uUJcvR/h6YxuIswm0IwK8bNJ5gIxn6MC",
       "role": "HOST",
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=150",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "usr_host_3",
       "name": "Grace Kimaro",
       "email": "grace@shoppersplaza.co.tz",
       "phone": "+255 755 998 877",
-      "passwordHash": "$2b$10$Y8B6Uw8D1fBnhvJ1jrkN..X0kWcmtzsuy6S3UVIRGjNdV4b5RqLE.",
+      "passwordHash": "$2b$10$AUlJvPjHgIIg59Rrq3iI4uUJcvR/h6YxuIswm0IwK8bNJ5gIxn6MC",
       "role": "HOST",
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "vendorProfiles": [
@@ -164,8 +165,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 9,
       "shopType": "SUPERMARKET",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_2",
@@ -187,8 +188,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 8,
       "shopType": "SUPERMARKET",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_3",
@@ -210,8 +211,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 10,
       "shopType": "CONVENIENCE",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_4",
@@ -232,8 +233,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 8,
       "shopType": "BOUTIQUE",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_5",
@@ -254,8 +255,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 9,
       "shopType": "SPECIALTY",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_6",
@@ -276,8 +277,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 9,
       "shopType": "SUPERMARKET",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_7",
@@ -298,8 +299,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 8,
       "shopType": "CONVENIENCE",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_8",
@@ -320,8 +321,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 9,
       "shopType": "SUPERMARKET",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_9",
@@ -342,8 +343,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 8,
       "shopType": "MINI_MARKET",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_10",
@@ -364,8 +365,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 8,
       "shopType": "BOUTIQUE",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_11",
@@ -386,8 +387,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 9,
       "shopType": "PHARMACY",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_12",
@@ -408,8 +409,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 9,
       "shopType": "SUPERMARKET",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_13",
@@ -430,8 +431,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 8,
       "shopType": "SUPERMARKET",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_14",
@@ -452,8 +453,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 8,
       "shopType": "CONVENIENCE",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shop_15",
@@ -474,8 +475,8 @@
       "verificationStatus": "VERIFIED",
       "footTrafficScore": 9,
       "shopType": "SPECIALTY",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "shelves": [
@@ -496,11 +497,11 @@
       "shelfType": "EYE_LEVEL",
       "locationInsideShop": "Aisle 1 - Main Entrance Section",
       "monthlyPriceTzs": 75000,
-      "availabilityStatus": "AVAILABLE",
+      "availabilityStatus": "BOOKED",
       "allowedCategories": [
         "Food & Beverages",
         "Health & Beauty",
-        "Snacks",
+        "Snacks & Confectionery",
         "Organic Goods"
       ],
       "photos": [
@@ -516,8 +517,8 @@
       "status": "ACTIVE",
       "avgRating": 4.96,
       "reviewCount": 38,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_2",
@@ -536,11 +537,10 @@
       "shelfType": "COUNTER_DISPLAY",
       "locationInsideShop": "Cashier Checkout Counter 1",
       "monthlyPriceTzs": 95000,
-      "availabilityStatus": "AVAILABLE",
+      "availabilityStatus": "BOOKED",
       "allowedCategories": [
         "Food & Beverages",
-        "Confectionery",
-        "Snacks",
+        "Snacks & Confectionery",
         "Cosmetics"
       ],
       "photos": [
@@ -556,8 +556,8 @@
       "status": "ACTIVE",
       "avgRating": 5,
       "reviewCount": 29,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_3",
@@ -576,13 +576,13 @@
       "shelfType": "ENTRANCE_DISPLAY",
       "locationInsideShop": "Front Glass Atrium Entrance",
       "monthlyPriceTzs": 160000,
-      "availabilityStatus": "AVAILABLE",
+      "availabilityStatus": "BOOKED",
       "allowedCategories": [
         "Organic Goods",
         "Cosmetics",
         "Health & Beauty",
-        "Premium Spices",
-        "Beverages"
+        "Spices",
+        "Beverages & Juices"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=1000&auto=format&fit=crop&q=80",
@@ -597,8 +597,8 @@
       "status": "ACTIVE",
       "avgRating": 4.98,
       "reviewCount": 52,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_4",
@@ -636,8 +636,8 @@
       "status": "ACTIVE",
       "avgRating": 4.93,
       "reviewCount": 44,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_5",
@@ -677,8 +677,8 @@
       "status": "ACTIVE",
       "avgRating": 4.97,
       "reviewCount": 76,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_6",
@@ -717,8 +717,8 @@
       "status": "ACTIVE",
       "avgRating": 4.88,
       "reviewCount": 33,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_7",
@@ -757,8 +757,8 @@
       "status": "ACTIVE",
       "avgRating": 4.95,
       "reviewCount": 41,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_8",
@@ -796,8 +796,8 @@
       "status": "ACTIVE",
       "avgRating": 4.87,
       "reviewCount": 22,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_9",
@@ -835,8 +835,8 @@
       "status": "ACTIVE",
       "avgRating": 4.91,
       "reviewCount": 28,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_10",
@@ -875,8 +875,8 @@
       "status": "ACTIVE",
       "avgRating": 4.99,
       "reviewCount": 61,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_11",
@@ -914,8 +914,8 @@
       "status": "ACTIVE",
       "avgRating": 4.89,
       "reviewCount": 24,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_12",
@@ -954,8 +954,8 @@
       "status": "ACTIVE",
       "avgRating": 4.94,
       "reviewCount": 39,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_13",
@@ -994,8 +994,8 @@
       "status": "ACTIVE",
       "avgRating": 4.86,
       "reviewCount": 19,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_14",
@@ -1034,8 +1034,8 @@
       "status": "ACTIVE",
       "avgRating": 4.97,
       "reviewCount": 47,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_15",
@@ -1073,8 +1073,8 @@
       "status": "ACTIVE",
       "avgRating": 4.9,
       "reviewCount": 31,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_16",
@@ -1112,8 +1112,8 @@
       "status": "ACTIVE",
       "avgRating": 4.88,
       "reviewCount": 18,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_17",
@@ -1152,8 +1152,8 @@
       "status": "ACTIVE",
       "avgRating": 4.99,
       "reviewCount": 82,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_18",
@@ -1192,8 +1192,8 @@
       "status": "ACTIVE",
       "avgRating": 4.96,
       "reviewCount": 45,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_19",
@@ -1231,8 +1231,8 @@
       "status": "ACTIVE",
       "avgRating": 4.92,
       "reviewCount": 27,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_20",
@@ -1271,8 +1271,8 @@
       "status": "ACTIVE",
       "avgRating": 4.93,
       "reviewCount": 35,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_21",
@@ -1310,8 +1310,8 @@
       "status": "ACTIVE",
       "avgRating": 4.85,
       "reviewCount": 16,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_22",
@@ -1349,8 +1349,8 @@
       "status": "ACTIVE",
       "avgRating": 4.86,
       "reviewCount": 20,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_23",
@@ -1388,8 +1388,8 @@
       "status": "ACTIVE",
       "avgRating": 4.82,
       "reviewCount": 14,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_24",
@@ -1427,8 +1427,8 @@
       "status": "ACTIVE",
       "avgRating": 4.84,
       "reviewCount": 17,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_25",
@@ -1466,8 +1466,8 @@
       "status": "ACTIVE",
       "avgRating": 4.88,
       "reviewCount": 26,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_26",
@@ -1505,8 +1505,8 @@
       "status": "ACTIVE",
       "avgRating": 4.9,
       "reviewCount": 23,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_27",
@@ -1545,8 +1545,8 @@
       "status": "ACTIVE",
       "avgRating": 4.98,
       "reviewCount": 57,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_28",
@@ -1584,8 +1584,8 @@
       "status": "ACTIVE",
       "avgRating": 4.94,
       "reviewCount": 34,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_29",
@@ -1624,8 +1624,8 @@
       "status": "ACTIVE",
       "avgRating": 4.95,
       "reviewCount": 48,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "shelf_30",
@@ -1664,8 +1664,8 @@
       "status": "ACTIVE",
       "avgRating": 4.99,
       "reviewCount": 68,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "products": [
@@ -1683,8 +1683,8 @@
       ],
       "status": "ACTIVE",
       "stockQuantity": 60,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "prod_2",
@@ -1700,8 +1700,8 @@
       ],
       "status": "ACTIVE",
       "stockQuantity": 45,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "prod_3",
@@ -1717,8 +1717,25 @@
       ],
       "status": "ACTIVE",
       "stockQuantity": 50,
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "prod_4",
+      "vendorId": "usr_vendor_2",
+      "vendorName": "Neema Joseph",
+      "name": "Pemba Clove & Cinnamon Gift Tin (80g)",
+      "sku": "SER-SPC-PEM",
+      "category": "Spices",
+      "priceTzs": 12000,
+      "description": "Whole Pemba cloves packed with Ceylon cinnamon quills in a reusable spice tin.",
+      "images": [
+        "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=500"
+      ],
+      "status": "ACTIVE",
+      "stockQuantity": 12,
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "shelfInventory": [
@@ -1732,7 +1749,7 @@
       "quantity": 24,
       "minStockLevel": 8,
       "stockStatus": "IN_STOCK",
-      "lastUpdated": "2026-08-16T03:30:05.867Z"
+      "lastUpdated": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "inv_2",
@@ -1744,7 +1761,19 @@
       "quantity": 18,
       "minStockLevel": 5,
       "stockStatus": "IN_STOCK",
-      "lastUpdated": "2026-08-16T03:30:05.867Z"
+      "lastUpdated": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "inv_3",
+      "shelfId": "shelf_3",
+      "productId": "prod_3",
+      "productName": "Zanzibar Royal Spiced Tea Blend (100g)",
+      "productSku": "SER-TEA-ZAN",
+      "vendorId": "usr_vendor_2",
+      "quantity": 6,
+      "minStockLevel": 10,
+      "stockStatus": "LOW_STOCK",
+      "lastUpdated": "2026-08-16T05:54:14.571Z"
     }
   ],
   "bookings": [
@@ -1756,6 +1785,7 @@
       "shopCity": "Dar es Salaam",
       "vendorId": "usr_vendor_1",
       "vendorName": "Amina Salum",
+      "vendorBusinessName": "Kilimanjaro Organics Ltd",
       "hostId": "usr_host_1",
       "startDate": "2026-08-01",
       "endDate": "2026-10-31",
@@ -1766,8 +1796,53 @@
       "hostEarningsTzs": 202500,
       "status": "ACTIVE",
       "paymentStatus": "PAID",
-      "createdAt": "2026-08-16T03:30:05.867Z",
-      "updatedAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "bk_1002",
+      "shelfId": "shelf_3",
+      "shelfName": "Lobby Glass Entrance Showcase M1",
+      "shopName": "Masaki Peninsula Gourmet Emporium",
+      "shopCity": "Dar es Salaam",
+      "vendorId": "usr_vendor_2",
+      "vendorName": "Neema Joseph",
+      "vendorBusinessName": "Serengeti Teas & Spices",
+      "hostId": "usr_host_3",
+      "startDate": "2026-08-10",
+      "endDate": "2026-09-10",
+      "durationMonths": 1,
+      "monthlyPriceTzs": 160000,
+      "totalPriceTzs": 160000,
+      "platformFeeTzs": 16000,
+      "hostEarningsTzs": 144000,
+      "status": "ACTIVE",
+      "paymentStatus": "PAID",
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "bk_1003",
+      "shelfId": "shelf_2",
+      "shelfName": "Cashier Checkout Impulse Box B2",
+      "shopName": "Juma Mini Market — Mikocheni",
+      "shopCity": "Dar es Salaam",
+      "vendorId": "usr_vendor_2",
+      "vendorName": "Neema Joseph",
+      "vendorBusinessName": "Serengeti Teas & Spices",
+      "hostId": "usr_host_1",
+      "startDate": "2026-08-20",
+      "endDate": "2026-09-20",
+      "durationMonths": 1,
+      "monthlyPriceTzs": 95000,
+      "totalPriceTzs": 95000,
+      "platformFeeTzs": 9500,
+      "hostEarningsTzs": 85500,
+      "status": "PENDING_APPROVAL",
+      "paymentStatus": "PENDING",
+      "notes": "Requesting checkout counter placement for clove gift tins.",
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "updatedAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "payments": [
@@ -1781,8 +1856,21 @@
       "transactionReference": "SHELFY-BK1001-2026",
       "pesapalTrackingId": "pesa_demo_trk_778192",
       "status": "PAID",
-      "paidAt": "2026-08-16T03:30:05.867Z",
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "paidAt": "2026-08-16T05:54:14.571Z",
+      "createdAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "pay_2",
+      "bookingId": "bk_1002",
+      "vendorId": "usr_vendor_2",
+      "amountTzs": 160000,
+      "currency": "TZS",
+      "provider": "PESAPAL",
+      "transactionReference": "SHELFY-BK1002-2026",
+      "pesapalTrackingId": "pesa_demo_trk_882041",
+      "status": "PAID",
+      "paidAt": "2026-08-16T05:54:14.571Z",
+      "createdAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "payouts": [
@@ -1795,8 +1883,21 @@
       "netAmountTzs": 67500,
       "status": "COMPLETED",
       "payoutReference": "PO-MONTH1-BK1001",
-      "paidAt": "2026-08-16T03:30:05.867Z",
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "hostBusinessName": "Juma Mini Markets & Retail",
+      "paidAt": "2026-08-16T05:54:14.571Z",
+      "createdAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "po_2",
+      "hostId": "usr_host_3",
+      "hostName": "Grace Kimaro",
+      "hostBusinessName": "Shoppers Plaza & Gourmet Markets",
+      "grossAmountTzs": 160000,
+      "commissionTzs": 16000,
+      "netAmountTzs": 144000,
+      "status": "PENDING",
+      "payoutReference": "PO-MONTH1-BK1002",
+      "createdAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "fieldVisits": [
@@ -1813,7 +1914,22 @@
       "scheduledAt": "2026-08-16T10:00:00.000Z",
       "status": "COMPLETED",
       "notes": "Monthly Inventory Audit & Shelf Cleanliness Inspection",
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "fv_2",
+      "shopId": "shop_1",
+      "shopName": "Juma Mini Market — Mikocheni",
+      "shopAddress": "Old Bagamoyo Road, Mikocheni B",
+      "shopCity": "Dar es Salaam",
+      "shelfId": "shelf_1",
+      "shelfName": "Eye-Level Prime Front Bay A1",
+      "agentId": "usr_agent_1",
+      "agentName": "Baraka John",
+      "scheduledAt": "2026-08-18T09:00:00.000Z",
+      "status": "SCHEDULED",
+      "notes": "Follow-up restock verification after first month of vendor placement.",
+      "createdAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "shelfReports": [
@@ -1839,7 +1955,7 @@
         "detectedIssues": [],
         "summary": "Optimal placement with 96% visibility compliance. Low stock risk on honey bottles, recommend restocking 10 units within 48 hours."
       },
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "notifications": [
@@ -1849,7 +1965,7 @@
       "title": "Field Audit Completed 📋",
       "message": "Field Agent Baraka John verified your Mikocheni shelf display with a 96% AI score.",
       "type": "SUCCESS",
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "notif_2",
@@ -1857,7 +1973,23 @@
       "title": "Payout Disbursed 💰",
       "message": "TZS 67,500 has been sent to your M-Pesa account for Booking #bk_1001.",
       "type": "INFO",
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "notif_3",
+      "userId": "usr_host_1",
+      "title": "Booking needs approval 📦",
+      "message": "Serengeti Teas & Spices requested Cashier Checkout Impulse Box B2 for 1 month.",
+      "type": "WARNING",
+      "createdAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "notif_4",
+      "userId": "usr_vendor_2",
+      "title": "Masaki shelf is active 🎉",
+      "message": "Your Lobby Glass Entrance Showcase M1 booking is paid and live.",
+      "type": "SUCCESS",
+      "createdAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "messages": [
@@ -1869,7 +2001,7 @@
       "receiverId": "usr_vendor_1",
       "bookingId": "bk_1001",
       "content": "Habari Amina, I just inspected your shelf at Mikocheni. Everything looks neat and 24 jars of honey are in stock!",
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "auditLogs": [
@@ -1882,7 +2014,7 @@
       "resource": "System",
       "resourceId": "sys_root",
       "details": "Platform initialized with 30 prime Tanzania retail shelves across Dar es Salaam, Mwanza, Arusha, Dodoma, Zanzibar, and Mbeya.",
-      "timestamp": "2026-08-16T03:30:05.867Z"
+      "timestamp": "2026-08-16T05:54:14.571Z"
     }
   ],
   "reviews": [
@@ -1895,7 +2027,7 @@
       "targetId": "shelf_1",
       "rating": 5,
       "comment": "Top tier shelf! Our honey sales tripled in the first month because of the direct entrance line of sight.",
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z"
     },
     {
       "id": "rev_2",
@@ -1906,7 +2038,7 @@
       "targetId": "shelf_3",
       "rating": 5,
       "comment": "Masaki clientele love our organic tea boxes. Premium positioning and reliable staff.",
-      "createdAt": "2026-08-16T03:30:05.867Z"
+      "createdAt": "2026-08-16T05:54:14.571Z"
     }
   ],
   "disputes": [],
@@ -1915,6 +2047,70 @@
     "autoApproveBookings": true,
     "pesapalEnvironment": "sandbox",
     "currency": "TZS",
-    "maintenanceMode": false
+    "maintenanceMode": false,
+    "shelfCategories": [
+      "Food & Beverages",
+      "Organic Goods",
+      "Cosmetics",
+      "Health & Beauty",
+      "Spices",
+      "Snacks & Confectionery",
+      "Dairy & Fresh",
+      "Gifts & Crafts",
+      "Electronics & Tech",
+      "Beverages & Juices",
+      "Baked Goods",
+      "Supplements & Herbal"
+    ],
+    "shelfTypes": [
+      {
+        "id": "EYE_LEVEL",
+        "name": "Eye-Level Display",
+        "description": "Optimal line of sight (120–160cm) with maximum shopper gaze capture.",
+        "icon": "👁️"
+      },
+      {
+        "id": "COUNTER_DISPLAY",
+        "name": "Counter Checkout Box",
+        "description": "High-impulse point-of-sale positioning directly at cashier desk.",
+        "icon": "🛒"
+      },
+      {
+        "id": "ENTRANCE_DISPLAY",
+        "name": "Entrance Lobby Showcase",
+        "description": "Front-facing glass vitrine seen by 100% of store foot traffic.",
+        "icon": "✨"
+      },
+      {
+        "id": "REFRIGERATED",
+        "name": "Chilled / Cooler Showcase",
+        "description": "Temperature controlled 2°C–6°C glass case for drinks & dairy.",
+        "icon": "❄️"
+      },
+      {
+        "id": "TOP_SHELF",
+        "name": "Top Display Rack",
+        "description": "Elevated brand marquee shelf for premium visibility across aisles.",
+        "icon": "🔝"
+      },
+      {
+        "id": "BOTTOM_SHELF",
+        "name": "Bottom Bulk Shelf",
+        "description": "Deep, heavy-load floor shelf ideal for bulk and family packs.",
+        "icon": "📦"
+      },
+      {
+        "id": "END_CAP",
+        "name": "Aisle End-Cap Feature",
+        "description": "Prime corner position commanding cross-traffic attention.",
+        "icon": "🎯"
+      },
+      {
+        "id": "WINDOW_DISPLAY",
+        "name": "Street Window Showcase",
+        "description": "Exterior street-facing glass showcase attracting passersby.",
+        "icon": "🪟"
+      }
+    ]
   }
 }
