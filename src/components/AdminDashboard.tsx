@@ -19,8 +19,13 @@ import {
   Layers,
   Activity,
   Sparkles,
+  Tag,
+  Plus,
+  Trash2,
+  Check,
+  Package,
 } from 'lucide-react';
-import { User, AuditLog, PlatformSettings, Shop, Shelf, Booking } from '../types/index.js';
+import { User, AuditLog, PlatformSettings, Shop, Shelf, Booking, ShelfTypeOption } from '../types/index.js';
 
 interface AdminDashboardProps {
   stats: any;
@@ -45,8 +50,116 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateUserStatus,
   onUpdateSettings,
 }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'SHOPS' | 'BOOKINGS' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'SHOPS' | 'CATEGORIES' | 'BOOKINGS' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
   const [commissionInput, setCommissionInput] = useState<number>(settings?.commissionPercentage || 10);
+
+  // Shelf Category Management State
+  const defaultCategories = [
+    'Food & Beverages',
+    'Organic Goods',
+    'Cosmetics',
+    'Health & Beauty',
+    'Spices',
+    'Snacks & Confectionery',
+    'Dairy & Fresh',
+    'Gifts & Crafts',
+    'Electronics & Tech',
+    'Beverages & Juices',
+    'Baked Goods',
+    'Supplements & Herbal',
+  ];
+  const [categoriesList, setCategoriesList] = useState<string[]>(
+    settings?.shelfCategories && settings.shelfCategories.length > 0 ? settings.shelfCategories : defaultCategories
+  );
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+
+  // Shelf Type Management State
+  const defaultShelfTypes: ShelfTypeOption[] = [
+    { id: 'EYE_LEVEL', name: 'Eye-Level Display', description: 'Optimal line of sight (120–160cm) with maximum shopper gaze capture.', icon: '👁️' },
+    { id: 'COUNTER_DISPLAY', name: 'Counter Checkout Box', description: 'High-impulse point-of-sale positioning directly at cashier desk.', icon: '🛒' },
+    { id: 'ENTRANCE_DISPLAY', name: 'Entrance Lobby Showcase', description: 'Front-facing glass vitrine seen by 100% of store foot traffic.', icon: '✨' },
+    { id: 'REFRIGERATED', name: 'Chilled / Cooler Showcase', description: 'Temperature controlled 2°C–6°C glass case for drinks & dairy.', icon: '❄️' },
+    { id: 'TOP_SHELF', name: 'Top Display Rack', description: 'Elevated brand marquee shelf for premium visibility across aisles.', icon: '🔝' },
+    { id: 'BOTTOM_SHELF', name: 'Bottom Bulk Shelf', description: 'Deep, heavy-load floor shelf ideal for bulk and family packs.', icon: '📦' },
+    { id: 'END_CAP', name: 'Aisle End-Cap Feature', description: 'Prime corner position commanding cross-traffic attention.', icon: '🎯' },
+    { id: 'WINDOW_DISPLAY', name: 'Street Window Showcase', description: 'Exterior street-facing glass showcase attracting passersby.', icon: '🪟' },
+  ];
+  const [shelfTypesList, setShelfTypesList] = useState<ShelfTypeOption[]>(
+    settings?.shelfTypes && settings.shelfTypes.length > 0 ? settings.shelfTypes : defaultShelfTypes
+  );
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeDesc, setNewTypeDesc] = useState('');
+  const [newTypeIcon, setNewTypeIcon] = useState('📦');
+
+  const [savedSuccessMsg, setSavedSuccessMsg] = useState('');
+
+  // Handle Add Category
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCategoryInput.trim();
+    if (!trimmed) return;
+    if (categoriesList.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      alert('This category already exists.');
+      return;
+    }
+    const updated = [...categoriesList, trimmed];
+    setCategoriesList(updated);
+    setNewCategoryInput('');
+    onUpdateSettings({ shelfCategories: updated });
+    showNotification('Category added and saved!');
+  };
+
+  // Handle Remove Category
+  const handleRemoveCategory = (catToRemove: string) => {
+    if (categoriesList.length <= 1) {
+      alert('You must have at least one allowed category.');
+      return;
+    }
+    const updated = categoriesList.filter((c) => c !== catToRemove);
+    setCategoriesList(updated);
+    onUpdateSettings({ shelfCategories: updated });
+    showNotification(`Category "${catToRemove}" removed.`);
+  };
+
+  // Handle Add Shelf Type
+  const handleAddShelfType = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTypeName.trim()) return;
+    const generatedId = newTypeName.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+    if (shelfTypesList.some((t) => t.id === generatedId)) {
+      alert('A shelf type with similar name already exists.');
+      return;
+    }
+    const newType: ShelfTypeOption = {
+      id: generatedId,
+      name: newTypeName.trim(),
+      description: newTypeDesc.trim() || 'Custom shelf placement inside store.',
+      icon: newTypeIcon || '📦',
+    };
+    const updated = [...shelfTypesList, newType];
+    setShelfTypesList(updated);
+    setNewTypeName('');
+    setNewTypeDesc('');
+    onUpdateSettings({ shelfTypes: updated });
+    showNotification('New Shelf Type added for Hosts!');
+  };
+
+  // Handle Remove Shelf Type
+  const handleRemoveShelfType = (typeIdToRemove: string) => {
+    if (shelfTypesList.length <= 1) {
+      alert('You must have at least one shelf type.');
+      return;
+    }
+    const updated = shelfTypesList.filter((t) => t.id !== typeIdToRemove);
+    setShelfTypesList(updated);
+    onUpdateSettings({ shelfTypes: updated });
+    showNotification('Shelf Type removed.');
+  };
+
+  const showNotification = (msg: string) => {
+    setSavedSuccessMsg(msg);
+    setTimeout(() => setSavedSuccessMsg(''), 3000);
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
@@ -62,6 +175,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <nav className="space-y-1">
             {[
               { id: 'OVERVIEW', label: 'Platform Overview', icon: Activity },
+              { id: 'CATEGORIES', label: 'Shelf Types & Categories', icon: Tag },
               { id: 'USERS', label: 'User Management', icon: Users },
               { id: 'SHOPS', label: 'Shops & Shelves', icon: Store },
               { id: 'BOOKINGS', label: 'Bookings & Financials', icon: DollarSign },
@@ -90,6 +204,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl mt-6 text-center text-xs text-slate-400">
           <div>Platform Currency: <span className="text-emerald-400 font-bold">TZS</span></div>
+          <div>Active Categories: <span className="text-emerald-400 font-bold">{categoriesList.length}</span></div>
           <div>Commission: <span className="text-amber-400 font-bold">{settings?.commissionPercentage || 10}%</span></div>
         </div>
       </aside>
@@ -97,16 +212,174 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Main Admin Content */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
         
-        {/* Header Title */}
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        {/* Header Title & Notification */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-800">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
               <Shield className="w-6 h-6 text-emerald-400" />
               Main Admin Platform Command
             </h1>
-            <p className="text-xs text-slate-400 mt-1">Full platform authority over users, shops, shelves, payments, and system rules.</p>
+            <p className="text-xs text-slate-400 mt-1">Full platform authority over users, shelf types, categories, shops, payments, and system rules.</p>
           </div>
+
+          {savedSuccessMsg && (
+            <div className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500 text-emerald-400 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4" /> {savedSuccessMsg}
+            </div>
+          )}
         </div>
+
+        {/* TAB: SHELF TYPES & CATEGORIES MANAGEMENT */}
+        {activeTab === 'CATEGORIES' && (
+          <div className="space-y-8 animate-in fade-in">
+            
+            {/* Section 1: Product Categories Allowed on Shelves */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-800">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Tag className="w-5 h-5 text-emerald-400" />
+                    Shelf Product Categories ({categoriesList.length})
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Hosts select from these categories when configuring what products are permitted on their rented shelves.
+                  </p>
+                </div>
+                <span className="text-xs text-emerald-400 font-mono font-semibold bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/30">
+                  Live for Hosts & Vendors
+                </span>
+              </div>
+
+              {/* Add New Category Form */}
+              <form onSubmit={handleAddCategory} className="flex gap-3 mb-6">
+                <input
+                  type="text"
+                  value={newCategoryInput}
+                  onChange={(e) => setNewCategoryInput(e.target.value)}
+                  placeholder="e.g. Baby Care & Toys, Coffee & Tea, Artisanal Fashion..."
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4" /> Add Category
+                </button>
+              </form>
+
+              {/* Category Chips Grid with Delete Action */}
+              <div className="flex flex-wrap gap-2.5">
+                {categoriesList.map((cat, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 bg-slate-950 border border-slate-700/80 hover:border-slate-600 px-3.5 py-2 rounded-xl text-xs text-slate-200 transition-all group"
+                  >
+                    <span className="font-semibold">{cat}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCategory(cat)}
+                      title={`Remove category "${cat}"`}
+                      className="p-1 rounded-md text-slate-500 hover:text-rose-400 hover:bg-rose-500/20 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Section 2: Shelf Display Types for Hosts */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-800">
+                <div>
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-amber-400" />
+                    Shelf Display Types ({shelfTypesList.length})
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Configure the architectural placement types hosts can select when listing their store shelves (e.g. Eye-Level, Counter Display, Refrigerated Cooler).
+                  </p>
+                </div>
+              </div>
+
+              {/* Add New Shelf Type Form */}
+              <form onSubmit={handleAddShelfType} className="bg-slate-950 p-4 rounded-xl border border-slate-800 mb-6 space-y-3">
+                <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">Add New Shelf Type</div>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-[11px] text-slate-400 block mb-1">Display Type Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={newTypeName}
+                      onChange={(e) => setNewTypeName(e.target.value)}
+                      placeholder="e.g. Cashier Counter Box, Premium Island Stand"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-slate-400 block mb-1">Icon / Emoji</label>
+                    <input
+                      type="text"
+                      value={newTypeIcon}
+                      onChange={(e) => setNewTypeIcon(e.target.value)}
+                      placeholder="🛒, 👁️, ✨, ❄️, 📦"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" /> Add Shelf Type
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] text-slate-400 block mb-1">Description / Shopper Visibility Benefit</label>
+                  <input
+                    type="text"
+                    value={newTypeDesc}
+                    onChange={(e) => setNewTypeDesc(e.target.value)}
+                    placeholder="e.g. Positioned directly at eye-height for maximum brand awareness and product pick-rate."
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+              </form>
+
+              {/* Shelf Types Grid Cards with Delete Action */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {shelfTypesList.map((st) => (
+                  <div key={st.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col justify-between group hover:border-slate-700 transition-all">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{st.icon || '📦'}</span>
+                          <span className="font-bold text-white text-xs">{st.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveShelfType(st.id)}
+                          title={`Remove shelf type "${st.name}"`}
+                          className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/20 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mb-3">{st.description}</p>
+                    </div>
+                    <div className="pt-2 border-t border-slate-900 flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                      <span>ID: {st.id}</span>
+                      <span className="text-emerald-400 font-semibold">Ready for Hosts</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'OVERVIEW' && (

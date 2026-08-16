@@ -297,12 +297,21 @@ export interface Dispute {
   updatedAt: string;
 }
 
+export interface ShelfTypeOption {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+}
+
 export interface PlatformSettings {
   commissionPercentage: number; // e.g., 10 for 10%
   autoApproveBookings: boolean;
   pesapalEnvironment: 'sandbox' | 'live';
   currency: string; // "TZS"
   maintenanceMode: boolean;
+  shelfCategories: string[];
+  shelfTypes: ShelfTypeOption[];
 }
 
 export interface AuthState {

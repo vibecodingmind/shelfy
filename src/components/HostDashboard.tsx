@@ -27,6 +27,8 @@ interface HostDashboardProps {
   shelves: Shelf[];
   bookings: Booking[];
   payouts: Payout[];
+  shelfCategories?: string[];
+  shelfTypes?: { id: string; name: string }[];
   onRefreshData: () => void;
 }
 
@@ -37,6 +39,8 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
   shelves,
   bookings,
   payouts,
+  shelfCategories,
+  shelfTypes,
   onRefreshData,
 }) => {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SHOPS' | 'SHELVES' | 'BOOKINGS' | 'EARNINGS'>('OVERVIEW');
@@ -55,6 +59,38 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
   const [shelfType, setShelfType] = useState('EYE_LEVEL');
   const [monthlyPrice, setMonthlyPrice] = useState(70000);
   const [widthCm, setWidthCm] = useState(120);
+  const [selectedAllowedCategories, setSelectedAllowedCategories] = useState<string[]>([
+    'Food & Beverages',
+    'Snacks',
+  ]);
+
+  const defaultCategories = shelfCategories || [
+    'Food & Beverages',
+    'Health & Beauty',
+    'Snacks',
+    'Organic Goods',
+    'Cosmetics',
+    'Packaged Spices',
+    'Confectionery',
+    'Household Goods',
+  ];
+
+  const defaultShelfTypesList = shelfTypes || [
+    { id: 'EYE_LEVEL', name: 'Eye-Level Display Shelf' },
+    { id: 'COUNTER_DISPLAY', name: 'Counter Checkout Impulse Box' },
+    { id: 'ENTRANCE_DISPLAY', name: 'Lobby Entrance Glass Stand' },
+    { id: 'REFRIGERATED', name: 'Chilled Cooler / Refrigerator' },
+    { id: 'TOP_SHELF', name: 'Top Display Rack' },
+    { id: 'BOTTOM_SHELF', name: 'Bottom Bulk Shelf' },
+  ];
+
+  const toggleCategory = (cat: string) => {
+    if (selectedAllowedCategories.includes(cat)) {
+      setSelectedAllowedCategories(selectedAllowedCategories.filter((c) => c !== cat));
+    } else {
+      setSelectedAllowedCategories([...selectedAllowedCategories, cat]);
+    }
+  };
 
   const myShops = shops.filter((s) => s.hostId === user.id);
   const myShelves = shelves.filter((sh) => myShops.some((s) => s.id === sh.shopId));
@@ -366,11 +402,29 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                   onChange={(e) => setShelfType(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white"
                 >
-                  <option value="EYE_LEVEL">Eye-Level Display</option>
-                  <option value="COUNTER_DISPLAY">Counter Checkout Box</option>
-                  <option value="ENTRANCE_DISPLAY">Entrance Lobby Stand</option>
-                  <option value="REFRIGERATED">Chilled / Refrigerated</option>
+                  {defaultShelfTypesList.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="text-slate-400 block mb-1 font-semibold">Permitted Product Categories</label>
+                <div className="grid grid-cols-2 gap-1.5 p-2 bg-slate-950 rounded-lg border border-slate-800 max-h-32 overflow-y-auto">
+                  {defaultCategories.map((cat) => (
+                    <label key={cat} className="flex items-center gap-1.5 text-[11px] text-slate-300 cursor-pointer hover:text-white">
+                      <input
+                        type="checkbox"
+                        checked={selectedAllowedCategories.includes(cat)}
+                        onChange={() => toggleCategory(cat)}
+                        className="rounded accent-emerald-500"
+                      />
+                      <span className="truncate">{cat}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div>

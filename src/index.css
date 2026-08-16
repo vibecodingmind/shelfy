@@ -1,1 +1,83 @@
 @import "tailwindcss";
+
+/* Airbnb Map Marker Custom Styling */
+.airbnb-price-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0f172a;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1.5px solid #334155;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.airbnb-price-pin:hover,
+.airbnb-price-pin.active {
+  background-color: #10b981;
+  color: #022c22;
+  border-color: #34d399;
+  transform: scale(1.15);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.45);
+  z-index: 1000 !important;
+}
+
+.airbnb-price-pin.hovered {
+  background-color: #38bdf8;
+  color: #082f49;
+  border-color: #7dd3fc;
+  transform: scale(1.15);
+  box-shadow: 0 8px 20px rgba(56, 189, 248, 0.45);
+  z-index: 1000 !important;
+}
+
+/* Custom Leaflet Dark Popup */
+.leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.6) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: normal !important;
+}
+
+.leaflet-popup-tip {
+  background: #0f172a !important;
+  border: 1px solid #334155 !important;
+}
+
+.leaflet-container {
+  font-family: inherit !important;
+}
+
+/* Custom Leaflet Zoom Control */
+.leaflet-control-zoom {
+  border: 1px solid #334155 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-bottom: 1px solid #334155 !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: #1e293b !important;
+  color: #34d399 !important;
+}
+

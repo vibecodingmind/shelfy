@@ -99,7 +99,8 @@ export const api = {
   getMessages: () => apiFetch<Message[]>('/api/messages'),
   sendMessage: (msgData: any) => apiFetch<Message>('/api/messages', { method: 'POST', body: JSON.stringify(msgData) }),
 
-  // Admin
+  // Admin & Platform Settings
+  getSettings: () => apiFetch<PlatformSettings>('/api/settings'),
   getAdminDashboard: () => apiFetch<any>('/api/admin/dashboard'),
   getAdminUsers: () => apiFetch<User[]>('/api/admin/users'),
   updateUserStatus: (userId: string, status: string) => apiFetch<User>(`/api/admin/users/${userId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),

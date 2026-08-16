@@ -14,6 +14,7 @@ import { PesapalPaymentModal } from './components/PesapalPaymentModal.js';
 import { api, getStoredToken, setStoredToken, clearStoredToken } from './lib/api.js';
 import {
   User,
+  UserRole,
   VendorProfile,
   HostProfile,
   Shop,
@@ -55,20 +56,25 @@ export function App() {
     pesapalEnvironment: 'DEMO',
   });
 
-  // UI Modals
+  // UI Modals & Auth Props
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
-  const [showAIShelfMatch, setShowAIShelfMatch] = useState<boolean>(false);
+  const [authModalMode, setAuthModalMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
+  const [authModalRole, setAuthModalRole] = useState<UserRole>('VENDOR');
+  const [globalSearchQuery, setGlobalSearchQuery] = useState<string>('');
   const [activePesapalBooking, setActivePesapalBooking] = useState<Booking | null>(null);
   const [activePesapalShelf, setActivePesapalShelf] = useState<Shelf | null>(null);
   const [showPesapalModal, setShowPesapalModal] = useState<boolean>(false);
 
-  // Load Initial Market Data
+  // Load Initial Market Data & Platform Settings
   const loadPublicData = async () => {
     const shopsRes = await api.getShops();
     if (shopsRes.success && shopsRes.data) setShops(shopsRes.data);
 
     const shelvesRes = await api.getShelves();
     if (shelvesRes.success && shelvesRes.data) setShelves(shelvesRes.data);
+
+    const settingsRes = await api.getSettings();
+    if (settingsRes.success && settingsRes.data) setPlatformSettings(settingsRes.data);
   };
 
   // Load User Specific Data
@@ -123,9 +129,6 @@ export function App() {
     const token = getStoredToken();
     if (token) {
       loadUserData();
-    } else {
-      // Default demo auto-login as Vendor for instant experience
-      handleDemoLogin('vendor@shelfy.co.tz');
     }
   }, []);
 
@@ -152,6 +155,12 @@ export function App() {
     setActiveRoleView('MARKETPLACE');
   };
 
+  const handleOpenAuthModal = (initialMode: 'LOGIN' | 'REGISTER' = 'LOGIN', initialRole: UserRole = 'VENDOR') => {
+    setAuthModalMode(initialMode);
+    setAuthModalRole(initialRole);
+    setShowAuthModal(true);
+  };
+
   // Create Booking & Open Secure PesaPal Payment Modal
   const handleBookShelfAction = async (
     shelf: Shelf,
@@ -161,7 +170,7 @@ export function App() {
     category?: string
   ) => {
     if (!user) {
-      setShowAuthModal(true);
+      handleOpenAuthModal('LOGIN');
       return;
     }
 
@@ -187,40 +196,21 @@ export function App() {
   return (
     <div className="min-h-screen bg-slate-950 font-sans text-white flex flex-col">
       
-      {/* Global Header */}
+      {/* Global Airbnb-Style Header */}
       <Header
         user={user}
         activeRole={activeRoleView}
-        onLoginClick={() => setShowAuthModal(true)}
+        searchQuery={globalSearchQuery}
+        onSearchChange={(q) => {
+          setGlobalSearchQuery(q);
+          if (activeRoleView !== 'MARKETPLACE') setActiveRoleView('MARKETPLACE');
+        }}
+        onLoginClick={(mode, role) => handleOpenAuthModal(mode || 'LOGIN', role || 'VENDOR')}
         onDemoLogin={handleDemoLogin}
         onLogout={handleLogout}
+        onSwitchView={(view) => setActiveRoleView(view)}
         notificationsCount={notifications.filter((n) => !n.isRead).length}
       />
-
-      {/* Role Navigation Bar when authenticated */}
-      {user && (
-        <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2 text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2 max-w-7xl mx-auto w-full">
-            <span className="text-slate-400 font-semibold">Switch View:</span>
-            <button
-              onClick={() => setActiveRoleView('MARKETPLACE')}
-              className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                activeRoleView === 'MARKETPLACE' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-white'
-              }`}
-            >
-              Public Marketplace
-            </button>
-            <button
-              onClick={() => setActiveRoleView(user.role)}
-              className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                activeRoleView === user.role ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:text-white'
-              }`}
-            >
-              My {user.role.replace('_', ' ')} Portal
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Main View Router */}
       <div className="flex-1 flex flex-col">
@@ -229,12 +219,10 @@ export function App() {
             shelves={shelves}
             shops={shops}
             user={user}
+            shelfCategories={platformSettings?.shelfCategories}
+            shelfTypes={platformSettings?.shelfTypes}
             onBookShelf={handleBookShelfAction}
-            onOpenAIShelfMatch={() => {
-              if (user?.role === 'VENDOR') setActiveRoleView('VENDOR');
-              else setShowAuthModal(true);
-            }}
-            onLoginClick={() => setShowAuthModal(true)}
+            onLoginClick={() => handleOpenAuthModal('LOGIN')}
           />
         )}
 
@@ -280,6 +268,8 @@ export function App() {
             shelves={shelves}
             bookings={bookings}
             payouts={[]}
+            shelfCategories={platformSettings?.shelfCategories}
+            shelfTypes={platformSettings?.shelfTypes}
             onRefreshData={() => {
               loadPublicData();
               loadUserData();
@@ -319,18 +309,22 @@ export function App() {
       )}
 
       {/* Authentication Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={(data) => {
-          setStoredToken(data.token);
-          setUser(data.user);
-          if (data.vendorProfile) setVendorProfile(data.vendorProfile);
-          if (data.hostProfile) setHostProfile(data.hostProfile);
-          setActiveRoleView(data.user.role);
-          loadUserData();
-        }}
-      />
+      {showAuthModal && (
+        <AuthModal
+          isOpen={showAuthModal}
+          initialMode={authModalMode}
+          initialRole={authModalRole}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={(data) => {
+            setStoredToken(data.token);
+            setUser(data.user);
+            if (data.vendorProfile) setVendorProfile(data.vendorProfile);
+            if (data.hostProfile) setHostProfile(data.hostProfile);
+            setActiveRoleView(data.user.role);
+            loadUserData();
+          }}
+        />
+      )}
 
     </div>
   );

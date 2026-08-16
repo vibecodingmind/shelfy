@@ -971,18 +971,65 @@ app.get('/api/admin/audit-logs', requireAuth, requireRole('ADMIN'), (req: Authen
   res.json({ success: true, data: dbEngine.db.auditLogs });
 });
 
+// GET /api/settings (Publicly accessible for active shelf categories and types)
+app.get('/api/settings', (req: Request, res: Response) => {
+  if (!dbEngine.db.settings.shelfCategories || !Array.isArray(dbEngine.db.settings.shelfCategories)) {
+    dbEngine.db.settings.shelfCategories = [
+      'Food & Beverages',
+      'Organic Goods',
+      'Cosmetics',
+      'Health & Beauty',
+      'Spices',
+      'Snacks & Confectionery',
+      'Dairy & Fresh',
+      'Gifts & Crafts',
+      'Electronics & Tech',
+      'Beverages & Juices',
+      'Baked Goods',
+      'Supplements & Herbal',
+    ];
+  }
+  if (!dbEngine.db.settings.shelfTypes || !Array.isArray(dbEngine.db.settings.shelfTypes)) {
+    dbEngine.db.settings.shelfTypes = [
+      { id: 'EYE_LEVEL', name: 'Eye-Level Display', description: 'Optimal line of sight (120–160cm) with maximum shopper gaze capture.', icon: '👁️' },
+      { id: 'COUNTER_DISPLAY', name: 'Counter Checkout Box', description: 'High-impulse point-of-sale positioning directly at cashier desk.', icon: '🛒' },
+      { id: 'ENTRANCE_DISPLAY', name: 'Entrance Lobby Showcase', description: 'Front-facing glass vitrine seen by 100% of store foot traffic.', icon: '✨' },
+      { id: 'REFRIGERATED', name: 'Chilled / Cooler Showcase', description: 'Temperature controlled 2°C–6°C glass case for drinks & dairy.', icon: '❄️' },
+      { id: 'TOP_SHELF', name: 'Top Display Rack', description: 'Elevated brand marquee shelf for premium visibility across aisles.', icon: '🔝' },
+      { id: 'BOTTOM_SHELF', name: 'Bottom Bulk Shelf', description: 'Deep, heavy-load floor shelf ideal for bulk and family packs.', icon: '📦' },
+      { id: 'END_CAP', name: 'Aisle End-Cap Feature', description: 'Prime corner position commanding cross-traffic attention.', icon: '🎯' },
+      { id: 'WINDOW_DISPLAY', name: 'Street Window Showcase', description: 'Exterior street-facing glass showcase attracting passersby.', icon: '🪟' },
+    ];
+  }
+  res.json({ success: true, data: dbEngine.db.settings });
+});
+
 // PUT /api/admin/settings
 app.put('/api/admin/settings', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-  const { commissionPercentage, autoApproveBookings } = req.body;
+  const { commissionPercentage, autoApproveBookings, shelfCategories, shelfTypes } = req.body;
   if (typeof commissionPercentage === 'number') {
     dbEngine.db.settings.commissionPercentage = commissionPercentage;
   }
   if (typeof autoApproveBookings === 'boolean') {
     dbEngine.db.settings.autoApproveBookings = autoApproveBookings;
   }
+  if (Array.isArray(shelfCategories)) {
+    dbEngine.db.settings.shelfCategories = shelfCategories.filter((c: any) => typeof c === 'string' && c.trim().length > 0);
+  }
+  if (Array.isArray(shelfTypes)) {
+    dbEngine.db.settings.shelfTypes = shelfTypes;
+  }
   dbEngine.save();
 
-  logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'SETTINGS_UPDATED', 'PlatformSettings', 'global', `Updated commission to ${commissionPercentage}%`);
+  logAuditEvent(
+    req.user!.id,
+    req.user!.name,
+    req.user!.role,
+    'SETTINGS_UPDATED',
+    'PlatformSettings',
+    'global',
+    `Updated platform settings (commission: ${commissionPercentage}%, categories: ${dbEngine.db.settings.shelfCategories?.length || 0})`
+  );
   res.json({ success: true, data: dbEngine.db.settings });
 });
 
