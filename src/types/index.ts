@@ -361,7 +361,7 @@ export interface BookingStatusHistory {
 export interface AuthToken {
   id: string;
   userId: string;
-  type: 'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'PHONE_OTP';
+  type: 'EMAIL_VERIFY' | 'PASSWORD_RESET' | 'PHONE_OTP' | 'REFRESH';
   tokenHash: string;
   expiresAt: string;
   usedAt?: string;

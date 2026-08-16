@@ -27,6 +27,8 @@ function resolveJwtSecret(): string {
 }
 
 const JWT_SECRET = resolveJwtSecret();
+export const ACCESS_TOKEN_TTL = '1h';
+export const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
@@ -39,7 +41,7 @@ export function generateToken(user: User): string {
     role: user.role,
     name: user.name,
   };
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
 }
 
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {

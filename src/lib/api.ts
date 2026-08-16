@@ -22,20 +22,60 @@ import {
 } from '../types/index.js';
 
 const TOKEN_KEY = 'shelfy_auth_token';
+const REFRESH_KEY = 'shelfy_refresh_token';
 
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-export function setStoredToken(token: string) {
+export function getStoredRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_KEY);
+}
+
+export function setStoredToken(token: string, refreshToken?: string) {
   localStorage.setItem(TOKEN_KEY, token);
+  if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
 }
 
 export function clearStoredToken() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<{ success: boolean; data?: T; error?: { message: string } }> {
+const AUTH_NO_REFRESH_RETRY = new Set([
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/refresh',
+  '/api/auth/logout',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/auth/verify-email',
+]);
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.success || !json.data?.token) {
+      clearStoredToken();
+      return false;
+    }
+    setStoredToken(json.data.token, json.data.refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retried = false): Promise<{ success: boolean; data?: T; error?: { message: string } }> {
   const token = getStoredToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -48,7 +88,17 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
   try {
     const res = await fetch(endpoint, { ...options, headers });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({ success: false, error: { message: 'Invalid response from server.' } }));
+    if (
+      res.status === 401 &&
+      !retried &&
+      !AUTH_NO_REFRESH_RETRY.has(endpoint) &&
+      getStoredRefreshToken()
+    ) {
+      if (!refreshInFlight) refreshInFlight = refreshAccessToken().finally(() => { refreshInFlight = null; });
+      const ok = await refreshInFlight;
+      if (ok) return apiFetch<T>(endpoint, options, true);
+    }
     return json;
   } catch (err: any) {
     return { success: false, error: { message: err.message || 'Network request failed.' } };
@@ -57,9 +107,10 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
 export const api = {
   // Auth
-  login: (credentials: any) => apiFetch<{ token: string; user: User; vendorProfile?: VendorProfile; hostProfile?: HostProfile }>('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
-  register: (data: any) => apiFetch<{ token: string; user: User }>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (credentials: any) => apiFetch<{ token: string; refreshToken?: string; expiresIn?: number; user: User; vendorProfile?: VendorProfile; hostProfile?: HostProfile }>('/api/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  register: (data: any) => apiFetch<{ token: string; refreshToken?: string; expiresIn?: number; user: User }>('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   getMe: () => apiFetch<{ user: User; vendorProfile?: VendorProfile; hostProfile?: HostProfile }>('/api/auth/me'),
+  logout: () => apiFetch<{ loggedOut: boolean }>('/api/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: getStoredRefreshToken() }) }),
 
   // Shops & Shelves
   getShops: (params?: Record<string, string>) => {

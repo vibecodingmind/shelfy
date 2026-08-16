@@ -8,7 +8,7 @@ Host creates shop/shelf → verification → public listing → vendor books →
 
 Do not add random UI. Do not skip tests. After each phase: implement → test → inspect → fix → update `docs/CHECKLIST.md` → continue.
 
-Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.md)
+Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.md) · [RUNBOOK.md](./RUNBOOK.md)
 
 ---
 
@@ -255,7 +255,7 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 
 **Objective:** Secrets, backups, logs, monitoring, `JWT_SECRET`, PesaPal keys, `APP_URL`, migrate-on-release.
 
-**Do not claim launch-ready until Phase 14 passes.**
+**Status:** Partial in this branch — storage driver, notification dispatcher, health flags, JSON request logs, refresh tokens, [RUNBOOK.md](./RUNBOOK.md). Live PesaPal keys and a stable `JWT_SECRET` remain Railway ops. Do not claim launch-ready.
 
 ---
 
@@ -275,9 +275,9 @@ Re-run the quality gate in the original instruction: business E2E, security, mon
 
 Verification, shop/shelf management, uploads, cancel/complete, withdrawals/payouts, notifications, field ops, admin ops.
 
-Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders, listing wizard, payment reconcile job, reviews/disputes, SEO slugs, occupancy analytics, PWA shell, shop/shelf archive.
+Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders, listing wizard, payment reconcile job, reviews/disputes, SEO slugs, occupancy analytics, PWA shell, shop/shelf archive, S3-capable uploads, notification dispatcher, health/ops flags, request logs, refresh tokens, backup runbook.
 
-Still open: S3, email/SMS, live PesaPal keys.
+Still open: live PesaPal keys + stable `JWT_SECRET` (Railway ops). Not launch-ready.
 
 ### P2 (this branch)
 

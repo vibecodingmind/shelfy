@@ -38,5 +38,6 @@ export const PENDING_ALLOWED_PATHS = [
   '/api/auth/resend-verification',
   '/api/auth/request-phone-otp',
   '/api/auth/verify-phone',
+  '/api/auth/logout',
   '/api/notifications',
 ];

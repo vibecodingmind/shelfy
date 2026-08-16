@@ -3,16 +3,16 @@
  */
 
 import 'dotenv/config';
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { dbEngine } from './src/server/db.js';
-import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRequest, optionalAuth } from './src/server/auth.js';
+import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRequest, optionalAuth, ACCESS_TOKEN_TTL_SECONDS } from './src/server/auth.js';
 import { analyzeShelfPhoto, recommendShelves, generateVendorInsights } from './src/server/ai.js';
-import { BookingStatus, UserRole } from './src/types/index.js';
+import { BookingStatus, User, UserRole } from './src/types/index.js';
 import { validatePassword, demoLoginAllowed, isDemoEmail } from './src/server/domain/passwords.js';
 import { publicUser, publicUsers } from './src/server/domain/publicUser.js';
 import { addMonthsIsoDate, BLOCKING_BOOKING_STATUSES, calculateBookingQuote, datesOverlap } from './src/server/domain/pricing.js';
@@ -26,7 +26,11 @@ import { uniqueSlug, findByIdOrSlug } from './src/server/domain/slugs.js';
 import { occupancySummary, occupancyWindow } from './src/server/domain/occupancy.js';
 import { registerP1Routes, runBookingMaintenance } from './src/server/p1Routes.js';
 import { paymentsDueForReconcile } from './src/server/domain/reconcile.js';
-import { createAuthToken, consumeAuthToken, verifySandboxSignature } from './src/server/services/tokens.js';
+import { createAuthToken, consumeAuthToken, verifySandboxSignature, rotateRefreshToken, revokeAuthTokens, REFRESH_TOKEN_TTL_MS } from './src/server/services/tokens.js';
+import { notify, dispatchExternalChannels } from './src/server/services/notify.js';
+import { uploadsDir } from './src/server/services/storage.js';
+import { opsHealthSnapshot } from './src/server/domain/opsHealth.js';
+import { requestLogMiddleware } from './src/server/middleware/requestLog.js';
 import {
   amountsMatch,
   getTransactionStatus,
@@ -42,6 +46,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+app.use(requestLogMiddleware);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -79,15 +84,10 @@ function recordBookingHistory(
   });
 }
 
-function notify(userId: string, title: string, message: string, type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ALERT' = 'INFO') {
-  dbEngine.db.notifications.push({
-    id: newId('notif'),
-    userId,
-    title,
-    message,
-    type,
-    createdAt: new Date().toISOString(),
-  });
+function issueSession(user: User) {
+  const token = generateToken(user);
+  const refresh = createAuthToken(dbEngine.db, user.id, 'REFRESH', REFRESH_TOKEN_TTL_MS);
+  return { token, refreshToken: refresh.raw, expiresIn: ACCESS_TOKEN_TTL_SECONDS };
 }
 
 function appUrl(): string {
@@ -102,6 +102,7 @@ app.get('/api/health', (req: Request, res: Response) => {
     tagline: 'The retail expansion platform for Tanzania',
     timestamp: new Date().toISOString(),
     db: dbEngine.stats(),
+    ...opsHealthSnapshot(),
   });
 });
 
@@ -184,12 +185,18 @@ app.post('/api/auth/register', authLimiter, (req: Request, res: Response) => {
     const verify = createAuthToken(dbEngine.db, userId, 'EMAIL_VERIFY', 24 * 60 * 60 * 1000);
     void dbEngine.saveAsync();
     logAuditEvent(userId, name, role as UserRole, 'USER_REGISTERED', 'User', userId, `Registered as ${role}`);
+    void dispatchExternalChannels({
+      email: newUser.email,
+      title: 'Verify your Shelfy email',
+      message: `Confirm ${newUser.email} to activate your Shelfy account. Verification code: ${verify.raw}`,
+      channels: ['EMAIL'],
+    });
 
-    const token = generateToken(newUser);
+    const session = issueSession(newUser);
     return res.json({
       success: true,
       data: {
-        token,
+        ...session,
         user: publicUser(newUser),
         emailVerificationRequired: true,
         verifyEmailToken: process.env.NODE_ENV === 'production' ? undefined : verify.raw,
@@ -242,14 +249,14 @@ app.post('/api/auth/login', authLimiter, (req: Request, res: Response) => {
     user.lastLoginAt = new Date().toISOString();
     void dbEngine.saveAsync();
 
-    const token = generateToken(user);
+    const session = issueSession(user);
     const vendorProfile = dbEngine.db.vendorProfiles.find((v) => v.userId === user.id);
     const hostProfile = dbEngine.db.hostProfiles.find((h) => h.userId === user.id);
 
     return res.json({
       success: true,
       data: {
-        token,
+        ...session,
         user: publicUser(user),
         vendorProfile,
         hostProfile,
@@ -279,6 +286,12 @@ app.post('/api/auth/resend-verification', requireAuth, authLimiter, (req: Authen
   const user = req.user!;
   const verify = createAuthToken(dbEngine.db, user.id, 'EMAIL_VERIFY', 24 * 60 * 60 * 1000);
   void dbEngine.saveAsync();
+  void dispatchExternalChannels({
+    email: user.email,
+    title: 'Verify your Shelfy email',
+    message: `Confirm ${user.email} to activate your Shelfy account. Verification code: ${verify.raw}`,
+    channels: ['EMAIL'],
+  });
   res.json({
     success: true,
     data: { sent: true, verifyEmailToken: process.env.NODE_ENV === 'production' ? undefined : verify.raw },
@@ -292,6 +305,12 @@ app.post('/api/auth/forgot-password', authLimiter, (req: Request, res: Response)
   if (user) {
     resetToken = createAuthToken(dbEngine.db, user.id, 'PASSWORD_RESET', 60 * 60 * 1000).raw;
     void dbEngine.saveAsync();
+    void dispatchExternalChannels({
+      email: user.email,
+      title: 'Reset your Shelfy password',
+      message: `Use this code within one hour to reset your password: ${resetToken}`,
+      channels: ['EMAIL'],
+    });
   }
   res.json({
     success: true,
@@ -325,6 +344,12 @@ app.post('/api/auth/reset-password', authLimiter, (req: Request, res: Response) 
 app.post('/api/auth/request-phone-otp', requireAuth, authLimiter, (req: AuthenticatedRequest, res: Response) => {
   const otp = createAuthToken(dbEngine.db, req.user!.id, 'PHONE_OTP', 10 * 60 * 1000);
   void dbEngine.saveAsync();
+  void dispatchExternalChannels({
+    phone: req.user!.phone,
+    title: 'Shelfy phone verification',
+    message: `Your Shelfy code is ${otp.raw}. It expires in 10 minutes.`,
+    channels: ['SMS'],
+  });
   res.json({
     success: true,
     data: { sent: true, otp: process.env.NODE_ENV === 'production' ? undefined : otp.raw },
@@ -339,6 +364,40 @@ app.post('/api/auth/verify-phone', requireAuth, authLimiter, (req: Authenticated
   req.user!.phoneVerifiedAt = new Date().toISOString();
   void dbEngine.saveAsync();
   res.json({ success: true, data: { user: publicUser(req.user!) } });
+});
+
+app.post('/api/auth/refresh', authLimiter, (req: Request, res: Response) => {
+  const rotated = rotateRefreshToken(dbEngine.db, String(req.body.refreshToken || ''));
+  if (!rotated) {
+    return res.status(401).json({ success: false, error: { code: 'INVALID_TOKEN', message: 'Refresh token is invalid or expired.' } });
+  }
+  const user = dbEngine.db.users.find((u) => u.id === rotated.userId);
+  if (!user || user.status === 'SUSPENDED') {
+    return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'User account not found or suspended.' } });
+  }
+  const token = generateToken(user);
+  void dbEngine.saveAsync();
+  return res.json({
+    success: true,
+    data: {
+      token,
+      refreshToken: rotated.raw,
+      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      user: publicUser(user),
+    },
+  });
+});
+
+app.post('/api/auth/logout', optionalAuth, (req: AuthenticatedRequest, res: Response) => {
+  const raw = String(req.body?.refreshToken || '');
+  let userId = req.user?.id;
+  if (raw) {
+    const consumed = consumeAuthToken(dbEngine.db, 'REFRESH', raw);
+    if (consumed) userId = consumed.userId;
+  }
+  if (userId) revokeAuthTokens(dbEngine.db, userId, 'REFRESH');
+  void dbEngine.saveAsync();
+  res.json({ success: true, data: { loggedOut: true } });
 });
 
 // GET /api/auth/me
@@ -1582,7 +1641,7 @@ app.post('/api/ai/vendor-insights', requireAuth, requireRole('VENDOR', 'ADMIN'),
 async function startServer() {
   await dbEngine.ready;
   registerP1Routes(app);
-  const uploadDir = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'data'), 'uploads');
+  const uploadDir = uploadsDir();
   fs.mkdirSync(uploadDir, { recursive: true });
   app.use('/uploads', express.static(uploadDir));
   setInterval(() => {

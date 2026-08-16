@@ -8,6 +8,8 @@ export function hashSecret(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
+export const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function createAuthToken(
   db: DatabaseSchema,
   userId: string,
@@ -16,15 +18,20 @@ export function createAuthToken(
 ): { raw: string; record: AuthToken } {
   const raw = type === 'PHONE_OTP' ? String(Math.floor(100000 + Math.random() * 900000)) : newToken();
   const now = new Date();
+  const nowIso = now.toISOString();
+  for (const token of db.authTokens) {
+    if (token.userId === userId && token.type === type && !token.usedAt) {
+      token.usedAt = nowIso;
+    }
+  }
   const record: AuthToken = {
     id: newId('tok'),
     userId,
     type,
     tokenHash: hashSecret(raw),
     expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
-    createdAt: now.toISOString(),
+    createdAt: nowIso,
   };
-  db.authTokens = db.authTokens.filter((t) => !(t.userId === userId && t.type === type && !t.usedAt));
   db.authTokens.push(record);
   return { raw, record };
 }
@@ -38,6 +45,25 @@ export function consumeAuthToken(db: DatabaseSchema, type: AuthToken['type'], ra
   if (!found) return null;
   found.usedAt = new Date().toISOString();
   return found;
+}
+
+export function revokeAuthTokens(db: DatabaseSchema, userId: string, type: AuthToken['type']): number {
+  const now = new Date().toISOString();
+  let count = 0;
+  for (const token of db.authTokens) {
+    if (token.userId === userId && token.type === type && !token.usedAt) {
+      token.usedAt = now;
+      count += 1;
+    }
+  }
+  return count;
+}
+
+export function rotateRefreshToken(db: DatabaseSchema, raw: string): { userId: string; raw: string } | null {
+  const consumed = consumeAuthToken(db, 'REFRESH', raw);
+  if (!consumed) return null;
+  const next = createAuthToken(db, consumed.userId, 'REFRESH', REFRESH_TOKEN_TTL_MS);
+  return { userId: consumed.userId, raw: next.raw };
 }
 
 export function sandboxSignature(paymentId: string): string {

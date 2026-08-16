@@ -148,7 +148,7 @@ export function App() {
   const handleDemoLogin = async (email: string) => {
     const res = await api.login({ email, password: 'Password123!' });
     if (res.success && res.data) {
-      setStoredToken(res.data.token);
+      setStoredToken(res.data.token, res.data.refreshToken);
       setUser(res.data.user);
       if (res.data.vendorProfile) setVendorProfile(res.data.vendorProfile);
       if (res.data.hostProfile) setHostProfile(res.data.hostProfile);
@@ -160,6 +160,7 @@ export function App() {
 
   // Logout Handler
   const handleLogout = () => {
+    void api.logout();
     clearStoredToken();
     setUser(null);
     setVendorProfile(null);
@@ -363,7 +364,7 @@ export function App() {
           initialRole={authModalRole}
           onClose={() => setShowAuthModal(false)}
           onSuccess={(data) => {
-            setStoredToken(data.token);
+            setStoredToken(data.token, data.refreshToken);
             setUser(data.user);
             if (data.vendorProfile) setVendorProfile(data.vendorProfile);
             if (data.hostProfile) setHostProfile(data.hostProfile);

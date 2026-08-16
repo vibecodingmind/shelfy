@@ -2,7 +2,7 @@
 
 Update this file as work lands. Do not mark a line done unless tests (or an explicit exception) exist.
 
-Last updated: 2026-08-16 — P2 slugs, occupancy, PWA, soft-delete on `cursor/p0-marketplace-foundation-b9de`
+Last updated: 2026-08-16 — P13 hygiene: storage, notify dispatcher, health flags, request logs, refresh tokens, runbook on `cursor/p0-marketplace-foundation-b9de`
 
 ---
 
@@ -21,7 +21,7 @@ Last updated: 2026-08-16 — P2 slugs, occupancy, PWA, soft-delete on `cursor/p0
 - [x] Field agents admin-invited
 - [x] `passwordHash` stripped from API responses
 - [x] Demo login gated by `ALLOW_DEMO_LOGIN` in production
-- [ ] Refresh tokens / shorter JWT (P1 hardening)
+- [x] Refresh tokens / shorter JWT (P1 hardening)
 
 ## DATABASE
 
@@ -33,7 +33,7 @@ Last updated: 2026-08-16 — P2 slugs, occupancy, PWA, soft-delete on `cursor/p0
 - [x] Import from JSON / `shelfy_store` on first boot
 - [x] Production path stops writing JSONB after import
 - [x] Soft-delete pass on shops/shelves (archive; blocked by active bookings)
-- [ ] Backup/restore runbook (Phase 13)
+- [x] Backup/restore runbook (Phase 13)
 
 ## MARKETPLACE
 
@@ -86,7 +86,7 @@ Last updated: 2026-08-16 — P2 slugs, occupancy, PWA, soft-delete on `cursor/p0
 - [x] GPS vs shop coordinates (250m check-in)
 - [x] Field reports require assigned visit + check-in
 - [x] In-app notifications (existing + payment/booking/cancel/payout/verification events)
-- [ ] Central notification engine / email/SMS (P2)
+- [x] Central notification engine / email/SMS (P2)
 
 ## SECURITY
 
@@ -94,7 +94,7 @@ Last updated: 2026-08-16 — P2 slugs, occupancy, PWA, soft-delete on `cursor/p0
 - [x] Message authorization (booking relationship)
 - [x] IDOR tests (bookings, messages, payments)
 - [x] Rate limiting (auth + payments)
-- [x] Upload security (JPEG/PNG/WebP, ≤2.5MB; local disk, not S3)
+- [x] Upload security (JPEG/PNG/WebP, ≤2.5MB; local disk + optional S3)
 - [x] Fake payment callback rejected (covered by IPN verify tests)
 - [ ] Security test suite expansion (Phase 22)
 
@@ -108,11 +108,11 @@ Last updated: 2026-08-16 — P2 slugs, occupancy, PWA, soft-delete on `cursor/p0
 ## P1 remaining / P2+
 
 - [x] Host listing wizard (multi-step)
-- [ ] Object storage (S3) for uploads
-- [ ] Email/SMS provider for expiration and OTP
+- [x] Object storage (S3) for uploads
+- [x] Email/SMS provider for expiration and OTP (dispatcher; sends when keys exist, otherwise skip)
 - [x] Reviews & disputes (API + admin resolve; no automatic money invention)
 - [x] Analytics from real aggregates (paid occupancy 30d + GMV from paid payments)
 - [x] Legal page placeholders (`LEGAL_REVIEW_REQUIRED`)
 - [x] PWA shell (manifest + service worker; `/api` is never cached)
-- [ ] Production monitoring
+- [x] Production monitoring (JSON `/api` request logs + health flags; not a full APM)
 - [ ] Live PesaPal keys + stable `JWT_SECRET` (Railway ops)

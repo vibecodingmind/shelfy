@@ -12,7 +12,7 @@ interface AuthModalProps {
   initialMode?: 'LOGIN' | 'REGISTER';
   initialRole?: UserRole;
   onClose: () => void;
-  onSuccess: (data: { user: any; token: string; vendorProfile?: any; hostProfile?: any }) => void;
+  onSuccess: (data: { user: any; token: string; refreshToken?: string; vendorProfile?: any; hostProfile?: any }) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({

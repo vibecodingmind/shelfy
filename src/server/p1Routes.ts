@@ -1,9 +1,9 @@
-import fs from 'fs';
-import path from 'path';
 import { Express, Response } from 'express';
 import { dbEngine } from './db.js';
 import { AuthenticatedRequest, logAuditEvent, requireAuth, requireRole } from './auth.js';
 import { newId } from './domain/ids.js';
+import { notify } from './services/notify.js';
+import { putUpload } from './services/storage.js';
 import { quoteCancellation } from './domain/cancellation.js';
 import { listingStatusOf, shopReadyToSubmit, shelfReadyToSubmit } from './domain/listings.js';
 import { canOpenDispute, canReviewBooking, validRating } from './domain/reviews.js';
@@ -20,17 +20,6 @@ import {
   refundBookingInLedger,
   releaseHostEarnings,
 } from './services/finance.js';
-
-function notify(userId: string, title: string, message: string, type: 'INFO' | 'SUCCESS' | 'WARNING' | 'ALERT' = 'INFO') {
-  dbEngine.db.notifications.push({
-    id: newId('notif'),
-    userId,
-    title,
-    message,
-    type,
-    createdAt: new Date().toISOString(),
-  });
-}
 
 function enqueueVerification(subjectType: 'SHOP' | 'SHELF' | 'HOST' | 'VENDOR' | 'USER', subjectId: string, requestedBy: string) {
   const existing = dbEngine.db.verificationRequests.find(
@@ -404,17 +393,26 @@ export function registerP1Routes(app: Express) {
     res.json({ success: true, data: { visit, gps: check } });
   });
 
-  app.post('/api/uploads', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  app.post('/api/uploads', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     const dataUrl = String(req.body.dataUrl || '');
     const check = isDataUrlImage(dataUrl);
     if (check.ok === false) return res.status(400).json({ success: false, error: { message: check.message } });
     const ext = check.mime.includes('png') ? 'png' : check.mime.includes('webp') ? 'webp' : 'jpg';
     const id = newId('up');
-    const dir = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(process.cwd(), 'data'), 'uploads');
-    fs.mkdirSync(dir, { recursive: true });
     const filename = `${id}.${ext}`;
-    fs.writeFileSync(path.join(dir, filename), Buffer.from(dataUrl.split(',')[1], 'base64'));
-    res.json({ success: true, data: { id, url: `/uploads/${filename}`, kind: req.body.kind || 'generic' } });
+    try {
+      const stored = await putUpload({
+        bytes: Buffer.from(dataUrl.split(',')[1], 'base64'),
+        filename,
+        contentType: check.mime,
+      });
+      res.json({
+        success: true,
+        data: { id, url: stored.url, kind: req.body.kind || 'generic', driver: stored.driver, objectKey: stored.objectKey },
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: { message: err.message || 'Upload failed.' } });
+    }
   });
 
   app.post('/api/jobs/booking-maintenance', requireAuth, requireRole('ADMIN'), (_req: AuthenticatedRequest, res: Response) => {
