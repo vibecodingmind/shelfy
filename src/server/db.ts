@@ -7,12 +7,12 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import { Pool } from 'pg';
 import { PlatformSettings, Shelf } from '../types/index.js';
-import { execSync } from 'child_process';
 import { buildCompleteSeedData, DatabaseSchema } from './seedData.js';
 import { capturePaymentInLedger } from './services/finance.js';
 import { uniqueSlug } from './domain/slugs.js';
 import { getPrisma } from './prisma.js';
 import { importSchemaToPrisma, loadSchemaFromPrisma, persistSchemaToPrisma, relationalUserCount } from './relational.js';
+import { ensurePrismaMigrationHistory, runPrismaMigrateDeploy } from './services/prismaBoot.js';
 
 export const SEED_SCHEMA_VERSION = 6;
 
@@ -259,6 +259,16 @@ class DatabaseEngine {
   }
 
   private async init() {
+    try {
+      await this.initUnsafe();
+    } catch (err) {
+      console.error('Database init failed, falling back to local seed so /api/health can stay up:', err);
+      this.driver = 'file';
+      this.data = this.loadFromFile();
+    }
+  }
+
+  private async initUnsafe() {
     if (process.env.DATABASE_URL) {
       const internal = process.env.DATABASE_URL.includes('railway.internal') || process.env.DATABASE_URL.includes('sslmode=disable');
       this.pool = new Pool({
@@ -306,12 +316,16 @@ class DatabaseEngine {
     console.log('🗄️  Shelfy database driver: file');
   }
 
-  private tryMigrate() {
+  private async tryMigrate() {
+    if (this.pool) {
+      try {
+        await ensurePrismaMigrationHistory((sql) => this.pool!.query(sql));
+      } catch (err) {
+        console.warn('Could not ensure _prisma_migrations table:', err instanceof Error ? err.message : err);
+      }
+    }
     try {
-      execSync('npx prisma migrate deploy', {
-        stdio: 'inherit',
-        env: process.env,
-      });
+      runPrismaMigrateDeploy();
     } catch (err) {
       console.warn('prisma migrate deploy did not complete. Relational tables may be created on the next release.', err);
     }

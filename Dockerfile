@@ -36,5 +36,5 @@ COPY --from=builder /app/package.json ./package.json
 # Expose container port
 EXPOSE 3000
 
-# Migrate relational schema, then start the compiled server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.cjs"]
+# Migrate runs in-process so a non-empty JSONB database cannot block boot
+CMD ["node", "dist/server.cjs"]

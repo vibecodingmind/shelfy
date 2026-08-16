@@ -1649,22 +1649,10 @@ app.post('/api/ai/vendor-insights', requireAuth, requireRole('VENDOR', 'ADMIN'),
 // ==========================================
 
 async function startServer() {
-  await dbEngine.ready;
-  await ensureJwtSecret();
   registerP1Routes(app);
   const uploadDir = uploadsDir();
   fs.mkdirSync(uploadDir, { recursive: true });
   app.use('/uploads', express.static(uploadDir));
-  setInterval(() => {
-    try {
-      runBookingMaintenance();
-    } catch (err) {
-      console.error('Booking maintenance failed:', err);
-    }
-    void runPaymentReconciliation().catch((err) => console.error('Payment reconcile failed:', err));
-  }, 15 * 60 * 1000);
-  runBookingMaintenance();
-  void runPaymentReconciliation().catch((err) => console.error('Payment reconcile failed:', err));
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -1680,9 +1668,31 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Shelfy 🇹🇿 Platform running on http://0.0.0.0:${PORT}`);
+  // Bind before Postgres/Prisma bootstrap so Railway healthchecks pass on /api/health.
+  await new Promise<void>((resolve, reject) => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Shelfy 🇹🇿 Platform running on http://0.0.0.0:${PORT}`);
+      resolve();
+    });
+    server.once('error', reject);
   });
+
+  try {
+    await dbEngine.ready;
+    await ensureJwtSecret();
+    setInterval(() => {
+      try {
+        runBookingMaintenance();
+      } catch (err) {
+        console.error('Booking maintenance failed:', err);
+      }
+      void runPaymentReconciliation().catch((err) => console.error('Payment reconcile failed:', err));
+    }, 15 * 60 * 1000);
+    runBookingMaintenance();
+    void runPaymentReconciliation().catch((err) => console.error('Payment reconcile failed:', err));
+  } catch (err) {
+    console.error('Post-listen bootstrap failed; /api/health remains up:', err);
+  }
 }
 
 let httpPrepared = false;
@@ -1700,5 +1710,8 @@ export async function prepareHttpApp() {
 export { app };
 
 if (!process.env.VITEST) {
-  void startServer();
+  void startServer().catch((err) => {
+    console.error('Fatal start failure:', err);
+    process.exit(1);
+  });
 }

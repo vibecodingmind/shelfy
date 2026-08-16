@@ -54,8 +54,8 @@ When deploying to **Railway** (or any cloud host), set the following variables i
 
 Railway uses the included `railway.json` or `Dockerfile` automatically:
 - **Build Command**: `npm run build`
-- **Start Command**: `npm start` (or `node dist/server.cjs`)
-- **Health Check Endpoint**: `/api/health`
+- **Start Command**: `node dist/server.cjs`
+- **Health Check Endpoint**: `/api/health` (bound before Prisma migrate so Railway does not roll back)
 
 ---
 

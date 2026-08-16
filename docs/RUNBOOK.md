@@ -33,7 +33,7 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 
 ## Release / migrate
 
-On each production deploy, `npm start` (and the Railway start command) runs `prisma migrate deploy` then the server. Do not use `prisma migrate dev` against production.
+On each production deploy, `npm start` runs `node dist/server.cjs`. The process binds `/api/health` immediately, then runs `prisma migrate deploy` in-process (90s timeout). If the database already has the JSONB `shelfy_store` table, boot creates `_prisma_migrations` first so Prisma does not abort with P3005. Do not use `prisma migrate dev` against production.
 
 Confirm after boot:
 
