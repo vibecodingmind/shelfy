@@ -3,7 +3,10 @@ import { Request, Response, NextFunction } from 'express';
 export function corsOrigin(env: NodeJS.ProcessEnv = process.env): boolean | string {
   if (env.NODE_ENV !== 'production') return true;
   const app = env.APP_URL?.trim().replace(/\/$/, '');
-  return app || true;
+  if (app) return app;
+  const railway = env.RAILWAY_PUBLIC_DOMAIN?.trim() || env.RAILWAY_STATIC_URL?.trim();
+  if (railway) return `https://${railway.replace(/^https?:\/\//, '').replace(/\/$/, '')}`;
+  return true;
 }
 
 export function securityHeadersMiddleware(_req: Request, res: Response, next: NextFunction) {

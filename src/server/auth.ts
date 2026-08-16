@@ -9,24 +9,15 @@ import { dbEngine } from './db.js';
 import { User, UserRole } from '../types/index.js';
 import { PENDING_ALLOWED_PATHS, isActiveForApi } from './domain/rbac.js';
 
-function resolveJwtSecret(): string {
+function currentJwtSecret(): string {
   const fromEnv = process.env.JWT_SECRET?.trim();
   if (fromEnv) return fromEnv;
-
   const railwayScoped = process.env.RAILWAY_ENVIRONMENT_ID
     ? `shelfy_${process.env.RAILWAY_ENVIRONMENT_ID}_jwt`
     : '';
-
-  if (process.env.NODE_ENV === 'production') {
-    console.warn(
-      'JWT_SECRET is not set. Using a temporary secret so the app can boot. Set JWT_SECRET in Railway Variables to keep login sessions stable across deploys.'
-    );
-  }
-
   return railwayScoped || 'shelfy_dev_only_jwt_secret';
 }
 
-const JWT_SECRET = resolveJwtSecret();
 export const ACCESS_TOKEN_TTL = '1h';
 export const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 
@@ -41,7 +32,7 @@ export function generateToken(user: User): string {
     role: user.role,
     name: user.name,
   };
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL });
+  return jwt.sign(payload, currentJwtSecret(), { expiresIn: ACCESS_TOKEN_TTL });
 }
 
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -55,7 +46,7 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: UserRole };
+    const decoded = jwt.verify(token, currentJwtSecret()) as { id: string; email: string; role: UserRole };
     const user = dbEngine.db.users.find((u) => u.id === decoded.id);
 
     if (!user) {
@@ -93,7 +84,7 @@ export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: Ne
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
   try {
-    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET) as { id: string };
+    const decoded = jwt.verify(authHeader.split(' ')[1], currentJwtSecret()) as { id: string };
     const user = dbEngine.db.users.find((u) => u.id === decoded.id);
     if (user && isActiveForApi(user, true)) req.user = user;
   } catch {

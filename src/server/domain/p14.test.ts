@@ -17,6 +17,7 @@ import { capturePaymentInLedger, completePayoutInLedger, financeSummaryForHost, 
 import { createAuthToken, rotateRefreshToken, revokeAuthTokens } from '../services/tokens.js';
 import { safeUploadFilename } from '../services/storage.js';
 import { corsOrigin } from '../middleware/securityHeaders.js';
+import { resolvedAppUrl } from '../services/jwtSecret.js';
 import { buildCompleteSeedData, DatabaseSchema } from '../seedData.js';
 import { Shop } from '../../types/index.js';
 import { User } from '../../types/index.js';
@@ -141,7 +142,17 @@ describe('security: refresh revoke and uploads', () => {
   it('restricts CORS origin in production when APP_URL is set', () => {
     expect(corsOrigin({ NODE_ENV: 'development' })).toBe(true);
     expect(corsOrigin({ NODE_ENV: 'production', APP_URL: 'https://shelfy.example/' })).toBe('https://shelfy.example');
+    expect(corsOrigin({ NODE_ENV: 'production', RAILWAY_PUBLIC_DOMAIN: 'shelfy-production-d34d.up.railway.app' })).toBe(
+      'https://shelfy-production-d34d.up.railway.app'
+    );
     expect(corsOrigin({ NODE_ENV: 'production' })).toBe(true);
+  });
+
+  it('derives APP_URL from Railway public domain when unset', () => {
+    expect(resolvedAppUrl({ APP_URL: 'https://shelfy.example/' })).toBe('https://shelfy.example');
+    expect(resolvedAppUrl({ RAILWAY_PUBLIC_DOMAIN: 'shelfy-production-d34d.up.railway.app' }, 3000)).toBe(
+      'https://shelfy-production-d34d.up.railway.app'
+    );
   });
 });
 

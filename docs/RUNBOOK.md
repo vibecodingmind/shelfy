@@ -1,6 +1,6 @@
 # SHELFY — PRODUCTION RUNBOOK
 
-This is an operations guide for Railway + PostgreSQL. It does **not** mean the marketplace is launch-ready. Live PesaPal keys and a stable `JWT_SECRET` are still required in the host environment and are never committed to git.
+This is an operations guide for Railway + PostgreSQL. It does **not** mean the marketplace is launch-ready. Live PesaPal keys are still required. `JWT_SECRET` should be set in Railway Variables; if it is missing the app now persists a generated secret in Postgres so sessions survive deploys.
 
 Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.md)
 
@@ -11,8 +11,8 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 | Variable | Required in production | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | Yes | PostgreSQL. When set, Prisma is the source of truth. |
-| `JWT_SECRET` | Yes | Access-token signing. If unset, boot uses an ephemeral secret and sessions die on deploy. |
-| `APP_URL` | Yes | Public origin for PesaPal callbacks and email links. No trailing slash. |
+| `JWT_SECRET` | Yes (auto-persisted if missing) | Access-token signing. If unset, the app generates one and stores it in Postgres as `ops_jwt_secret` (not exposed on `/api/settings`). Prefer setting `JWT_SECRET` in Railway Variables. |
+| `APP_URL` | Yes (or Railway public domain) | Public origin for PesaPal callbacks and email links. If unset, production uses `https://$RAILWAY_PUBLIC_DOMAIN`. |
 | `PESAPAL_CONSUMER_KEY` / `PESAPAL_CONSUMER_SECRET` | Yes for live pay | Official PesaPal v3. Without them, checkout cannot register orders. |
 | `PESAPAL_ENVIRONMENT` | `sandbox` or `live` | Defaults to sandbox. |
 | `PESAPAL_IPN_ID` | Recommended | Cached IPN id; otherwise registered at runtime. |
@@ -33,16 +33,7 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 
 ## Release / migrate
 
-On each production deploy:
-
-```bash
-npx prisma generate
-npx prisma migrate deploy
-npm run build
-npm start
-```
-
-Railway should run `prisma migrate deploy` before or as part of the start command. Do not use `prisma migrate dev` against production.
+On each production deploy, `npm start` (and the Railway start command) runs `prisma migrate deploy` then the server. Do not use `prisma migrate dev` against production.
 
 Confirm after boot:
 

@@ -30,9 +30,11 @@ RUN npm install --omit=dev --no-audit
 # Copy compiled build output from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/data ./data
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/package.json ./package.json
 
 # Expose container port
 EXPOSE 3000
 
-# Start compiled CommonJS server
-CMD ["node", "dist/server.cjs"]
+# Migrate relational schema, then start the compiled server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.cjs"]

@@ -30,6 +30,7 @@ import { createAuthToken, consumeAuthToken, verifySandboxSignature, rotateRefres
 import { notify, dispatchExternalChannels } from './src/server/services/notify.js';
 import { uploadsDir } from './src/server/services/storage.js';
 import { opsHealthSnapshot } from './src/server/domain/opsHealth.js';
+import { ensureJwtSecret, resolvedAppUrl } from './src/server/services/jwtSecret.js';
 import { requestLogMiddleware } from './src/server/middleware/requestLog.js';
 import { corsOrigin, securityHeadersMiddleware } from './src/server/middleware/securityHeaders.js';
 import {
@@ -94,7 +95,7 @@ function issueSession(user: User) {
 }
 
 function appUrl(): string {
-  return (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
+  return resolvedAppUrl(process.env, PORT);
 }
 
 // Health Check
@@ -1649,6 +1650,7 @@ app.post('/api/ai/vendor-insights', requireAuth, requireRole('VENDOR', 'ADMIN'),
 
 async function startServer() {
   await dbEngine.ready;
+  await ensureJwtSecret();
   registerP1Routes(app);
   const uploadDir = uploadsDir();
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -1687,6 +1689,7 @@ let httpPrepared = false;
 
 export async function prepareHttpApp() {
   await dbEngine.ready;
+  await ensureJwtSecret();
   if (!httpPrepared) {
     registerP1Routes(app);
     httpPrepared = true;

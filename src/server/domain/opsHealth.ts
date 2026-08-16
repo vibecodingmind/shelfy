@@ -1,5 +1,6 @@
 import { notificationProviders } from './notifications.js';
 import { storageStatus } from '../services/storage.js';
+import { resolvedAppUrl } from '../services/jwtSecret.js';
 
 export interface JwtRuntimeStatus {
   configured: boolean;
@@ -23,6 +24,7 @@ export function opsHealthSnapshot(env: NodeJS.ProcessEnv = process.env) {
     jwt: jwtRuntimeStatus(env),
     pesapal: pesapalRuntimeStatus(env),
     storage: storageStatus(env),
+    appUrl: resolvedAppUrl(env),
     email: { configured: Boolean(providers.email), provider: providers.email },
     sms: { configured: Boolean(providers.sms), provider: providers.sms },
   };
