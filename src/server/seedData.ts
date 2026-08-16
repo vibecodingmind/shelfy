@@ -1776,10 +1776,14 @@ export function buildCompleteSeedData(): DatabaseSchema {
     cancellationFeePercent: 10,
     freeCancelDays: 7,
     policies: {
-      damage: 'LEGAL_REVIEW_REQUIRED — Damage to host fixtures or vendor goods is handled via the dispute workflow. Liability is not assigned automatically by software.',
-      theft: 'LEGAL_REVIEW_REQUIRED — Theft or unexplained loss is reported through a dispute with evidence. Shelfy does not automatically debit either party.',
-      expiry: 'LEGAL_REVIEW_REQUIRED — Expired goods remain the vendor’s responsibility unless a written add-on service says otherwise.',
-      shelfRentalTerms: 'LEGAL_REVIEW_REQUIRED — The vendor rents shelf space only. Product title stays with the vendor.',
+      damage:
+        'Physical damage to host fixtures or vendor goods is handled through the dispute workflow with photos and field reports. Shelfy records financial adjustments in the ledger; it does not automatically assign legal liability.',
+      theft:
+        'Theft or unexplained loss must be reported through a dispute with evidence (photos, timestamps, witness notes). Shelfy does not automatically debit either party without administrator review.',
+      expiry:
+        'Expired or non-compliant goods remain the vendor’s responsibility unless a separate written service agreement says otherwise. Hosts may report expiry issues via field visits.',
+      shelfRentalTerms:
+        'The vendor rents shelf space for a defined period only. Product title stays with the vendor. Shelfy is not the retailer of those products.',
     },
   };
 
