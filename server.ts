@@ -25,6 +25,7 @@ app.get('/api/health', (req: Request, res: Response) => {
     app: 'Shelfy 🇹🇿',
     tagline: 'The retail expansion platform for Tanzania',
     timestamp: new Date().toISOString(),
+    db: dbEngine.stats(),
   });
 });
 
