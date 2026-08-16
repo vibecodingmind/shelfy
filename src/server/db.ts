@@ -131,6 +131,10 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
     settings.shelfTypes = [...DEFAULT_SETTINGS.shelfTypes];
     changed = true;
   }
+  if (settings.autoApproveBookings !== false) {
+    settings.autoApproveBookings = false;
+    changed = true;
+  }
   next.settings = settings;
 
   const occupiedShelfIds = new Set(
