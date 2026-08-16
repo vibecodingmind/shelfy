@@ -8,7 +8,7 @@ Host creates shop/shelf → verification → public listing → vendor books →
 
 Do not add random UI. Do not skip tests. After each phase: implement → test → inspect → fix → update `docs/CHECKLIST.md` → continue.
 
-Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.md) · [RUNBOOK.md](./RUNBOOK.md)
+Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.md) · [RUNBOOK.md](./RUNBOOK.md) · [LAUNCH_AUDIT.md](./LAUNCH_AUDIT.md)
 
 ---
 
@@ -261,7 +261,9 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 
 ## Phase 14 — Final Launch Audit
 
-Re-run the quality gate in the original instruction: business E2E, security, money, finance reconcile, trust, ops, UX, data, tests, production hygiene.
+Re-run the quality gate: business E2E, security, money, finance reconcile, trust, ops, UX, data, tests, production hygiene.
+
+**Status:** Audit recorded in [LAUNCH_AUDIT.md](./LAUNCH_AUDIT.md). Security hardening and money-journey tests landed in this branch. **Not launch-ready** — live PesaPal keys and a stable `JWT_SECRET` remain Railway ops.
 
 ---
 

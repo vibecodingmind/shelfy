@@ -33,7 +33,7 @@ export function isDemoEmail(email: string): boolean {
   return DEMO_EMAILS.includes(email.toLowerCase());
 }
 
-export function demoLoginAllowed(): boolean {
-  if (process.env.ALLOW_DEMO_LOGIN === 'true') return true;
-  return process.env.NODE_ENV !== 'production';
+export function demoLoginAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.ALLOW_DEMO_LOGIN === 'true') return true;
+  return env.NODE_ENV !== 'production';
 }

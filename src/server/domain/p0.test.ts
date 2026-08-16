@@ -45,9 +45,11 @@ describe('password policy', () => {
 });
 
 describe('publicUser', () => {
-  it('strips passwordHash', () => {
-    const safe = publicUser(user({ id: 'u1', role: 'VENDOR', passwordHash: 'secret' }));
+  it('strips passwordHash and lockout fields', () => {
+    const safe = publicUser(user({ id: 'u1', role: 'VENDOR', passwordHash: 'secret', failedLoginCount: 3, lockedUntil: '2099-01-01T00:00:00.000Z' }));
     expect((safe as any).passwordHash).toBeUndefined();
+    expect((safe as any).failedLoginCount).toBeUndefined();
+    expect((safe as any).lockedUntil).toBeUndefined();
     expect(safe.email).toContain('u1');
   });
 });

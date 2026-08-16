@@ -2,7 +2,7 @@
 
 Update this file as work lands. Do not mark a line done unless tests (or an explicit exception) exist.
 
-Last updated: 2026-08-16 — P13 hygiene: storage, notify dispatcher, health flags, request logs, refresh tokens, runbook on `cursor/p0-marketplace-foundation-b9de`
+Last updated: 2026-08-16 — P14 launch audit: security hardening, money-journey tests, `docs/LAUNCH_AUDIT.md` on `cursor/p0-marketplace-foundation-b9de`
 
 ---
 
@@ -14,7 +14,7 @@ Last updated: 2026-08-16 — P13 hygiene: storage, notify dispatcher, health fla
 - [x] Phone verification architecture (OTP store; SMS later)
 - [x] Password reset (token, 1h, single use)
 - [x] Rate limiting on auth routes
-- [x] Session security (JWT; reset/suspend invalidates via password/status)
+- [x] Session security (JWT; reset/suspend invalidates via password/status and refresh revoke)
 - [x] Account lockout (5 failures / 15 minutes)
 - [x] Suspended account blocked
 - [x] Admin cannot self-register
@@ -96,14 +96,14 @@ Last updated: 2026-08-16 — P13 hygiene: storage, notify dispatcher, health fla
 - [x] Rate limiting (auth + payments)
 - [x] Upload security (JPEG/PNG/WebP, ≤2.5MB; local disk + optional S3)
 - [x] Fake payment callback rejected (covered by IPN verify tests)
-- [ ] Security test suite expansion (Phase 22)
+- [x] Security test suite expansion (Phase 14 / Phase 22 domain suite)
 
 ## QA
 
 - [x] Unit tests (rules, machine, ledger, payments, P1 listings/cancel/GPS/withdrawals)
 - [x] API/auth tests (vitest)
-- [ ] Integration tests against Postgres (when `DATABASE_URL` in CI)
-- [ ] E2E critical journeys (P1/P10)
+- [x] Integration tests against Postgres (skipped unless `DATABASE_URL` is reachable)
+- [x] E2E critical journeys (domain money path capture → release → withdraw; no Playwright UI suite yet)
 
 ## P1 remaining / P2+
 

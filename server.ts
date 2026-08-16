@@ -18,7 +18,7 @@ import { publicUser, publicUsers } from './src/server/domain/publicUser.js';
 import { addMonthsIsoDate, BLOCKING_BOOKING_STATUSES, calculateBookingQuote, datesOverlap } from './src/server/domain/pricing.js';
 import { assertTransition, initialBookingStatus, normalizeHostApproval } from './src/server/domain/bookingMachine.js';
 import { canMessageBookingCounterparties } from './src/server/domain/messages.js';
-import { canAccessBooking } from './src/server/domain/rbac.js';
+import { canAccessBooking, canSelfRegister, isUserStatus } from './src/server/domain/rbac.js';
 import { newId } from './src/server/domain/ids.js';
 import { capturePaymentInLedger, financeSummaryForHost } from './src/server/services/finance.js';
 import { publicShops, publicShelves } from './src/server/domain/listings.js';
@@ -31,6 +31,7 @@ import { notify, dispatchExternalChannels } from './src/server/services/notify.j
 import { uploadsDir } from './src/server/services/storage.js';
 import { opsHealthSnapshot } from './src/server/domain/opsHealth.js';
 import { requestLogMiddleware } from './src/server/middleware/requestLog.js';
+import { corsOrigin, securityHeadersMiddleware } from './src/server/middleware/securityHeaders.js';
 import {
   amountsMatch,
   getTransactionStatus,
@@ -44,7 +45,9 @@ import {
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-app.use(cors());
+app.set('trust proxy', 1);
+app.use(cors({ origin: corsOrigin() }));
+app.use(securityHeadersMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(requestLogMiddleware);
 
@@ -119,8 +122,7 @@ app.post('/api/auth/register', authLimiter, (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: { message: 'Missing required registration fields.' } });
     }
 
-    const allowedSelfRegisterRoles: UserRole[] = ['VENDOR', 'HOST'];
-    if (!allowedSelfRegisterRoles.includes(role as UserRole)) {
+    if (!canSelfRegister(role)) {
       return res.status(400).json({
         success: false,
         error: { message: 'Self-registration is only available for Vendors and Hosts. Field agents and admins are invited by the platform.' },
@@ -336,6 +338,7 @@ app.post('/api/auth/reset-password', authLimiter, (req: Request, res: Response) 
   user.failedLoginCount = 0;
   user.lockedUntil = undefined;
   user.updatedAt = new Date().toISOString();
+  revokeAuthTokens(dbEngine.db, user.id, 'REFRESH');
   void dbEngine.saveAsync();
   logAuditEvent(user.id, user.name, user.role, 'PASSWORD_RESET', 'User', user.id);
   res.json({ success: true, data: { reset: true } });
@@ -1502,10 +1505,16 @@ app.put('/api/admin/users/:id/status', requireAuth, requireRole('ADMIN'), (req: 
   if (!targetUser) {
     return res.status(404).json({ success: false, error: { message: 'User not found.' } });
   }
+  if (!isUserStatus(String(status || ''))) {
+    return res.status(400).json({ success: false, error: { message: 'Invalid user status.' } });
+  }
 
   targetUser.status = status;
   targetUser.updatedAt = new Date().toISOString();
-  dbEngine.save();
+  if (status === 'SUSPENDED') {
+    revokeAuthTokens(dbEngine.db, targetUser.id, 'REFRESH');
+  }
+  void dbEngine.saveAsync();
 
   logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'USER_STATUS_UPDATED', 'User', targetUser.id, `Set status to ${status}`);
   res.json({ success: true, data: publicUser(targetUser) });

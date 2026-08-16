@@ -32,6 +32,18 @@ export function canAccessPayouts(user: User): boolean {
   return user.role === 'ADMIN' || user.role === 'HOST';
 }
 
+export const SELF_REGISTER_ROLES: UserRole[] = ['VENDOR', 'HOST'];
+
+export function canSelfRegister(role: string): boolean {
+  return SELF_REGISTER_ROLES.includes(role as UserRole);
+}
+
+export const USER_STATUSES: UserStatus[] = ['ACTIVE', 'PENDING', 'SUSPENDED'];
+
+export function isUserStatus(value: string): value is UserStatus {
+  return USER_STATUSES.includes(value as UserStatus);
+}
+
 export const PENDING_ALLOWED_PATHS = [
   '/api/auth/me',
   '/api/auth/verify-email',

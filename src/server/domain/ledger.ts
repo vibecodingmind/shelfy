@@ -57,6 +57,10 @@ export function signedAmount(entry: Pick<LedgerEntry, 'amountTzs' | 'direction'>
   return entry.direction === 'CREDIT' ? entry.amountTzs : -entry.amountTzs;
 }
 
+export function postingsAreBalanced(posts: LedgerPosting[]): boolean {
+  return posts.reduce((sum, post) => sum + signedAmount(post), 0) === 0;
+}
+
 export function balanceForAccount(entries: LedgerEntry[], accountId: string): number {
   return entries.filter((e) => e.accountId === accountId).reduce((sum, e) => sum + signedAmount(e), 0);
 }

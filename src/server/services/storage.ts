@@ -46,11 +46,20 @@ export function localObjectUrl(filename: string): string {
   return `/uploads/${filename}`;
 }
 
+export function safeUploadFilename(filename: string): string {
+  const base = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+  if (!base || base === '.' || base === '..') {
+    throw new Error('Invalid upload filename.');
+  }
+  return base;
+}
+
 export function putLocalObject(bytes: Buffer, filename: string, env: NodeJS.ProcessEnv = process.env): StoredObject {
+  const safeName = safeUploadFilename(filename);
   const dir = uploadsDir(env);
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, filename), bytes);
-  return { url: localObjectUrl(filename), driver: 'local', objectKey: filename };
+  fs.writeFileSync(path.join(dir, safeName), bytes);
+  return { url: localObjectUrl(safeName), driver: 'local', objectKey: safeName };
 }
 
 function hmac(key: Buffer | string, data: string): Buffer {
@@ -157,14 +166,15 @@ export async function putUpload(input: {
   env?: NodeJS.ProcessEnv;
 }): Promise<StoredObject> {
   const env = input.env || process.env;
-  const objectKey = `uploads/${input.filename}`;
+  const filename = safeUploadFilename(input.filename);
+  const objectKey = `uploads/${filename}`;
   if (s3Ready(env)) {
     try {
       return await putS3Object(input.bytes, objectKey, input.contentType, env);
     } catch (err) {
       console.warn('S3 upload failed; storing locally.', err instanceof Error ? err.message : err);
-      return { ...putLocalObject(input.bytes, input.filename, env), fallbackFromS3: true };
+      return { ...putLocalObject(input.bytes, filename, env), fallbackFromS3: true };
     }
   }
-  return putLocalObject(input.bytes, input.filename, env);
+  return putLocalObject(input.bytes, filename, env);
 }
