@@ -32,6 +32,25 @@ export function canAccessPayouts(user: User): boolean {
   return user.role === 'ADMIN' || user.role === 'HOST';
 }
 
+export interface FieldVisitRow {
+  agentId: string;
+  shopId: string;
+}
+
+export function filterFieldVisitsForUser<T extends FieldVisitRow>(user: User, visits: T[], hostShopIds: string[]): T[] {
+  if (user.role === 'ADMIN') return visits;
+  if (user.role === 'FIELD_AGENT') return visits.filter((v) => v.agentId === user.id);
+  if (user.role === 'HOST') {
+    const allowed = new Set(hostShopIds);
+    return visits.filter((v) => allowed.has(v.shopId));
+  }
+  return [];
+}
+
+export function canListFieldVisits(user: User): boolean {
+  return user.role === 'ADMIN' || user.role === 'FIELD_AGENT' || user.role === 'HOST';
+}
+
 export const SELF_REGISTER_ROLES: UserRole[] = ['VENDOR', 'HOST'];
 
 export function canSelfRegister(role: string): boolean {

@@ -20,12 +20,17 @@ export function pesapalRuntimeStatus(env: NodeJS.ProcessEnv = process.env) {
 
 export function opsHealthSnapshot(env: NodeJS.ProcessEnv = process.env) {
   const providers = notificationProviders(env);
+  const emailConfigured = Boolean(providers.email);
   return {
     jwt: jwtRuntimeStatus(env),
     pesapal: pesapalRuntimeStatus(env),
     storage: storageStatus(env),
     appUrl: resolvedAppUrl(env),
-    email: { configured: Boolean(providers.email), provider: providers.email },
+    email: { configured: emailConfigured, provider: providers.email },
     sms: { configured: Boolean(providers.sms), provider: providers.sms },
+    onboarding: {
+      emailVerificationRequired: emailConfigured,
+      autoVerifyWhenEmailDisabled: !emailConfigured,
+    },
   };
 }

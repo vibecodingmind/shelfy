@@ -1743,7 +1743,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
 
   const settings: PlatformSettings = {
     commissionPercentage: 10,
-    autoApproveBookings: true,
+    autoApproveBookings: false,
     pesapalEnvironment: 'sandbox',
     currency: 'TZS',
     maintenanceMode: false,

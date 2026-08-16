@@ -66,14 +66,32 @@ export function rotateRefreshToken(db: DatabaseSchema, raw: string): { userId: s
   return { userId: consumed.userId, raw: next.raw };
 }
 
-export function sandboxSignature(paymentId: string): string {
-  const secret = process.env.PESAPAL_SANDBOX_KEY || process.env.JWT_SECRET || 'shelfy_dev_only_jwt_secret';
+export function sandboxSigningSecret(env: NodeJS.ProcessEnv = process.env): string | null {
+  const explicit = env.PESAPAL_SANDBOX_KEY?.trim();
+  if (explicit) return explicit;
+  const pesapalLive = (env.PESAPAL_ENVIRONMENT || 'sandbox').toLowerCase() === 'live';
+  if (env.NODE_ENV === 'production' || pesapalLive) return null;
+  return env.JWT_SECRET?.trim() || 'shelfy_dev_only_jwt_secret';
+}
+
+export function sandboxCompletionEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(sandboxSigningSecret(env));
+}
+
+export function sandboxSignature(paymentId: string, env: NodeJS.ProcessEnv = process.env): string {
+  const secret = sandboxSigningSecret(env);
+  if (!secret) throw new Error('Sandbox signing is not configured.');
   return crypto.createHmac('sha256', secret).update(paymentId).digest('hex');
 }
 
-export function verifySandboxSignature(paymentId: string, provided?: string): boolean {
-  if (!provided) return false;
-  const expected = sandboxSignature(paymentId);
+export function verifySandboxSignature(paymentId: string, provided?: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  if (!provided || !sandboxCompletionEnabled(env)) return false;
+  let expected: string;
+  try {
+    expected = sandboxSignature(paymentId, env);
+  } catch {
+    return false;
+  }
   try {
     return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
   } catch {

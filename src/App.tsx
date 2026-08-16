@@ -54,7 +54,7 @@ export function App() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
     commissionPercentage: 10,
-    autoApproveBookings: true,
+    autoApproveBookings: false,
     pesapalEnvironment: 'sandbox',
     currency: 'TZS',
     maintenanceMode: false,
