@@ -30,6 +30,8 @@ RUN npm install --omit=dev --no-audit
 # Copy compiled build output from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/data ./data
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Expose container port
 EXPOSE 3000
