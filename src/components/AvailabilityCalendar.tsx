@@ -64,10 +64,10 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   const todayStr = useMemo(() => formatDateStr(new Date()), []);
 
   // Check if a date string is inside any booked range
-  const isDateBooked = (dateStr: string): { booked: boolean; vendor?: string } => {
+  const isDateBooked = (dateStr: string): { booked: boolean } => {
     for (const range of bookedRanges) {
       if (dateStr >= range.startDate && dateStr <= range.endDate) {
-        return { booked: true, vendor: range.vendorName };
+        return { booked: true };
       }
     }
     return { booked: false };
@@ -96,21 +96,19 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
       isCurrentMonth: boolean;
       isPast: boolean;
       isBooked: boolean;
-      bookedBy?: string;
     }> = [];
 
     // Prev month trailing days
     for (let i = firstDayIndex - 1; i >= 0; i--) {
       const d = new Date(year, month - 1, daysInPrevMonth - i);
       const str = formatDateStr(d);
-      const { booked, vendor } = isDateBooked(str);
+      const { booked } = isDateBooked(str);
       days.push({
         dateStr: str,
         dayNumber: d.getDate(),
         isCurrentMonth: false,
         isPast: str < todayStr,
         isBooked: booked,
-        bookedBy: vendor,
       });
     }
 
@@ -118,14 +116,13 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     for (let i = 1; i <= daysInMonth; i++) {
       const d = new Date(year, month, i);
       const str = formatDateStr(d);
-      const { booked, vendor } = isDateBooked(str);
+      const { booked } = isDateBooked(str);
       days.push({
         dateStr: str,
         dayNumber: i,
         isCurrentMonth: true,
         isPast: str < todayStr,
         isBooked: booked,
-        bookedBy: vendor,
       });
     }
 
@@ -134,14 +131,13 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
     for (let i = 1; i <= remaining; i++) {
       const d = new Date(year, month + 1, i);
       const str = formatDateStr(d);
-      const { booked, vendor } = isDateBooked(str);
+      const { booked } = isDateBooked(str);
       days.push({
         dateStr: str,
         dayNumber: i,
         isCurrentMonth: false,
         isPast: str < todayStr,
         isBooked: booked,
-        bookedBy: vendor,
       });
     }
 
@@ -161,7 +157,7 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   const handleDateClick = (dateStr: string, isPast: boolean, isBooked: boolean) => {
     if (isPast) return;
     if (isBooked) {
-      setErrorMessage('This date is already booked by another vendor. Please select open dates.');
+      setErrorMessage('This date is already booked. Please select open dates.');
       return;
     }
 
@@ -352,7 +348,7 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
               onClick={() => handleDateClick(day.dateStr, day.isPast, day.isBooked)}
               title={
                 day.isBooked
-                  ? `Booked (${day.bookedBy || 'Occupied'})`
+                  ? 'Booked'
                   : day.isPast
                   ? 'Past date'
                   : `Select ${day.dateStr}`

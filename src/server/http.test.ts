@@ -14,6 +14,11 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'vitest_jwt_secret_shelfy';
 process.env.ALLOW_DEMO_LOGIN = 'true';
 process.env.NODE_ENV = 'test';
 delete process.env.DATABASE_URL;
+delete process.env.PESAPAL_CONSUMER_KEY;
+delete process.env.PESAPAL_CONSUMER_SECRET;
+delete process.env.PESAPAL_ENVIRONMENT;
+delete process.env.RESEND_API_KEY;
+delete process.env.SMTP_URL;
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'shelfy-http-'));
 
 const { app, prepareHttpApp } = await import('../../server.js');
@@ -170,7 +175,62 @@ describe('HTTP API', () => {
     expect(created.status).toBe(200);
     expect(created.json.success).toBe(true);
     expect(created.json.data.vendorId).toBe(vendor.user.id);
-    expect(created.json.data.status).toBe('PAYMENT_PENDING');
+    expect(created.json.data.status).toBe('PENDING_APPROVAL');
     expect(created.json.data.totalPriceTzs).toBeGreaterThan(0);
+  });
+
+  it('scopes field visits by role and hides vendor names on public availability', async () => {
+    const vendor = await login(origin, 'vendor@shelfy.co.tz');
+    const vendorVisits = await api(origin, 'GET', '/api/field-visits', { token: vendor.token });
+    expect(vendorVisits.status).toBe(403);
+
+    const host = await login(origin, 'host@shelfy.co.tz');
+    const hostVisits = await api(origin, 'GET', '/api/field-visits', { token: host.token });
+    expect(hostVisits.status).toBe(200);
+    const hostRows = hostVisits.json.data as Array<{ shopId: string }>;
+    expect(hostRows.length).toBeGreaterThan(0);
+    expect(hostRows.every((v) => v.shopId === 'shop_1')).toBe(true);
+
+    const availability = await api(origin, 'GET', '/api/shelves/shelf_1/availability');
+    expect(availability.status).toBe(200);
+    const ranges = availability.json.data.bookedRanges as Array<Record<string, unknown>>;
+    expect(ranges.length).toBeGreaterThan(0);
+    expect(ranges.every((r) => !('vendorName' in r))).toBe(true);
+  });
+
+  it('auto-verifies email on register when no email provider is configured', async () => {
+    const email = `vendor-auto-${Date.now()}@shelfy.test`;
+    const registered = await api(origin, 'POST', '/api/auth/register', {
+      body: {
+        name: 'Auto Verified Vendor',
+        email,
+        password: 'Password123!',
+        role: 'VENDOR',
+      },
+    });
+    expect(registered.status).toBe(200);
+    expect(registered.json.data.emailVerificationRequired).toBe(false);
+    expect(registered.json.data.user.status).toBe('ACTIVE');
+    expect(registered.json.data.user.emailVerifiedAt).toBeTruthy();
+
+    const loggedIn = await api(origin, 'POST', '/api/auth/login', {
+      body: { email, password: 'Password123!' },
+    });
+    expect(loggedIn.status).toBe(200);
+    const created = await api(origin, 'POST', '/api/bookings', {
+      token: loggedIn.json.data.token,
+      body: { shelfId: 'shelf_4', durationMonths: 1, startDate: '2029-06-01' },
+    });
+    expect(created.status).toBe(200);
+  });
+
+  it('rejects sandbox-complete without signature and exposes runtime pesapal env in settings', async () => {
+    const nosig = await api(origin, 'POST', '/api/payments/sandbox-complete', { body: { paymentId: 'pay_test' } });
+    expect(nosig.status).toBe(403);
+
+    const settings = await api(origin, 'GET', '/api/settings');
+    expect(settings.status).toBe(200);
+    expect(settings.json.data.pesapalEnvironment).toBe('sandbox');
+    expect(settings.json.data.autoApproveBookings).toBe(false);
   });
 });

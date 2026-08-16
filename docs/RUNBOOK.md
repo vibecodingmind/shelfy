@@ -16,11 +16,11 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 | `PESAPAL_CONSUMER_KEY` / `PESAPAL_CONSUMER_SECRET` | Yes for live pay | Official PesaPal v3. Without them, checkout cannot register orders. |
 | `PESAPAL_ENVIRONMENT` | `sandbox` or `live` | Defaults to sandbox. |
 | `PESAPAL_IPN_ID` | Recommended | Cached IPN id; otherwise registered at runtime. |
-| `PESAPAL_SANDBOX_KEY` | Sandbox only | HMAC for signed sandbox complete. |
+| `PESAPAL_SANDBOX_KEY` | Sandbox / local only | HMAC for signed sandbox complete. Required in production sandbox; disabled when live PesaPal is configured. Never falls back to `JWT_SECRET` in production. |
 | `ALLOW_DEMO_LOGIN` | No | Must stay unset/false in production unless a staged demo is intentional. |
-| `S3_BUCKET` + `S3_ACCESS_KEY` + `S3_SECRET_KEY` | No | Enables S3-compatible uploads. Falls back to local disk on failure. |
+| `S3_BUCKET` + `S3_ACCESS_KEY` + `S3_SECRET_KEY` | Recommended in production | Enables S3-compatible uploads. Without S3, files land on local disk and are **lost on redeploy** unless you mount a Railway volume at `RAILWAY_VOLUME_MOUNT_PATH`. |
 | `S3_ENDPOINT` / `S3_REGION` / `S3_PUBLIC_BASE_URL` | No | Custom endpoint (R2/MinIO), region (default `us-east-1`), public CDN base. |
-| `RESEND_API_KEY` or `SMTP_URL` | No | Marks email as configured. Resend is the wired sender; SMTP is detected only. |
+| `RESEND_API_KEY` or `SMTP_URL` | Recommended in production | Email verification and notifications. Resend is the wired sender; SMTP is detected only. When **no** email provider is configured, new registrations are auto-verified so vendors and hosts can book immediately (`onboarding.autoVerifyWhenEmailDisabled` on `/api/health`). |
 | `EMAIL_FROM` | No | Resend from-address. Default `Shelfy <noreply@shelfy.co.tz>`. |
 | `AFRICASTALKING_API_KEY` (+ `AFRICASTALKING_USERNAME`) or `TWILIO_AUTH_TOKEN` (+ `TWILIO_ACCOUNT_SID` + `TWILIO_FROM`) | No | SMS. Missing keys skip SMS; in-app still writes. |
 | `DATA_DIR` / `RAILWAY_VOLUME_MOUNT_PATH` | Volume only | Local JSON + `/uploads` when not using S3. |

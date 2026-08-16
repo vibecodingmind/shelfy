@@ -124,7 +124,7 @@ export const api = {
     return apiFetch<Shelf[]>(`/api/shelves${query ? `?${query}` : ''}`);
   },
   getShelfById: (id: string) => apiFetch<Shelf & { shop: Shop; reviews?: any[] }>(`/api/shelves/${id}`),
-  getShelfAvailability: (id: string) => apiFetch<{ shelfId: string; availabilityStatus: string; monthlyPriceTzs: number; bookedRanges: Array<{ bookingId: string; startDate: string; endDate: string; status: string; vendorName: string }> }>(`/api/shelves/${id}/availability`),
+  getShelfAvailability: (id: string) => apiFetch<{ shelfId: string; availabilityStatus: string; monthlyPriceTzs: number; bookedRanges: Array<{ bookingId: string; startDate: string; endDate: string; status: string }> }>(`/api/shelves/${id}/availability`),
   createShelf: (shelfData: any) => apiFetch<Shelf>('/api/shelves', { method: 'POST', body: JSON.stringify(shelfData) }),
 
   // Bookings & Payments

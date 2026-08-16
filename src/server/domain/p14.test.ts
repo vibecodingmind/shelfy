@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Client } from 'pg';
 import { publicUser } from './publicUser.js';
-import { canAccessBooking, canAccessPayment, canAccessPayouts, canSelfRegister, isActiveForApi, ownsResource } from './rbac.js';
+import { canAccessBooking, canAccessPayment, canAccessPayouts, canSelfRegister, isActiveForApi, ownsResource, filterFieldVisitsForUser, canListFieldVisits } from './rbac.js';
 import { demoLoginAllowed } from './passwords.js';
 import { canEditListing, isPublishedShop, publicShops } from './listings.js';
 import {
@@ -116,6 +116,19 @@ describe('security: IDOR and listing visibility', () => {
     expect(publicShops([live, draft]).map((s) => s.id)).toEqual(['shop_1']);
     expect(publicShops([live, draft], otherVendor).map((s) => s.id)).toEqual(['shop_1']);
     expect(publicShops([live, draft], host).map((s) => s.id).sort()).toEqual(['shop_1', 'shop_draft']);
+  });
+
+  it('scopes field visits to agent, host shops, or admin only', () => {
+    const visits = [
+      { id: 'fv1', agentId: 'a1', shopId: 'shop_1' },
+      { id: 'fv2', agentId: 'a2', shopId: 'shop_2' },
+    ];
+    expect(canListFieldVisits(vendor)).toBe(false);
+    expect(canListFieldVisits(agent)).toBe(true);
+    expect(canListFieldVisits(host)).toBe(true);
+    expect(filterFieldVisitsForUser(agent, visits, []).map((v) => v.id)).toEqual(['fv1']);
+    expect(filterFieldVisitsForUser(host, visits, ['shop_1']).map((v) => v.id)).toEqual(['fv1']);
+    expect(filterFieldVisitsForUser(user({ id: 'admin', role: 'ADMIN' }), visits, []).map((v) => v.id)).toEqual(['fv1', 'fv2']);
   });
 
   it('blocks suspended and pending users from the marketplace API', () => {

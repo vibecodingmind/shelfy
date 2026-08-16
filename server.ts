@@ -18,7 +18,7 @@ import { publicUser, publicUsers } from './src/server/domain/publicUser.js';
 import { addMonthsIsoDate, BLOCKING_BOOKING_STATUSES, calculateBookingQuote, datesOverlap } from './src/server/domain/pricing.js';
 import { assertTransition, initialBookingStatus, normalizeHostApproval } from './src/server/domain/bookingMachine.js';
 import { canMessageBookingCounterparties } from './src/server/domain/messages.js';
-import { canAccessBooking, canSelfRegister, isUserStatus } from './src/server/domain/rbac.js';
+import { canAccessBooking, canSelfRegister, isUserStatus, canListFieldVisits, filterFieldVisitsForUser } from './src/server/domain/rbac.js';
 import { newId } from './src/server/domain/ids.js';
 import { capturePaymentInLedger, financeSummaryForHost } from './src/server/services/finance.js';
 import { publicShops, publicShelves } from './src/server/domain/listings.js';
@@ -26,8 +26,10 @@ import { uniqueSlug, findByIdOrSlug } from './src/server/domain/slugs.js';
 import { occupancySummary, occupancyWindow } from './src/server/domain/occupancy.js';
 import { registerP1Routes, runBookingMaintenance } from './src/server/p1Routes.js';
 import { paymentsDueForReconcile } from './src/server/domain/reconcile.js';
-import { createAuthToken, consumeAuthToken, verifySandboxSignature, rotateRefreshToken, revokeAuthTokens, REFRESH_TOKEN_TTL_MS } from './src/server/services/tokens.js';
+import { createAuthToken, consumeAuthToken, verifySandboxSignature, sandboxCompletionEnabled, rotateRefreshToken, revokeAuthTokens, REFRESH_TOKEN_TTL_MS } from './src/server/services/tokens.js';
 import { notify, dispatchExternalChannels } from './src/server/services/notify.js';
+import { notificationProviders } from './src/server/domain/notifications.js';
+import { publicPlatformSettings } from './src/server/domain/publicSettings.js';
 import { uploadsDir } from './src/server/services/storage.js';
 import { opsHealthSnapshot } from './src/server/domain/opsHealth.js';
 import { ensureJwtSecret, resolvedAppUrl } from './src/server/services/jwtSecret.js';
@@ -44,6 +46,7 @@ import {
 } from './src/server/payments/pesapal.js';
 
 const app = express();
+app.disable('x-powered-by');
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.set('trust proxy', 1);
@@ -144,18 +147,24 @@ app.post('/api/auth/register', authLimiter, (req: Request, res: Response) => {
     const userId = newId('usr');
     const now = new Date().toISOString();
 
-    const newUser = {
+    const newUser: User = {
       id: userId,
       name,
       email: email.toLowerCase(),
       phone: phone || '',
       passwordHash,
       role: role as UserRole,
-      status: 'PENDING' as const,
+      status: 'PENDING',
       failedLoginCount: 0,
       createdAt: now,
       updatedAt: now,
     };
+
+    const emailProviderConfigured = Boolean(notificationProviders().email);
+    if (!emailProviderConfigured) {
+      newUser.status = 'ACTIVE';
+      newUser.emailVerifiedAt = now;
+    }
 
     dbEngine.db.users.push(newUser);
 
@@ -185,15 +194,19 @@ app.post('/api/auth/register', authLimiter, (req: Request, res: Response) => {
       });
     }
 
-    const verify = createAuthToken(dbEngine.db, userId, 'EMAIL_VERIFY', 24 * 60 * 60 * 1000);
+    const verify = emailProviderConfigured
+      ? createAuthToken(dbEngine.db, userId, 'EMAIL_VERIFY', 24 * 60 * 60 * 1000)
+      : null;
     void dbEngine.saveAsync();
     logAuditEvent(userId, name, role as UserRole, 'USER_REGISTERED', 'User', userId, `Registered as ${role}`);
-    void dispatchExternalChannels({
-      email: newUser.email,
-      title: 'Verify your Shelfy email',
-      message: `Confirm ${newUser.email} to activate your Shelfy account. Verification code: ${verify.raw}`,
-      channels: ['EMAIL'],
-    });
+    if (verify) {
+      void dispatchExternalChannels({
+        email: newUser.email,
+        title: 'Verify your Shelfy email',
+        message: `Confirm ${newUser.email} to activate your Shelfy account. Verification code: ${verify.raw}`,
+        channels: ['EMAIL'],
+      });
+    }
 
     const session = issueSession(newUser);
     return res.json({
@@ -201,8 +214,8 @@ app.post('/api/auth/register', authLimiter, (req: Request, res: Response) => {
       data: {
         ...session,
         user: publicUser(newUser),
-        emailVerificationRequired: true,
-        verifyEmailToken: process.env.NODE_ENV === 'production' ? undefined : verify.raw,
+        emailVerificationRequired: emailProviderConfigured,
+        verifyEmailToken: verify && process.env.NODE_ENV !== 'production' ? verify.raw : undefined,
       },
     });
   } catch (err: any) {
@@ -539,7 +552,6 @@ app.get('/api/shelves/:id/availability', (req: Request, res: Response) => {
     startDate: b.startDate,
     endDate: b.endDate,
     status: b.status,
-    vendorName: b.vendorBusinessName || b.vendorName || 'Booked Vendor',
   }));
 
   res.json({
@@ -1044,6 +1056,12 @@ app.get('/api/payments/by-booking/:bookingId', requireAuth, (req: AuthenticatedR
 });
 
 app.post('/api/payments/sandbox-complete', paymentLimiter, async (req: Request, res: Response) => {
+  if (pesapalEnvironment() === 'live' && pesapalConfigured()) {
+    return res.status(403).json({ success: false, error: { message: 'Sandbox completion is disabled when live PesaPal is configured.' } });
+  }
+  if (!sandboxCompletionEnabled()) {
+    return res.status(403).json({ success: false, error: { message: 'Sandbox completion is not configured. Set PESAPAL_SANDBOX_KEY.' } });
+  }
   const paymentId = String(req.body.paymentId || '');
   const signature = String(req.headers['x-sandbox-signature'] || req.body.signature || '');
   if (!verifySandboxSignature(paymentId, signature)) {
@@ -1209,12 +1227,12 @@ app.get('/api/inventory', requireAuth, (req: AuthenticatedRequest, res: Response
 // GET /api/field-visits
 app.get('/api/field-visits', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
-  let visits = [...dbEngine.db.fieldVisits];
-
-  if (user.role === 'FIELD_AGENT') {
-    visits = visits.filter((v) => v.agentId === user.id);
+  if (!canListFieldVisits(user)) {
+    return res.status(403).json({ success: false, error: { message: 'Field visits are not available for your account.' } });
   }
-
+  const hostShopIds =
+    user.role === 'HOST' ? dbEngine.db.shops.filter((s) => s.hostId === user.id).map((s) => s.id) : [];
+  const visits = filterFieldVisitsForUser(user, dbEngine.db.fieldVisits, hostShopIds);
   res.json({ success: true, data: visits });
 });
 
@@ -1556,7 +1574,7 @@ app.get('/api/settings', (req: Request, res: Response) => {
       { id: 'WINDOW_DISPLAY', name: 'Street Window Showcase', description: 'Exterior street-facing glass showcase attracting passersby.', icon: '🪟' },
     ];
   }
-  res.json({ success: true, data: dbEngine.db.settings });
+  res.json({ success: true, data: publicPlatformSettings(dbEngine.db.settings) });
 });
 
 // PUT /api/admin/settings

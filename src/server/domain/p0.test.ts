@@ -7,7 +7,7 @@ import { canMessageBookingCounterparties } from './messages.js';
 import { amountsMatch, mapPesapalStatus, PESAPAL_STATUS } from '../payments/pesapal.js';
 import { applyPostings, capturePaymentInLedger, financeSummaryForHost } from '../services/finance.js';
 import { paymentCapturedPostings } from './ledger.js';
-import { sandboxSignature, verifySandboxSignature } from '../services/tokens.js';
+import { sandboxSignature, verifySandboxSignature, sandboxCompletionEnabled } from '../services/tokens.js';
 import { buildCompleteSeedData } from '../seedData.js';
 import { canAccessBooking, canAccessPayment, hasRole } from './rbac.js';
 import { User } from '../../types/index.js';
@@ -173,5 +173,25 @@ describe('sandbox signature', () => {
     expect(verifySandboxSignature('pay_1', good)).toBe(true);
     expect(verifySandboxSignature('pay_1', sandboxSignature('pay_2'))).toBe(false);
     expect(verifySandboxSignature('pay_1', 'nope')).toBe(false);
+  });
+
+  it('refuses JWT fallback in production live mode', () => {
+    const env = {
+      NODE_ENV: 'production',
+      PESAPAL_ENVIRONMENT: 'live',
+      JWT_SECRET: 'prod_jwt',
+    };
+    expect(sandboxCompletionEnabled(env)).toBe(false);
+    expect(verifySandboxSignature('pay_1', 'anything', env)).toBe(false);
+  });
+
+  it('requires explicit PESAPAL_SANDBOX_KEY in production sandbox', () => {
+    const env = {
+      NODE_ENV: 'production',
+      PESAPAL_ENVIRONMENT: 'sandbox',
+      PESAPAL_SANDBOX_KEY: 'sandbox_hmac',
+    };
+    const sig = sandboxSignature('pay_1', env);
+    expect(verifySandboxSignature('pay_1', sig, env)).toBe(true);
   });
 });
