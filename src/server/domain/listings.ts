@@ -37,3 +37,48 @@ export function publicShelves(shelves: Shelf[], shops: Shop[], user?: User): She
     return isPublishedShelf(shelf, shop);
   });
 }
+
+export function canEditListing(user: User | undefined, hostId: string): boolean {
+  if (!user) return false;
+  return user.role === 'ADMIN' || user.id === hostId;
+}
+
+export const CITY_COORDINATES: Record<string, { latitude: number; longitude: number }> = {
+  'Dar es Salaam': { latitude: -6.7924, longitude: 39.2083 },
+  Mwanza: { latitude: -2.5164, longitude: 32.9175 },
+  Arusha: { latitude: -3.3869, longitude: 36.683 },
+  Dodoma: { latitude: -6.163, longitude: 35.7516 },
+  Zanzibar: { latitude: -6.1659, longitude: 39.1994 },
+  Mbeya: { latitude: -8.9094, longitude: 33.4608 },
+};
+
+export function coordinatesForCity(city: string): { latitude: number; longitude: number } {
+  return CITY_COORDINATES[city] || CITY_COORDINATES['Dar es Salaam'];
+}
+
+export function shopReadyToSubmit(shop: Pick<Shop, 'name' | 'description' | 'address' | 'city' | 'latitude' | 'longitude' | 'photos' | 'shopType'>):
+  | { ok: true }
+  | { ok: false; missing: string[] } {
+  const missing: string[] = [];
+  if (!shop.name || shop.name.trim().length < 3) missing.push('shop name');
+  if (!shop.description || shop.description.trim().length < 10) missing.push('shop description');
+  if (!shop.address || shop.address.trim().length < 5) missing.push('street address');
+  if (!shop.city) missing.push('city');
+  if (!Number.isFinite(shop.latitude) || !Number.isFinite(shop.longitude)) missing.push('map coordinates');
+  if (!shop.photos?.length) missing.push('shop photo');
+  if (!shop.shopType) missing.push('shop type');
+  return missing.length ? { ok: false, missing } : { ok: true };
+}
+
+export function shelfReadyToSubmit(shelf: Pick<Shelf, 'name' | 'widthCm' | 'heightCm' | 'depthCm' | 'shelfType' | 'monthlyPriceTzs' | 'allowedCategories' | 'photos'>):
+  | { ok: true }
+  | { ok: false; missing: string[] } {
+  const missing: string[] = [];
+  if (!shelf.name || shelf.name.trim().length < 3) missing.push('shelf name');
+  if (!(shelf.widthCm > 0 && shelf.heightCm > 0 && shelf.depthCm > 0)) missing.push('shelf dimensions');
+  if (!shelf.shelfType) missing.push('shelf type');
+  if (!(shelf.monthlyPriceTzs > 0)) missing.push('monthly rent');
+  if (!shelf.allowedCategories?.length) missing.push('allowed categories');
+  if (!shelf.photos?.length) missing.push('shelf photo');
+  return missing.length ? { ok: false, missing } : { ok: true };
+}

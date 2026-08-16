@@ -2,7 +2,7 @@
 
 Update this file as work lands. Do not mark a line done unless tests (or an explicit exception) exist.
 
-Last updated: 2026-08-16 — P1 marketplace operations on `cursor/p0-marketplace-foundation-b9de`
+Last updated: 2026-08-16 — P1 listing wizard, reconcile, reviews/disputes on `cursor/p0-marketplace-foundation-b9de`
 
 ---
 
@@ -39,7 +39,7 @@ Last updated: 2026-08-16 — P1 marketplace operations on `cursor/p0-marketplace
 
 - [x] Shop create (existing, ownership check)
 - [x] Shelf create (existing, ownership check)
-- [ ] Host listing wizard (P1 stand-in: create + submit-for-verification, not a 13-step wizard)
+- [x] Host listing wizard (6-step shop+shelf submit; quick-add still available)
 - [x] Verification queue (admin decide; unpublished hidden)
 - [x] Search / filter (existing)
 - [x] Booking create + overlap
@@ -55,7 +55,7 @@ Last updated: 2026-08-16 — P1 marketplace operations on `cursor/p0-marketplace
 - [x] Commission calculation
 - [x] Cancellation + refund quotes/execution
 - [x] Expiration job (EXPIRING → COMPLETED + host release)
-- [ ] Renewal reminders (P1 remaining: email/SMS)
+- [x] Renewal reminders (in-app 7-day EXPIRING + 1-day; email/SMS later)
 
 ## PAYMENTS
 
@@ -67,7 +67,7 @@ Last updated: 2026-08-16 — P1 marketplace operations on `cursor/p0-marketplace
 - [x] Amount / reference validation
 - [x] Signed sandbox complete (no frontend “I paid”)
 - [ ] Live PesaPal credentials on Railway (ops)
-- [ ] Reconciliation job (P1 remaining)
+- [x] Reconciliation job (polls pending PesaPal tracking ids; no-op without keys)
 
 ## FINANCE
 
@@ -107,10 +107,10 @@ Last updated: 2026-08-16 — P1 marketplace operations on `cursor/p0-marketplace
 
 ## P1 remaining / P2+
 
-- [ ] Host listing wizard (multi-step)
+- [x] Host listing wizard (multi-step)
 - [ ] Object storage (S3) for uploads
 - [ ] Email/SMS provider for expiration and OTP
-- [ ] Reviews & disputes
+- [x] Reviews & disputes (API + admin resolve; no automatic money invention)
 - [ ] Analytics from real aggregates (admin GMV now uses paid payments; occupancy/PWA later)
 - [x] Legal page placeholders (`LEGAL_REVIEW_REQUIRED`)
 - [ ] Production monitoring

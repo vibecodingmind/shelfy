@@ -23,6 +23,7 @@ import { newId } from './src/server/domain/ids.js';
 import { capturePaymentInLedger, financeSummaryForHost } from './src/server/services/finance.js';
 import { publicShops, publicShelves } from './src/server/domain/listings.js';
 import { registerP1Routes, runBookingMaintenance } from './src/server/p1Routes.js';
+import { paymentsDueForReconcile } from './src/server/domain/reconcile.js';
 import { createAuthToken, consumeAuthToken, verifySandboxSignature } from './src/server/services/tokens.js';
 import {
   amountsMatch,
@@ -779,6 +780,23 @@ async function verifyPesapalAndSettle(orderTrackingId: string) {
   return { payment, booking: dbEngine.db.bookings.find((b) => b.id === payment.bookingId), alreadySettled: false, status };
 }
 
+export async function runPaymentReconciliation() {
+  if (!pesapalConfigured()) return { checked: 0, settled: 0, skipped: 'pesapal_not_configured' as const };
+  const ids = paymentsDueForReconcile({ payments: dbEngine.db.payments });
+  let settled = 0;
+  for (const id of ids) {
+    const payment = dbEngine.db.payments.find((p) => p.id === id);
+    if (!payment?.pesapalTrackingId) continue;
+    try {
+      const result = await verifyPesapalAndSettle(payment.pesapalTrackingId);
+      if (result.payment.status === 'PAID') settled += 1;
+    } catch (err) {
+      console.error('Payment reconcile failed', id, err);
+    }
+  }
+  return { checked: ids.length, settled };
+}
+
 // POST /api/payments/initiate-session
 app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireRole('VENDOR', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
   const { bookingId } = req.body;
@@ -984,6 +1002,11 @@ app.post('/api/admin/payments/:id/reconcile', requireAuth, requireRole('ADMIN'),
     }
   }
   return res.status(400).json({ success: false, error: { message: 'No PesaPal tracking id to reconcile. Use signed sandbox complete in non-live setups.' } });
+});
+
+app.post('/api/jobs/payment-reconcile', requireAuth, requireRole('ADMIN'), async (_req: AuthenticatedRequest, res: Response) => {
+  const result = await runPaymentReconciliation();
+  res.json({ success: true, data: result });
 });
 
 app.get('/api/finance/summary', requireAuth, (req: AuthenticatedRequest, res: Response) => {
@@ -1554,8 +1577,10 @@ async function startServer() {
     } catch (err) {
       console.error('Booking maintenance failed:', err);
     }
+    void runPaymentReconciliation().catch((err) => console.error('Payment reconcile failed:', err));
   }, 15 * 60 * 1000);
   runBookingMaintenance();
+  void runPaymentReconciliation().catch((err) => console.error('Payment reconcile failed:', err));
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({

@@ -52,10 +52,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateUserStatus,
   onUpdateSettings,
 }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'SHOPS' | 'CATEGORIES' | 'BOOKINGS' | 'VERIFY' | 'PAYOUTS' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'SHOPS' | 'CATEGORIES' | 'BOOKINGS' | 'VERIFY' | 'PAYOUTS' | 'DISPUTES' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
   const [commissionInput, setCommissionInput] = useState<number>(settings?.commissionPercentage || 10);
   const [verifications, setVerifications] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [disputes, setDisputes] = useState<any[]>([]);
   const [payoutRef, setPayoutRef] = useState('');
 
   useEffect(() => {
@@ -64,6 +65,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
     api.getWithdrawals().then((res) => {
       if (res.success && res.data) setWithdrawals(res.data);
+    });
+    api.getDisputes().then((res) => {
+      if (res.success && res.data) setDisputes(res.data);
     });
   }, [activeTab]);
 
@@ -195,6 +199,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               { id: 'BOOKINGS', label: 'Bookings & Financials', icon: DollarSign },
               { id: 'VERIFY', label: 'Verification Queue', icon: UserCheck },
               { id: 'PAYOUTS', label: 'Withdrawals & Payouts', icon: CreditCard },
+              { id: 'DISPUTES', label: 'Disputes', icon: AlertTriangle },
               { id: 'SETTINGS', label: 'Commission & Rules', icon: Sliders },
               { id: 'AUDIT', label: 'Security Audit Logs', icon: FileText },
             ].map((item) => {
@@ -658,6 +663,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {['APPROVED', 'PROCESSING'].includes(w.status) && <button onClick={async () => { await api.processWithdrawal(w.id, payoutRef || `PO-${w.id}`); const res = await api.getWithdrawals(); if (res.data) setWithdrawals(res.data); }} className="px-2 py-1 bg-teal-500 text-slate-950 font-bold rounded">Process</button>}
                     {['PENDING', 'APPROVED', 'PROCESSING'].includes(w.status) && <button onClick={async () => { await api.failWithdrawal(w.id, 'Admin marked failed'); const res = await api.getWithdrawals(); if (res.data) setWithdrawals(res.data); }} className="px-2 py-1 bg-rose-500/20 text-rose-400 font-bold rounded">Fail</button>}
                   </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'DISPUTES' && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-white">Open disputes</h2>
+            <p className="text-xs text-slate-400">Resolving to COMPLETED releases host earnings. CANCELLED does not invent a refund — use cancel if money must move.</p>
+            {disputes.length === 0 ? (
+              <div className="text-xs text-slate-500">No disputes.</div>
+            ) : (
+              disputes.map((d) => (
+                <div key={d.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-white">{d.status} · {d.bookingId}</div>
+                    <div className="text-slate-400">{d.raisedByName} vs {d.againstName}</div>
+                    <div className="text-slate-300 mt-1">{d.reason}</div>
+                  </div>
+                  {['OPEN', 'UNDER_REVIEW'].includes(d.status) && (
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={async () => { await api.resolveDispute(d.id, 'COMPLETED', 'Admin completed after review'); const res = await api.getDisputes(); if (res.data) setDisputes(res.data); }} className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded">Complete</button>
+                      <button onClick={async () => { await api.resolveDispute(d.id, 'ACTIVE', 'Returned to active'); const res = await api.getDisputes(); if (res.data) setDisputes(res.data); }} className="px-2 py-1 bg-slate-700 text-white font-bold rounded">Reactivate</button>
+                      <button onClick={async () => { await api.resolveDispute(d.id, 'CANCELLED', 'Cancelled after dispute'); const res = await api.getDisputes(); if (res.data) setDisputes(res.data); }} className="px-2 py-1 bg-rose-500/20 text-rose-400 font-bold rounded">Cancel</button>
+                    </div>
+                  )}
                 </div>
               ))
             )}

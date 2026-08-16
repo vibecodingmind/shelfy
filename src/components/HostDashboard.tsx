@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { User, HostProfile, Shop, Shelf, Booking, Payout } from '../types/index.js';
 import { api } from '../lib/api.js';
+import { ListingWizard } from './ListingWizard.js';
 
 interface HostDashboardProps {
   user: User;
@@ -49,6 +50,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
 
   // Add Shop Modal
   const [showShopModal, setShowShopModal] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [shopName, setShopName] = useState('');
   const [shopAddress, setShopAddress] = useState('');
   const [shopCity, setShopCity] = useState('Dar es Salaam');
@@ -213,16 +215,22 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowWizard(true)}
+              className="px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" /> List shop & shelf
+            </button>
+            <button
               onClick={() => setShowShopModal(true)}
               className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5"
             >
-              <Plus className="w-4 h-4 text-emerald-400" /> Add Shop Location
+              <Plus className="w-4 h-4 text-emerald-400" /> Quick add shop
             </button>
             <button
               onClick={() => setShowShelfModal(true)}
               className="px-3.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
             >
-              <Plus className="w-4 h-4" /> Add Display Shelf
+              <Plus className="w-4 h-4" /> Quick add shelf
             </button>
           </div>
         </div>
@@ -438,6 +446,20 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                           Cancel booking
                         </button>
                       )}
+                      {['ACTIVE', 'EXPIRING'].includes(b.status) && (
+                        <button
+                          onClick={async () => {
+                            const reason = window.prompt('Describe the dispute (min 10 characters)');
+                            if (!reason) return;
+                            const res = await api.openDispute(b.id, reason);
+                            if (!res.success) alert(res.error?.message || 'Could not open dispute.');
+                            onRefreshData();
+                          }}
+                          className="block mt-1 ml-auto text-[10px] text-amber-400"
+                        >
+                          Open dispute
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -499,6 +521,16 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
         )}
 
       </main>
+
+      {showWizard && (
+        <ListingWizard
+          shops={myShops}
+          shelfCategories={defaultCategories}
+          shelfTypes={defaultShelfTypesList}
+          onClose={() => setShowWizard(false)}
+          onComplete={onRefreshData}
+        />
+      )}
 
       {/* ADD SHOP MODAL */}
       {showShopModal && (

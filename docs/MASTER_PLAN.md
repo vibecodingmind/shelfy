@@ -275,9 +275,9 @@ Re-run the quality gate in the original instruction: business E2E, security, mon
 
 Verification, shop/shelf management, uploads, cancel/complete, withdrawals/payouts, notifications, field ops, admin ops.
 
-Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders.
+Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders, listing wizard, payment reconcile job, reviews/disputes.
 
-Still open in P1: multi-step listing wizard, S3, email/SMS, payment reconciliation job.
+Still open: S3, email/SMS, live PesaPal keys.
 
 ### P2
 

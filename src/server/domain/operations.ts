@@ -7,6 +7,7 @@ export interface BookingTickChange {
   from: BookingStatus;
   to: BookingStatus;
   releaseHost: boolean;
+  reminder?: 'ONE_DAY';
 }
 
 export function tickBookingStatuses(input: {
@@ -32,6 +33,11 @@ export function tickBookingStatuses(input: {
 
     if (now.getTime() > end.getTime() + graceMs && canTransition(booking.status, 'COMPLETED', 'SYSTEM')) {
       changes.push({ bookingId: booking.id, from: booking.status, to: 'COMPLETED', releaseHost: true });
+      continue;
+    }
+
+    if (booking.status === 'EXPIRING' && untilEndDays <= 1 && untilEndDays > 0) {
+      changes.push({ bookingId: booking.id, from: booking.status, to: booking.status, releaseHost: false, reminder: 'ONE_DAY' });
     }
   }
 

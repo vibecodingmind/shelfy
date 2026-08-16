@@ -280,6 +280,34 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                               Cancel
                             </button>
                           )}
+                          {['ACTIVE', 'EXPIRING'].includes(b.status) && (
+                            <button
+                              onClick={async () => {
+                                const reason = window.prompt('Describe the dispute (min 10 characters)');
+                                if (!reason) return;
+                                const res = await api.openDispute(b.id, reason);
+                                if (!res.success) alert(res.error?.message || 'Could not open dispute.');
+                                onRefreshData();
+                              }}
+                              className="block mt-1 text-[10px] text-amber-400"
+                            >
+                              Open dispute
+                            </button>
+                          )}
+                          {b.status === 'COMPLETED' && (
+                            <button
+                              onClick={async () => {
+                                const rating = Number(window.prompt('Rating 1–5', '5'));
+                                const comment = window.prompt('Optional comment') || '';
+                                const res = await api.createReview(b.id, rating, comment);
+                                if (!res.success) alert(res.error?.message || 'Review failed.');
+                                onRefreshData();
+                              }}
+                              className="block mt-1 text-[10px] text-emerald-400"
+                            >
+                              Leave review
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

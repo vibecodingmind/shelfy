@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { quoteCancellation } from './cancellation.js';
 import { haversineMeters, gpsWithinRadius } from './gps.js';
-import { isPublishedShop, isPublishedShelf, listingStatusOf, publicShelves } from './listings.js';
+import { isPublishedShop, isPublishedShelf, listingStatusOf, publicShelves, shopReadyToSubmit, shelfReadyToSubmit, canEditListing } from './listings.js';
 import { quoteWithdrawal } from './withdrawals.js';
 import { isDataUrlImage, tickBookingStatuses } from './operations.js';
 import { refundCapturedPostings } from './ledger.js';
 import { canTransition } from './bookingMachine.js';
+import { paymentsDueForReconcile } from './reconcile.js';
+import { canOpenDispute, canReviewBooking, validRating } from './reviews.js';
 import { Shop, Shelf } from '../../types/index.js';
 
 const shop = (partial: Partial<Shop> = {}): Shop => ({
@@ -195,5 +197,98 @@ describe('refund postings', () => {
     const debit = posts.filter((p) => p.direction === 'DEBIT').reduce((s, p) => s + p.amountTzs, 0);
     const credit = posts.filter((p) => p.direction === 'CREDIT').reduce((s, p) => s + p.amountTzs, 0);
     expect(debit).toBe(credit);
+  });
+});
+
+describe('listing completeness', () => {
+  it('rejects incomplete shops and shelves and blocks foreign hosts', () => {
+    expect(shopReadyToSubmit({ name: 'A', description: '', address: '', city: '', latitude: NaN, longitude: NaN, photos: [], shopType: 'SUPERMARKET' }).ok).toBe(false);
+    expect(shopReadyToSubmit(shop({ description: 'A verified downtown supermarket', photos: ['https://img'] })).ok).toBe(true);
+    expect(shelfReadyToSubmit(shelf({ photos: [] })).ok).toBe(false);
+    expect(shelfReadyToSubmit(shelf({ photos: ['https://img'], allowedCategories: ['Food & Beverages'] })).ok).toBe(true);
+    expect(canEditListing({ id: 'other', role: 'HOST' } as any, 'h1')).toBe(false);
+    expect(canEditListing({ id: 'h1', role: 'HOST' } as any, 'h1')).toBe(true);
+  });
+});
+
+describe('payment reconcile selection', () => {
+  it('only polls pending payments that already have a tracking id and are old enough', () => {
+    const now = new Date('2026-08-16T12:00:00.000Z');
+    const ids = paymentsDueForReconcile({
+      now,
+      minAgeMinutes: 2,
+      payments: [
+        { id: 'fresh', status: 'PENDING', pesapalTrackingId: 't1', createdAt: '2026-08-16T11:59:00.000Z' },
+        { id: 'ready', status: 'PENDING', pesapalTrackingId: 't2', createdAt: '2026-08-16T11:50:00.000Z' },
+        { id: 'paid', status: 'PAID', pesapalTrackingId: 't3', createdAt: '2026-08-16T10:00:00.000Z' },
+        { id: 'notrack', status: 'PENDING', createdAt: '2026-08-16T10:00:00.000Z' },
+      ],
+    });
+    expect(ids).toEqual(['ready']);
+  });
+});
+
+describe('reviews and disputes', () => {
+  it('allows one completed-booking review and blocks strangers', () => {
+    expect(validRating(5)).toBe(true);
+    expect(validRating(0)).toBe(false);
+    expect(
+      canReviewBooking({
+        status: 'COMPLETED',
+        reviewerId: 'v',
+        vendorId: 'v',
+        hostId: 'h',
+        existing: [],
+        bookingId: 'b1',
+      }).ok
+    ).toBe(true);
+    expect(
+      canReviewBooking({
+        status: 'ACTIVE',
+        reviewerId: 'v',
+        vendorId: 'v',
+        hostId: 'h',
+        existing: [],
+        bookingId: 'b1',
+      }).ok
+    ).toBe(false);
+  });
+
+  it('opens disputes only on active rentals for the booking parties', () => {
+    expect(canOpenDispute({ status: 'ACTIVE', actorId: 'v', actorRole: 'VENDOR', vendorId: 'v', hostId: 'h', existingOpen: false }).ok).toBe(true);
+    expect(canOpenDispute({ status: 'COMPLETED', actorId: 'v', actorRole: 'VENDOR', vendorId: 'v', hostId: 'h', existingOpen: false }).ok).toBe(false);
+    expect(canOpenDispute({ status: 'ACTIVE', actorId: 'stranger', actorRole: 'VENDOR', vendorId: 'v', hostId: 'h', existingOpen: false }).ok).toBe(false);
+    expect(canTransition('ACTIVE', 'DISPUTED', 'VENDOR')).toBe(true);
+  });
+});
+
+describe('one-day reminder', () => {
+  it('emits a one-day reminder without completing the booking', () => {
+    const changes = tickBookingStatuses({
+      now: new Date('2026-10-01T12:00:00.000Z'),
+      graceHours: 24,
+      bookings: [
+        {
+          id: 'b2',
+          vendorId: 'v',
+          shelfId: 's',
+          hostId: 'h',
+          startDate: '2026-08-01',
+          endDate: '2026-10-01',
+          durationMonths: 2,
+          monthlyPriceTzs: 1,
+          totalPriceTzs: 1,
+          platformFeeTzs: 0,
+          hostEarningsTzs: 1,
+          status: 'EXPIRING',
+          paymentStatus: 'PAID',
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+    });
+    expect(changes[0]?.reminder).toBe('ONE_DAY');
+    expect(changes[0]?.to).toBe('EXPIRING');
+    expect(changes[0]?.releaseHost).toBe(false);
   });
 });

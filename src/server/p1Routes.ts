@@ -5,7 +5,8 @@ import { dbEngine } from './db.js';
 import { AuthenticatedRequest, logAuditEvent, requireAuth, requireRole } from './auth.js';
 import { newId } from './domain/ids.js';
 import { quoteCancellation } from './domain/cancellation.js';
-import { listingStatusOf } from './domain/listings.js';
+import { listingStatusOf, shopReadyToSubmit, shelfReadyToSubmit } from './domain/listings.js';
+import { canOpenDispute, canReviewBooking, validRating } from './domain/reviews.js';
 import { gpsWithinRadius } from './domain/gps.js';
 import { quoteWithdrawal } from './domain/withdrawals.js';
 import { isDataUrlImage, shelfShouldBeAvailable, tickBookingStatuses } from './domain/operations.js';
@@ -71,6 +72,14 @@ export function runBookingMaintenance(now = new Date()) {
   for (const change of changes) {
     const booking = dbEngine.db.bookings.find((b) => b.id === change.bookingId);
     if (!booking) continue;
+    if (change.reminder === 'ONE_DAY') {
+      const title = `Rental ends tomorrow: ${booking.shelfName}`;
+      if (!dbEngine.db.notifications.some((n) => n.userId === booking.vendorId && n.title === title)) {
+        notify(booking.vendorId, title, `${booking.shelfName} ends on ${booking.endDate}. Plan restock pickup.`, 'WARNING');
+        notify(booking.hostId, title, `${booking.shelfName} ends tomorrow.`, 'INFO');
+      }
+      continue;
+    }
     booking.status = change.to;
     booking.updatedAt = now.toISOString();
     history(booking.id, change.from, change.to, undefined, 'SYSTEM', 'Scheduled booking maintenance');
@@ -142,6 +151,10 @@ export function registerP1Routes(app: Express) {
       if (req.user!.role !== 'ADMIN' && shop.hostId !== req.user!.id) {
         return res.status(403).json({ success: false, error: { message: 'You do not own this shop.' } });
       }
+      const ready = shopReadyToSubmit(shop);
+      if (ready.ok === false) {
+        return res.status(400).json({ success: false, error: { message: `Complete the listing first: ${ready.missing.join(', ')}.` } });
+      }
       shop.listingStatus = 'SUBMITTED';
       shop.verificationStatus = 'PENDING';
       shop.updatedAt = now;
@@ -154,6 +167,10 @@ export function registerP1Routes(app: Express) {
     const shop = dbEngine.db.shops.find((s) => s.id === shelf.shopId);
     if (req.user!.role !== 'ADMIN' && shop?.hostId !== req.user!.id) {
       return res.status(403).json({ success: false, error: { message: 'You do not own this shelf.' } });
+    }
+    const ready = shelfReadyToSubmit(shelf);
+    if (ready.ok === false) {
+      return res.status(400).json({ success: false, error: { message: `Complete the listing first: ${ready.missing.join(', ')}.` } });
     }
     shelf.listingStatus = 'SUBMITTED';
     shelf.verificationStatus = 'PENDING';
@@ -402,5 +419,146 @@ export function registerP1Routes(app: Express) {
   app.post('/api/jobs/booking-maintenance', requireAuth, requireRole('ADMIN'), (_req: AuthenticatedRequest, res: Response) => {
     const changes = runBookingMaintenance();
     res.json({ success: true, data: { changes } });
+  });
+
+  app.get('/api/reviews', (req: AuthenticatedRequest, res: Response) => {
+    const targetId = req.query.targetId ? String(req.query.targetId) : '';
+    const bookingId = req.query.bookingId ? String(req.query.bookingId) : '';
+    let rows = [...dbEngine.db.reviews];
+    if (targetId) rows = rows.filter((r) => r.targetId === targetId);
+    if (bookingId) rows = rows.filter((r) => r.bookingId === bookingId);
+    res.json({ success: true, data: rows });
+  });
+
+  app.post('/api/reviews', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+    const user = req.user!;
+    const booking = dbEngine.db.bookings.find((b) => b.id === req.body.bookingId);
+    if (!booking) return res.status(404).json({ success: false, error: { message: 'Booking not found.' } });
+    const rating = Number(req.body.rating);
+    if (!validRating(rating)) return res.status(400).json({ success: false, error: { message: 'Rating must be an integer from 1 to 5.' } });
+    const check = canReviewBooking({
+      status: booking.status,
+      reviewerId: user.id,
+      vendorId: booking.vendorId,
+      hostId: booking.hostId,
+      existing: dbEngine.db.reviews,
+      bookingId: booking.id,
+    });
+    if (check.ok === false) return res.status(400).json({ success: false, error: { message: check.message } });
+    const targetId = check.targetRole === 'HOST' ? booking.shelfId : booking.vendorId;
+    const now = new Date().toISOString();
+    const review = {
+      id: newId('rev'),
+      bookingId: booking.id,
+      reviewerId: user.id,
+      reviewerName: user.name,
+      reviewerRole: user.role,
+      targetId,
+      rating,
+      comment: String(req.body.comment || '').slice(0, 1000),
+      createdAt: now,
+    };
+    dbEngine.db.reviews.push(review);
+    if (check.targetRole === 'HOST') {
+      const shelf = dbEngine.db.shelves.find((s) => s.id === booking.shelfId);
+      if (shelf) {
+        const shelfReviews = dbEngine.db.reviews.filter((r) => r.targetId === shelf.id);
+        shelf.reviewCount = shelfReviews.length;
+        shelf.avgRating = Math.round((shelfReviews.reduce((sum, r) => sum + r.rating, 0) / shelfReviews.length) * 10) / 10;
+      }
+    }
+    notify(check.targetRole === 'HOST' ? booking.hostId : booking.vendorId, 'New review', `${user.name} left a ${rating}-star review.`, 'INFO');
+    void dbEngine.saveAsync();
+    res.json({ success: true, data: review });
+  });
+
+  app.get('/api/disputes', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+    const user = req.user!;
+    let rows = [...dbEngine.db.disputes];
+    if (user.role !== 'ADMIN') {
+      rows = rows.filter((d) => d.raisedById === user.id || d.againstId === user.id);
+    }
+    res.json({ success: true, data: rows });
+  });
+
+  app.post('/api/bookings/:id/dispute', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    const user = req.user!;
+    const booking = dbEngine.db.bookings.find((b) => b.id === req.params.id);
+    if (!booking) return res.status(404).json({ success: false, error: { message: 'Booking not found.' } });
+    const reason = String(req.body.reason || '').trim();
+    if (reason.length < 10) return res.status(400).json({ success: false, error: { message: 'Describe the dispute in at least 10 characters.' } });
+    const existingOpen = dbEngine.db.disputes.some((d) => d.bookingId === booking.id && (d.status === 'OPEN' || d.status === 'UNDER_REVIEW'));
+    const check = canOpenDispute({
+      status: booking.status,
+      actorId: user.id,
+      actorRole: user.role,
+      vendorId: booking.vendorId,
+      hostId: booking.hostId,
+      existingOpen,
+    });
+    if (check.ok === false) return res.status(400).json({ success: false, error: { message: check.message } });
+    try {
+      assertTransition(booking.status, 'DISPUTED', user.role);
+    } catch (err: any) {
+      return res.status(400).json({ success: false, error: { message: err.message } });
+    }
+    const from = booking.status;
+    booking.status = 'DISPUTED';
+    booking.updatedAt = new Date().toISOString();
+    history(booking.id, from, 'DISPUTED', user.id, user.role, reason);
+    const againstId = user.id === booking.vendorId ? booking.hostId : booking.vendorId;
+    const against = dbEngine.db.users.find((u) => u.id === againstId);
+    const dispute = {
+      id: newId('dsp'),
+      bookingId: booking.id,
+      raisedById: user.id,
+      raisedByName: user.name,
+      againstId,
+      againstName: against?.name || 'Counterparty',
+      reason,
+      status: 'OPEN' as const,
+      createdAt: booking.updatedAt,
+      updatedAt: booking.updatedAt,
+    };
+    dbEngine.db.disputes.push(dispute);
+    notify(againstId, 'Dispute opened', `${user.name} opened a dispute on ${booking.shelfName}.`, 'ALERT');
+    await dbEngine.saveAsync();
+    logAuditEvent(user.id, user.name, user.role, 'DISPUTE_OPENED', 'Booking', booking.id, reason);
+    res.json({ success: true, data: { booking, dispute } });
+  });
+
+  app.post('/api/admin/disputes/:id/resolve', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
+    const dispute = dbEngine.db.disputes.find((d) => d.id === req.params.id);
+    if (!dispute || !['OPEN', 'UNDER_REVIEW'].includes(dispute.status)) {
+      return res.status(400).json({ success: false, error: { message: 'Dispute is not open.' } });
+    }
+    const nextBookingStatus = String(req.body.bookingStatus || 'COMPLETED');
+    if (!['ACTIVE', 'COMPLETED', 'CANCELLED'].includes(nextBookingStatus)) {
+      return res.status(400).json({ success: false, error: { message: 'Resolve to ACTIVE, COMPLETED, or CANCELLED.' } });
+    }
+    const booking = dbEngine.db.bookings.find((b) => b.id === dispute.bookingId);
+    if (booking) {
+      try {
+        assertTransition(booking.status, nextBookingStatus as any, 'ADMIN');
+      } catch (err: any) {
+        return res.status(400).json({ success: false, error: { message: err.message } });
+      }
+      const from = booking.status;
+      booking.status = nextBookingStatus as any;
+      booking.updatedAt = new Date().toISOString();
+      history(booking.id, from, booking.status, req.user!.id, 'ADMIN', req.body.resolutionDetails);
+      if (nextBookingStatus === 'COMPLETED') {
+        releaseHostEarnings(dbEngine.db, booking);
+      }
+    }
+    dispute.status = String(req.body.status || 'RESOLVED') === 'DISMISSED' ? 'DISMISSED' : 'RESOLVED';
+    dispute.resolutionDetails = String(req.body.resolutionDetails || '');
+    dispute.resolvedById = req.user!.id;
+    dispute.updatedAt = new Date().toISOString();
+    notify(dispute.raisedById, 'Dispute update', `Dispute ${dispute.status.toLowerCase()}.`, 'INFO');
+    notify(dispute.againstId, 'Dispute update', `Dispute ${dispute.status.toLowerCase()}.`, 'INFO');
+    await dbEngine.saveAsync();
+    logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'DISPUTE_RESOLVED', 'Dispute', dispute.id, dispute.status);
+    res.json({ success: true, data: dispute });
   });
 }
