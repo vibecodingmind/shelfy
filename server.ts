@@ -30,6 +30,7 @@ import { createAuthToken, consumeAuthToken, verifySandboxSignature, sandboxCompl
 import { notify, dispatchExternalChannels } from './src/server/services/notify.js';
 import { notificationProviders } from './src/server/domain/notifications.js';
 import { publicPlatformSettings } from './src/server/domain/publicSettings.js';
+import { normalizeTzPhone } from './src/server/domain/phone.js';
 import { uploadsDir } from './src/server/services/storage.js';
 import { opsHealthSnapshot } from './src/server/domain/opsHealth.js';
 import { ensureJwtSecret, resolvedAppUrl } from './src/server/services/jwtSecret.js';
@@ -359,17 +360,34 @@ app.post('/api/auth/reset-password', authLimiter, (req: Request, res: Response) 
 });
 
 app.post('/api/auth/request-phone-otp', requireAuth, authLimiter, (req: AuthenticatedRequest, res: Response) => {
+  const normalized = normalizeTzPhone(String(req.body.phone || req.user!.phone || ''));
+  if (!normalized) {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Enter a valid Tanzania mobile number (e.g. 0754 123 456).' },
+    });
+  }
+  if (!notificationProviders().sms) {
+    return res.status(503).json({
+      success: false,
+      error: {
+        message:
+          'SMS is not configured on this server yet. Shelfy cannot send phone OTP until AFRICASTALKING or Twilio keys are set in Railway.',
+      },
+    });
+  }
+  req.user!.phone = normalized;
   const otp = createAuthToken(dbEngine.db, req.user!.id, 'PHONE_OTP', 10 * 60 * 1000);
   void dbEngine.saveAsync();
   void dispatchExternalChannels({
-    phone: req.user!.phone,
+    phone: normalized,
     title: 'Shelfy phone verification',
     message: `Your Shelfy code is ${otp.raw}. It expires in 10 minutes.`,
     channels: ['SMS'],
   });
   res.json({
     success: true,
-    data: { sent: true, otp: process.env.NODE_ENV === 'production' ? undefined : otp.raw },
+    data: { sent: true, phone: normalized, otp: process.env.NODE_ENV === 'production' ? undefined : otp.raw },
   });
 });
 
@@ -878,7 +896,7 @@ export async function runPaymentReconciliation() {
 
 // POST /api/payments/initiate-session
 app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireRole('VENDOR', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
-  const { bookingId } = req.body;
+  const { bookingId, phoneNumber } = req.body;
   const user = req.user!;
 
   const booking = dbEngine.db.bookings.find((b) => b.id === bookingId && (user.role === 'ADMIN' || b.vendorId === user.id));
@@ -887,6 +905,21 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
   }
   if (!['APPROVED', 'PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(booking.status)) {
     return res.status(400).json({ success: false, error: { message: `Booking is ${booking.status} and cannot be paid yet.` } });
+  }
+
+  const billingPhone = normalizeTzPhone(String(phoneNumber || user.phone || ''));
+  if (!billingPhone) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message:
+          'A valid Tanzania mobile number is required for M-Pesa/Tigo/Airtel checkout. Enter your number (e.g. 0754 123 456) and try again.',
+      },
+    });
+  }
+  if (user.phone !== billingPhone) {
+    user.phone = billingPhone;
+    user.updatedAt = new Date().toISOString();
   }
 
   const existing = dbEngine.db.payments.find((p) => p.bookingId === booking.id && p.status === 'PENDING');
@@ -921,7 +954,7 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
         notificationId: ipnId,
         billingAddress: {
           email_address: user.email,
-          phone_number: user.phone,
+          phone_number: billingPhone,
           first_name: user.name.split(' ')[0] || user.name,
           last_name: user.name.split(' ').slice(1).join(' ') || 'Vendor',
         },

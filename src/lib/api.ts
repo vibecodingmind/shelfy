@@ -132,7 +132,8 @@ export const api = {
   getBookings: () => apiFetch<Booking[]>('/api/bookings'),
   updateBookingStatus: (bookingId: string, status: string) => apiFetch<Booking>(`/api/bookings/${bookingId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   getPayouts: () => apiFetch<Payout[]>('/api/payouts'),
-  initiatePesapalSession: (bookingId: string) => apiFetch<any>('/api/payments/initiate-session', { method: 'POST', body: JSON.stringify({ bookingId }) }),
+  initiatePesapalSession: (bookingId: string, phoneNumber: string) =>
+    apiFetch<any>('/api/payments/initiate-session', { method: 'POST', body: JSON.stringify({ bookingId, phoneNumber }) }),
   syncPayment: (paymentId: string) => apiFetch<any>(`/api/payments/${paymentId}/sync`, { method: 'POST' }),
   getPaymentsByBooking: (bookingId: string) => apiFetch<{ booking: Booking; payments: Payment[] }>(`/api/payments/by-booking/${bookingId}`),
   getFinanceSummary: () => apiFetch<any>('/api/finance/summary'),
