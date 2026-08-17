@@ -73,6 +73,7 @@ if (reg.status === 200) {
 
 const legalTerms = await get('/api/settings');
 ok('settings expose categories', Array.isArray(legalTerms.json.data?.shelfCategories));
+ok('autoApprove off', settings.json.data?.autoApproveBookings === false);
 
 console.log('');
 if (failures.length) {

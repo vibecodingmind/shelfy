@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "smoke:prod": "node scripts/prod-smoke.mjs"
+    "smoke:prod": "node scripts/prod-smoke.mjs",
+    "rehearse:payment": "node scripts/payment-rehearsal.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
