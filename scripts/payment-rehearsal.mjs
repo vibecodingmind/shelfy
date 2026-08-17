@@ -80,7 +80,7 @@ if (booking.status === 'PENDING_APPROVAL') {
 
 const checkout = await api('POST', '/api/payments/initiate-session', {
   token: vendorLogin.token,
-  body: { bookingId: booking.id },
+  body: { bookingId: booking.id, phoneNumber: '0754123456' },
 });
 if (checkout.status !== 200) {
   console.error('Payment initiate failed:', checkout.json.error?.message || checkout.status);
