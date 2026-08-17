@@ -6,7 +6,7 @@ const PAGES = LEGAL_PAGES;
 export function LegalPage({ slug, onBack }: { slug: string; onBack: () => void }) {
   const page = PAGES[slug] || PAGES.terms;
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6 max-w-3xl mx-auto">
+    <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 max-w-3xl mx-auto overflow-x-hidden">
       <button onClick={onBack} className="text-xs text-emerald-400 mb-6">← Back to marketplace</button>
       <h1 className="text-2xl font-black mb-4">{page.title}</h1>
       <div className="text-sm text-slate-300 leading-relaxed space-y-4">

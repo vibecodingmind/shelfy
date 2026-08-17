@@ -153,9 +153,9 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
       
       {/* Left Host Navigation Sidebar */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col justify-between shrink-0">
-        <div>
-          <div className="px-3 py-3 border-b border-slate-800 mb-4">
+      <aside className="w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 p-3 md:p-4 flex flex-col shrink-0">
+        <div className="md:flex-1">
+          <div className="px-2 md:px-3 py-2 md:py-3 border-b border-slate-800 mb-3 md:mb-4">
             <div className="flex items-center gap-2">
               <Store className="w-5 h-5 text-blue-400" />
               <span className="font-extrabold text-sm tracking-wider text-white">HOST PORTAL</span>
@@ -165,13 +165,13 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
             </div>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
-              { id: 'OVERVIEW', label: 'Host Dashboard', icon: TrendingUp },
-              { id: 'SHOPS', label: 'My Shops Locations', icon: Building },
-              { id: 'SHELVES', label: 'Shelves & Space', icon: Layers },
-              { id: 'BOOKINGS', label: 'Vendor Bookings', icon: Calendar },
-              { id: 'EARNINGS', label: 'Earnings & Payouts', icon: DollarSign },
+              { id: 'OVERVIEW', label: 'Dashboard', icon: TrendingUp },
+              { id: 'SHOPS', label: 'Shops', icon: Building },
+              { id: 'SHELVES', label: 'Shelves', icon: Layers },
+              { id: 'BOOKINGS', label: 'Bookings', icon: Calendar },
+              { id: 'EARNINGS', label: 'Earnings', icon: DollarSign },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -179,7 +179,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as any)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`shrink-0 md:w-full flex items-center gap-2 md:gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap touch-target ${
                     isActive
                       ? 'bg-blue-500 text-slate-950 font-bold shadow-md shadow-blue-500/20'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -193,7 +193,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
           </nav>
         </div>
 
-        <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl mt-6 text-center text-xs text-slate-400">
+        <div className="hidden md:block p-3 bg-slate-950 border border-slate-800 rounded-xl mt-6 text-center text-xs text-slate-400">
           <div>
             Verified Host:{' '}
             <span className={hostProfile?.verificationStatus === 'VERIFIED' ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
@@ -213,24 +213,24 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
             <h1 className="text-2xl font-black text-white">Host Command Center</h1>
             <p className="text-xs text-slate-400 mt-1">Monetize unused retail shelf space by connecting with brands in Tanzania.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
             <button
               onClick={() => setShowWizard(true)}
-              className="px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5"
+              className="flex-1 sm:flex-none px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 touch-target"
             >
               <Plus className="w-4 h-4" /> List shop & shelf
             </button>
             <button
               onClick={() => setShowShopModal(true)}
-              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5"
+              className="flex-1 sm:flex-none px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 touch-target"
             >
-              <Plus className="w-4 h-4 text-emerald-400" /> Quick add shop
+              <Plus className="w-4 h-4 text-emerald-400" /> Add shop
             </button>
             <button
               onClick={() => setShowShelfModal(true)}
-              className="px-3.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
+              className="flex-1 sm:flex-none px-3.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/20 touch-target"
             >
-              <Plus className="w-4 h-4" /> Quick add shelf
+              <Plus className="w-4 h-4" /> Add shelf
             </button>
           </div>
         </div>

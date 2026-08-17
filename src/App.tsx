@@ -67,6 +67,7 @@ export function App() {
   const [authModalMode, setAuthModalMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [authModalRole, setAuthModalRole] = useState<UserRole>('VENDOR');
   const [globalSearchQuery, setGlobalSearchQuery] = useState<string>('');
+  const [filterOpenSignal, setFilterOpenSignal] = useState(0);
   const [activePesapalBooking, setActivePesapalBooking] = useState<Booking | null>(null);
   const [activePesapalShelf, setActivePesapalShelf] = useState<Shelf | null>(null);
   const [showPesapalModal, setShowPesapalModal] = useState<boolean>(false);
@@ -233,7 +234,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans text-white flex flex-col">
+    <div className="min-h-screen bg-slate-950 font-sans text-white flex flex-col overflow-x-hidden">
       
       {/* Global Airbnb-Style Header */}
       <Header
@@ -255,6 +256,10 @@ export function App() {
           const notifRes = await api.getNotifications();
           if (notifRes.success && notifRes.data) setNotifications(notifRes.data);
         }}
+        onOpenFilter={() => {
+          setActiveRoleView('MARKETPLACE');
+          setFilterOpenSignal((n) => n + 1);
+        }}
       />
 
       {/* Main View Router */}
@@ -271,6 +276,7 @@ export function App() {
             onBookShelf={handleBookShelfAction}
             onLoginClick={() => handleOpenAuthModal('LOGIN')}
             initialShelfSlug={shelfSlugMatch?.[1]}
+            openFilterSignal={filterOpenSignal}
           />
         )}
 

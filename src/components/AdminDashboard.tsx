@@ -183,25 +183,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
       
       {/* Left Admin Sidebar */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col justify-between shrink-0">
+      <aside className="w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 p-3 md:p-4 flex flex-col shrink-0">
         <div>
-          <div className="flex items-center gap-2 px-2 py-3 border-b border-slate-800 mb-4">
+          <div className="flex items-center gap-2 px-2 py-2 md:py-3 border-b border-slate-800 mb-3 md:mb-4">
             <Shield className="w-5 h-5 text-emerald-400" />
             <span className="font-extrabold text-sm tracking-wider text-white">ADMIN CONTROL</span>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
-              { id: 'OVERVIEW', label: 'Platform Overview', icon: Activity },
-              { id: 'CATEGORIES', label: 'Shelf Types & Categories', icon: Tag },
-              { id: 'USERS', label: 'User Management', icon: Users },
-              { id: 'SHOPS', label: 'Shops & Shelves', icon: Store },
-              { id: 'BOOKINGS', label: 'Bookings & Financials', icon: DollarSign },
-              { id: 'VERIFY', label: 'Verification Queue', icon: UserCheck },
-              { id: 'PAYOUTS', label: 'Withdrawals & Payouts', icon: CreditCard },
+              { id: 'OVERVIEW', label: 'Overview', icon: Activity },
+              { id: 'CATEGORIES', label: 'Categories', icon: Tag },
+              { id: 'USERS', label: 'Users', icon: Users },
+              { id: 'SHOPS', label: 'Shops', icon: Store },
+              { id: 'BOOKINGS', label: 'Bookings', icon: DollarSign },
+              { id: 'VERIFY', label: 'Verify', icon: UserCheck },
+              { id: 'PAYOUTS', label: 'Payouts', icon: CreditCard },
               { id: 'DISPUTES', label: 'Disputes', icon: AlertTriangle },
-              { id: 'SETTINGS', label: 'Commission & Rules', icon: Sliders },
-              { id: 'AUDIT', label: 'Security Audit Logs', icon: FileText },
+              { id: 'SETTINGS', label: 'Settings', icon: Sliders },
+              { id: 'AUDIT', label: 'Audit', icon: FileText },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -209,7 +209,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as any)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`shrink-0 md:w-full flex items-center gap-2 md:gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap touch-target ${
                     isActive
                       ? 'bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -223,7 +223,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </nav>
         </div>
 
-        <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl mt-6 text-center text-xs text-slate-400">
+        <div className="hidden md:block p-3 bg-slate-950 border border-slate-800 rounded-xl mt-6 text-center text-xs text-slate-400">
           <div>Platform Currency: <span className="text-emerald-400 font-bold">TZS</span></div>
           <div>Active Categories: <span className="text-emerald-400 font-bold">{categoriesList.length}</span></div>
           <div>Commission: <span className="text-amber-400 font-bold">{settings?.commissionPercentage || 10}%</span></div>

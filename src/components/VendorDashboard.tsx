@@ -124,9 +124,9 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
     <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
       
       {/* Left Vendor Navigation Sidebar */}
-      <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col justify-between shrink-0">
+      <aside className="w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 p-3 md:p-4 flex flex-col shrink-0">
         <div>
-          <div className="px-3 py-3 border-b border-slate-800 mb-4">
+          <div className="px-2 md:px-3 py-2 md:py-3 border-b border-slate-800 mb-3 md:mb-4">
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-amber-400" />
               <span className="font-extrabold text-sm tracking-wider text-white">VENDOR PORTAL</span>
@@ -136,15 +136,15 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
             </div>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
-              { id: 'OVERVIEW', label: 'Dashboard Overview', icon: TrendingUp },
-              { id: 'FIND_SHELVES', label: 'Find Shelves Marketplace', icon: Search },
-              { id: 'BOOKINGS', label: 'My Shelf Bookings', icon: Calendar },
-              { id: 'PRODUCTS', label: 'My Products Catalogue', icon: Package },
-              { id: 'INVENTORY', label: 'Shelf Stock Inventory', icon: Layers },
-              { id: 'AI_INSIGHTS', label: 'AI Market Insights', icon: Sparkles },
-              { id: 'MESSAGES', label: 'Host Messages', icon: MessageSquare },
+              { id: 'OVERVIEW', label: 'Overview', icon: TrendingUp },
+              { id: 'FIND_SHELVES', label: 'Find shelves', icon: Search },
+              { id: 'BOOKINGS', label: 'Bookings', icon: Calendar },
+              { id: 'PRODUCTS', label: 'Products', icon: Package },
+              { id: 'INVENTORY', label: 'Inventory', icon: Layers },
+              { id: 'AI_INSIGHTS', label: 'AI insights', icon: Sparkles },
+              { id: 'MESSAGES', label: 'Messages', icon: MessageSquare },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -155,7 +155,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                     setActiveTab(item.id as any);
                     if (item.id === 'AI_INSIGHTS' && !aiInsights) handleFetchInsights();
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`shrink-0 md:w-full flex items-center gap-2 md:gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap touch-target ${
                     isActive
                       ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -170,7 +170,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
         </div>
 
         {/* AI ShelfMatch Trigger */}
-        <div className="mt-6 p-4 bg-gradient-to-br from-amber-500/10 to-emerald-500/10 border border-amber-500/30 rounded-2xl">
+        <div className="hidden md:block mt-6 p-4 bg-gradient-to-br from-amber-500/10 to-emerald-500/10 border border-amber-500/30 rounded-2xl">
           <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 mb-1">
             <Sparkles className="w-4 h-4" /> AI ShelfMatch
           </div>

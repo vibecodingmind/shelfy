@@ -94,7 +94,7 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({
               type="button"
               onClick={handlePrevPhoto}
               aria-label="Previous photo"
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-950/80 hover:bg-slate-900 text-white backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 border border-slate-700 shadow-md hover:scale-110 z-10"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-950/80 hover:bg-slate-900 text-white backdrop-blur flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 carousel-nav transition-opacity duration-200 border border-slate-700 shadow-md hover:scale-110 z-10 touch-target"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -103,7 +103,7 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({
               type="button"
               onClick={handleNextPhoto}
               aria-label="Next photo"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-950/80 hover:bg-slate-900 text-white backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 border border-slate-700 shadow-md hover:scale-110 z-10"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-950/80 hover:bg-slate-900 text-white backdrop-blur flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 carousel-nav transition-opacity duration-200 border border-slate-700 shadow-md hover:scale-110 z-10 touch-target"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

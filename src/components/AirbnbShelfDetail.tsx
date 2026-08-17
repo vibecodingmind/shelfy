@@ -116,7 +116,7 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
   };
 
   return (
-    <div id="airbnb-shelf-detail" className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-20">
+    <div id="airbnb-shelf-detail" className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-28 lg:pb-20">
       
       {/* Top Floating Navigation Bar */}
       <div className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 py-3.5 flex items-center justify-between">
@@ -126,7 +126,8 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
           className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-300 hover:text-white transition-colors bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 hover:border-slate-700"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Marketplace</span>
+          <span className="hidden sm:inline">Back to Marketplace</span>
+          <span className="sm:hidden">Back</span>
         </button>
 
         <div className="flex items-center gap-3">
@@ -165,20 +166,20 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
             {shelf.name}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-300 mt-2">
-            <div className="flex items-center gap-1 font-bold text-white">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-slate-300 mt-2">
+            <div className="flex items-center gap-1 font-bold text-white shrink-0">
               <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
               <span>{shelf.avgRating ? shelf.avgRating.toFixed(2) : '4.95'}</span>
               <span className="text-slate-400 underline font-medium">({shelf.reviewCount || 24} vendor reviews)</span>
             </div>
-            <span>•</span>
-            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-              <ShieldCheck className="w-4 h-4" /> Verified Retail Partner
+            <span className="hidden sm:inline">•</span>
+            <span className="flex items-center gap-1 text-emerald-400 font-semibold shrink-0">
+              <ShieldCheck className="w-4 h-4" /> Verified
             </span>
-            <span>•</span>
-            <span className="flex items-center gap-1 text-slate-300">
-              <MapPin className="w-4 h-4 text-emerald-400" />
-              {shelf.shopAddress || shelf.shopCity}, {shelf.shopCity}
+            <span className="hidden md:inline">•</span>
+            <span className="flex items-center gap-1 text-slate-300 min-w-0">
+              <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="truncate">{shelf.shopCity}</span>
             </span>
           </div>
         </div>
@@ -530,6 +531,27 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
 
         </div>
 
+      </div>
+
+      {/* Mobile sticky booking bar */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-4 py-3 safe-bottom">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide">From</div>
+            <div className="font-mono font-black text-emerald-400 text-sm truncate">
+              TZS {monthlyRate.toLocaleString()}
+              <span className="text-slate-400 font-normal text-xs"> /mo</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleBookingSubmit}
+            disabled={!startDate || !endDate || !isDateRangeValid}
+            className="shrink-0 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-emerald-500 to-teal-400 text-slate-950 font-black text-xs sm:text-sm disabled:opacity-50 touch-target"
+          >
+            Reserve
+          </button>
+        </div>
       </div>
 
       {/* 6. Photo Gallery Modal */}

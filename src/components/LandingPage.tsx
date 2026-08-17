@@ -48,6 +48,7 @@ interface LandingPageProps {
   onBookShelf: (shelf: Shelf, startDate?: string, endDate?: string, durationMonths?: number, category?: string) => void;
   onLoginClick: () => void;
   initialShelfSlug?: string;
+  openFilterSignal?: number;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -61,6 +62,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onBookShelf,
   onLoginClick,
   initialShelfSlug,
+  openFilterSignal,
 }) => {
   // State for search and filters
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -85,6 +87,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     const found = shelves.find((s) => s.slug === initialShelfSlug || s.id === initialShelfSlug);
     if (found) setActiveDetailShelf(found);
   }, [initialShelfSlug, shelves]);
+
+  useEffect(() => {
+    if (openFilterSignal) setShowFilterDrawer(true);
+  }, [openFilterSignal]);
 
   const openShelf = (shelf: Shelf) => {
     setActiveDetailShelf(shelf);
@@ -196,23 +202,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <div id="shelfy-marketplace" className="min-h-screen bg-slate-950 text-white flex flex-col font-sans pb-16">
       
       {/* 1. Airbnb Category Strip Bar (Limited to ~7 items visible, swipeable, hidden scrollbars) */}
-      <section className="bg-slate-950/95 border-b border-slate-800/80 sticky top-20 z-20 px-4 sm:px-6 lg:px-8 py-3 backdrop-blur-md">
-        <div className="w-full max-w-[2400px] mx-auto flex items-center justify-between gap-3">
-          
-          {/* Category Left Scroll Button */}
+      <section className="bg-slate-950/95 border-b border-slate-800/80 sticky top-[7.25rem] sm:top-20 z-20 px-2 sm:px-6 lg:px-8 py-2 sm:py-3 backdrop-blur-md">
+        <div className="w-full max-w-[2400px] mx-auto flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1 min-w-0 flex-1">
           <button
             type="button"
             onClick={() => scrollCategories('left')}
-            className="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center shrink-0 hidden md:flex hover:scale-105 transition-all cursor-pointer shadow-md"
+            className="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center shrink-0 hidden md:flex hover:scale-105 transition-all cursor-pointer shadow-md touch-target"
             aria-label="Scroll categories left"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          {/* Swipeable Category Row with Hidden Scrollbar */}
           <div
             ref={categoryScrollRef}
-            className="flex items-center gap-6 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1 flex-1 scroll-smooth snap-x"
+            className="flex items-center gap-4 sm:gap-6 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1 flex-1 scroll-smooth snap-x min-w-0"
           >
             {defaultCategoryPills.map((pill, idx) => {
               const isActive =
@@ -239,21 +243,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             })}
           </div>
 
-          {/* Category Right Scroll Button */}
           <button
             type="button"
             onClick={() => scrollCategories('right')}
-            className="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center shrink-0 hidden md:flex hover:scale-105 transition-all cursor-pointer shadow-md"
+            className="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center shrink-0 hidden md:flex hover:scale-105 transition-all cursor-pointer shadow-md touch-target"
             aria-label="Scroll categories right"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
+          </div>
 
-          {/* View Mode & Filter Controls Strip */}
-          <div className="flex items-center gap-2 shrink-0 pl-2 border-l border-slate-800">
-            
-            {/* View Mode Toggle: Grid / List / Map */}
-            <div className="hidden sm:flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-2 shrink-0 sm:pl-2 sm:border-l sm:border-slate-800 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
               <button
                 type="button"
                 onClick={() => setViewMode('GRID')}
@@ -288,7 +289,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </button>
             </div>
 
-            {/* Filter Trigger Button */}
             <button
               type="button"
               onClick={() => setShowFilterDrawer(!showFilterDrawer)}
@@ -411,7 +411,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         
         {/* Results count & active filter banner */}
         {viewMode !== 'MAP' && (
-          <div className="flex items-center justify-between text-xs text-slate-400 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400 pb-3">
             <div>
               Showing <span className="font-bold text-white font-mono">{filteredShelves.length}</span> verified shelf spaces in Tanzania
             </div>
@@ -484,7 +484,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </main>
 
       {/* 4. Floating Bottom "Show Map" / "Show List" Pill Button (Airbnb Signature) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 shadow-2xl">
+      <div className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-30 shadow-2xl safe-bottom">
         <button
           type="button"
           onClick={() => {

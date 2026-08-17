@@ -99,14 +99,14 @@ export const AirbnbShelfListCard: React.FC<AirbnbShelfListCardProps> = ({
             <button
               type="button"
               onClick={handlePrevPhoto}
-              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-950/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border border-slate-700 hover:scale-110"
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-950/80 text-white flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 carousel-nav transition-opacity border border-slate-700 hover:scale-110 touch-target"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
               onClick={handleNextPhoto}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-950/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border border-slate-700 hover:scale-110"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-950/80 text-white flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 carousel-nav transition-opacity border border-slate-700 hover:scale-110 touch-target"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
