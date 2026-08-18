@@ -22,6 +22,9 @@ import {
   AuthToken,
   PaymentAttempt,
   VerificationRequest,
+  SavedSearch,
+  NotificationPreference,
+  EnterpriseAccount,
 } from '../types/index.js';
 import { LedgerAccount, LedgerEntry, accountKey, paymentCapturedPostings } from './domain/ledger.js';
 import { Withdrawal } from './domain/withdrawals.js';
@@ -52,6 +55,9 @@ export interface DatabaseSchema {
   authTokens: AuthToken[];
   ledgerAccounts: LedgerAccount[];
   ledgerEntries: LedgerEntry[];
+  savedSearches: SavedSearch[];
+  notificationPreferences: NotificationPreference[];
+  enterpriseAccounts: EnterpriseAccount[];
   settings: PlatformSettings;
 }
 
@@ -1837,7 +1843,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
   }
 
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     users,
     vendorProfiles,
     hostProfiles,
@@ -1862,6 +1868,9 @@ export function buildCompleteSeedData(): DatabaseSchema {
     authTokens: [],
     ledgerAccounts,
     ledgerEntries,
+    savedSearches: [],
+    notificationPreferences: [],
+    enterpriseAccounts: [],
     settings,
   };
 }

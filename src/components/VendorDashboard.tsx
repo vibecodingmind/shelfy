@@ -26,6 +26,12 @@ import { User, Booking, Product, ShelfInventory, Shelf, Message, VendorProfile }
 import { api } from '../lib/api.js';
 import { PesapalPaymentModal } from './PesapalPaymentModal.js';
 import { AirbnbShelfCard } from './AirbnbShelfCard.js';
+import { VendorAnalyticsPanel } from './VendorAnalyticsPanel.js';
+import { MessagingPanel } from './MessagingPanel.js';
+import { BookingTimeline } from './BookingTimeline.js';
+import { ReceiptView } from './ReceiptView.js';
+import { SavedSearchPanel } from './SavedSearchPanel.js';
+import { addShelfToCart } from './CheckoutCart.js';
 
 interface VendorDashboardProps {
   user: User;
@@ -76,6 +82,8 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
 
   // PesaPal Checkout
   const [checkoutBooking, setCheckoutBooking] = useState<Booking | null>(null);
+  const [receiptBookingId, setReceiptBookingId] = useState<string | null>(null);
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
 
   // Run AI ShelfMatch
   const handleRunMatch = async () => {
@@ -204,6 +212,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'OVERVIEW' && (
           <div className="space-y-8">
+            <VendorAnalyticsPanel />
             
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -350,14 +359,25 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
               <h2 className="text-lg font-bold text-white">Find Retail Shelves across Tanzania</h2>
               <p className="text-xs text-slate-400">Select an available retail shelf and expand your brand placement instantly.</p>
             </div>
+            <div className="mb-6">
+              <SavedSearchPanel city={matchCity} category={matchCategory} />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {shelves.map((shelf) => (
-                <AirbnbShelfCard
-                  key={shelf.id}
-                  shelf={shelf}
-                  onSelectShelf={(s) => onBookShelf(s)}
-                  onBookDirect={(s) => onBookShelf(s)}
-                />
+                <div key={shelf.id} className="relative">
+                  <AirbnbShelfCard
+                    shelf={shelf}
+                    onSelectShelf={(s) => onBookShelf(s)}
+                    onBookDirect={(s) => onBookShelf(s)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => addShelfToCart(shelf)}
+                    className="absolute top-3 right-3 z-10 px-2 py-1 bg-slate-900/90 border border-emerald-500/40 text-emerald-400 text-[10px] font-bold rounded-lg"
+                  >
+                    + Cart
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -395,29 +415,76 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
 
         {activeTab === 'BOOKINGS' && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h2 className="text-lg font-bold text-white mb-4">My Shelf Bookings</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h2 className="text-lg font-bold text-white">My Shelf Bookings</h2>
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await api.exportBookingsCsv();
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'shelfy-bookings.csv';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-3 py-1.5 bg-slate-800 text-emerald-400 text-xs font-bold rounded-lg border border-slate-700"
+              >
+                Export CSV
+              </button>
+            </div>
             {bookings.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-400">No bookings yet. Find a shelf to start expanding.</div>
             ) : (
               <div className="space-y-3">
                 {bookings.map((b) => (
-                  <div key={b.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div key={b.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="font-bold text-white">{b.shelfName}</div>
                       <div className="text-emerald-400">{b.shopName} • {b.shopCity}</div>
                       <div className="text-slate-400 mt-1">{b.startDate} → {b.endDate} • {b.status}</div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-mono font-bold text-amber-400">TZS {b.totalPriceTzs.toLocaleString()}</div>
+                    <div className="text-right flex flex-wrap gap-2 justify-end">
+                      <div className="font-mono font-bold text-amber-400 w-full sm:w-auto">TZS {b.totalPriceTzs.toLocaleString()}</div>
                       {b.paymentStatus === 'PENDING' && b.status !== 'REJECTED' && b.status !== 'CANCELLED' && (
                         <button
                           onClick={() => setCheckoutBooking(b)}
-                          className="mt-2 px-3 py-1.5 bg-emerald-500 text-slate-950 font-extrabold rounded-lg"
+                          className="px-3 py-1.5 bg-emerald-500 text-slate-950 font-extrabold rounded-lg"
                         >
                           Pay now
                         </button>
                       )}
+                      {['ACTIVE', 'EXPIRING', 'COMPLETED'].includes(b.status) && b.paymentStatus === 'PAID' && (
+                        <button
+                          onClick={async () => {
+                            const res = await api.renewBooking(b.id, b.durationMonths);
+                            if (!res.success) alert(res.error?.message || 'Renewal failed.');
+                            else onRefreshData();
+                          }}
+                          className="px-3 py-1.5 bg-amber-500/20 text-amber-400 font-bold rounded-lg border border-amber-500/30"
+                        >
+                          Renew
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setReceiptBookingId(b.id)}
+                        className="px-3 py-1.5 bg-slate-800 text-slate-200 font-bold rounded-lg"
+                      >
+                        Receipt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBookingId(expandedBookingId === b.id ? null : b.id)}
+                        className="px-3 py-1.5 bg-slate-800 text-emerald-400 font-bold rounded-lg"
+                      >
+                        Timeline
+                      </button>
                     </div>
+                    </div>
+                    {expandedBookingId === b.id && <BookingTimeline bookingId={b.id} />}
                   </div>
                 ))}
               </div>
@@ -454,21 +521,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
         {activeTab === 'MESSAGES' && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <h2 className="text-lg font-bold text-white mb-4">Host Messages</h2>
-            {messages.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-400">No messages yet. Field agents and hosts will appear here after inspections.</div>
-            ) : (
-              <div className="space-y-3">
-                {messages.map((m) => (
-                  <div key={m.id} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-white">{m.senderName}</span>
-                      <span className="text-[10px] text-slate-500">{new Date(m.createdAt).toLocaleString()}</span>
-                    </div>
-                    <div className="text-slate-300">{m.content}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <MessagingPanel user={user} bookings={bookings} messages={messages} onSent={onRefreshData} />
           </div>
         )}
 
@@ -681,7 +734,6 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
         </div>
       )}
 
-      {/* PESAPAL SECURE PAYMENT MODAL */}
       {checkoutBooking && (
         <PesapalPaymentModal
           isOpen={!!checkoutBooking}
@@ -693,6 +745,10 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
             onRefreshData();
           }}
         />
+      )}
+
+      {receiptBookingId && (
+        <ReceiptView bookingId={receiptBookingId} open={!!receiptBookingId} onClose={() => setReceiptBookingId(null)} />
       )}
 
     </div>

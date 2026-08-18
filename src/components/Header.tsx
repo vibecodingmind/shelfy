@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Store, Search, Bell, LogOut, SlidersHorizontal, ChevronDown } from 'lucide-react';
+import { LanguageSwitcher } from './LanguageSwitcher.js';
 import { User, UserRole } from '../types/index.js';
 
 interface HeaderProps {
@@ -133,6 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <LanguageSwitcher compact />
           {!user ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
               <button

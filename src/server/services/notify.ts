@@ -12,6 +12,7 @@ import {
   type NotifyChannel,
   type NotifyType,
 } from '../domain/notifications.js';
+import { renderEmailHtml } from './emailTemplates.js';
 
 export type { DeliveryStep, NotifyChannel, NotifyType } from '../domain/notifications.js';
 export { deliveryPlan, notificationProviders } from '../domain/notifications.js';
@@ -27,7 +28,17 @@ function writeInApp(userId: string, title: string, message: string, type: Notify
   });
 }
 
-async function sendResendEmail(to: string, title: string, message: string, env: NodeJS.ProcessEnv) {
+function userPrefs(userId: string) {
+  return dbEngine.db.notificationPreferences.find((p) => p.userId === userId);
+}
+
+async function sendResendEmail(
+  to: string,
+  title: string,
+  message: string,
+  env: NodeJS.ProcessEnv,
+  html?: string
+) {
   const from = env.EMAIL_FROM?.trim() || 'Shelfy <noreply@shelfy.co.tz>';
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -35,7 +46,13 @@ async function sendResendEmail(to: string, title: string, message: string, env: 
       Authorization: `Bearer ${env.RESEND_API_KEY!.trim()}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from, to, subject: title, text: message }),
+    body: JSON.stringify({
+      from,
+      to,
+      subject: title,
+      text: message,
+      html: html || renderEmailHtml({ title, message }),
+    }),
   });
   if (!res.ok) {
     throw new Error(`Resend ${res.status}`);
@@ -75,19 +92,32 @@ async function sendSms(to: string, message: string, env: NodeJS.ProcessEnv, prov
 }
 
 export async function dispatchExternalChannels(input: {
+  userId?: string;
   email?: string;
   phone?: string;
   title: string;
   message: string;
   env?: NodeJS.ProcessEnv;
   channels?: NotifyChannel[];
+  html?: string;
 }): Promise<DeliveryStep[]> {
   const env = input.env || process.env;
+  const prefs = input.userId ? userPrefs(input.userId) : undefined;
   const allowed = input.channels ? new Set(input.channels) : null;
   const plan = deliveryPlan(env).filter((step) => !allowed || allowed.has(step.channel));
-  const providers = notificationProviders(env);
+
   for (const step of plan) {
     if (step.channel === 'IN_APP' || step.action === 'SKIP') continue;
+    if (step.channel === 'EMAIL' && prefs && !prefs.emailEnabled) {
+      step.action = 'SKIP';
+      step.reason = 'user_pref_off';
+      continue;
+    }
+    if (step.channel === 'SMS' && prefs && !prefs.smsEnabled) {
+      step.action = 'SKIP';
+      step.reason = 'user_pref_off';
+      continue;
+    }
     try {
       if (step.channel === 'EMAIL') {
         if (!input.email) {
@@ -95,8 +125,8 @@ export async function dispatchExternalChannels(input: {
           step.reason = 'no_email';
           continue;
         }
-        if (providers.email === 'resend') {
-          await sendResendEmail(input.email, input.title, input.message, env);
+        if (notificationProviders(env).email === 'resend') {
+          await sendResendEmail(input.email, input.title, input.message, env, input.html);
         } else {
           step.action = 'SKIP';
           step.reason = 'smtp_not_wired';
@@ -108,7 +138,8 @@ export async function dispatchExternalChannels(input: {
           step.reason = 'no_phone';
           continue;
         }
-        if (providers.sms) await sendSms(input.phone, `${input.title}: ${input.message}`, env, providers.sms);
+        const smsProvider = notificationProviders(env).sms;
+        if (smsProvider) await sendSms(input.phone, `${input.title}: ${input.message}`, env, smsProvider);
       }
     } catch (err) {
       console.warn(`Notification ${step.channel} failed:`, err instanceof Error ? err.message : err);
@@ -119,13 +150,15 @@ export async function dispatchExternalChannels(input: {
   return plan;
 }
 
-export function notify(userId: string, title: string, message: string, type: NotifyType = 'INFO') {
+export function notify(userId: string, title: string, message: string, type: NotifyType = 'INFO', html?: string) {
   writeInApp(userId, title, message, type);
   const user = dbEngine.db.users.find((row) => row.id === userId);
   void dispatchExternalChannels({
+    userId,
     email: user?.email,
     phone: user?.phone,
     title,
     message,
+    html,
   }).catch((err) => console.warn('Notification dispatch failed:', err instanceof Error ? err.message : err));
 }

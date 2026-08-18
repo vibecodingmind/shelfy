@@ -20,6 +20,8 @@ import {
 import { User, HostProfile, Shop, Shelf, Booking, Payout } from '../types/index.js';
 import { api } from '../lib/api.js';
 import { ListingWizard } from './ListingWizard.js';
+import { HostAnalyticsPanel } from './HostAnalyticsPanel.js';
+import { HostApprovalInbox } from './HostApprovalInbox.js';
 
 interface HostDashboardProps {
   user: User;
@@ -44,7 +46,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
   shelfTypes,
   onRefreshData,
 }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SHOPS' | 'SHELVES' | 'BOOKINGS' | 'EARNINGS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SHOPS' | 'SHELVES' | 'BOOKINGS' | 'EARNINGS' | 'APPROVALS'>('OVERVIEW');
   const [finance, setFinance] = useState<any>(null);
   const [withdrawAmount, setWithdrawAmount] = useState(20000);
 
@@ -171,6 +173,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
               { id: 'SHOPS', label: 'Shops', icon: Building },
               { id: 'SHELVES', label: 'Shelves', icon: Layers },
               { id: 'BOOKINGS', label: 'Bookings', icon: Calendar },
+              { id: 'APPROVALS', label: 'Approvals', icon: CheckCircle2 },
               { id: 'EARNINGS', label: 'Earnings', icon: DollarSign },
             ].map((item) => {
               const Icon = item.icon;
@@ -238,6 +241,7 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'OVERVIEW' && (
           <div className="space-y-8">
+            <HostAnalyticsPanel />
             
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -396,6 +400,22 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                       </span>
                     </div>
                     <div className="mt-3 text-xs text-slate-300">TZS {sh.monthlyPriceTzs.toLocaleString()}/mo • {sh.shelfType.replace('_', ' ')}</div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const res = await api.getPricingSuggestion(sh.id);
+                        if (res.success && res.data) {
+                          const ok = window.confirm(`${res.data.reason}\n\nApply TZS ${res.data.suggestedPriceTzs.toLocaleString()}?`);
+                          if (ok) {
+                            await api.applyShelfPricing(sh.id, res.data.suggestedPriceTzs);
+                            onRefreshData();
+                          }
+                        }
+                      }}
+                      className="mt-2 text-[10px] px-2 py-1 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30"
+                    >
+                      Dynamic pricing
+                    </button>
                     <div className="mt-1 text-[10px] text-slate-500">{sh.listingStatus || sh.verificationStatus || 'DRAFT'} · {sh.allowedCategories.join(', ')}</div>
                     {sh.listingStatus !== 'PUBLISHED' && sh.verificationStatus !== 'VERIFIED' && sh.hostVerificationStatus !== 'VERIFIED' && sh.listingStatus !== 'SUBMITTED' && (
                       <button onClick={async () => { await api.submitListing('shelf', sh.id); onRefreshData(); }} className="mt-2 text-[10px] px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold">Submit for verification</button>
@@ -414,6 +434,13 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'APPROVALS' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+            <h2 className="text-lg font-bold text-white mb-4">Pending approval inbox</h2>
+            <HostApprovalInbox onAction={onRefreshData} />
           </div>
         )}
 

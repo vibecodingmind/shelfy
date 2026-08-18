@@ -12,6 +12,8 @@ import { AgentDashboard } from './components/AgentDashboard.js';
 import { AuthModal } from './components/AuthModal.js';
 import { LegalPage, LEGAL_SLUGS } from './components/LegalPage.js';
 import { PesapalPaymentModal } from './components/PesapalPaymentModal.js';
+import { NotificationInbox } from './components/NotificationInbox.js';
+import { CheckoutCartWithRegister } from './components/CheckoutCart.js';
 import { api, getStoredToken, setStoredToken, clearStoredToken } from './lib/api.js';
 import {
   User,
@@ -71,6 +73,7 @@ export function App() {
   const [activePesapalBooking, setActivePesapalBooking] = useState<Booking | null>(null);
   const [activePesapalShelf, setActivePesapalShelf] = useState<Shelf | null>(null);
   const [showPesapalModal, setShowPesapalModal] = useState<boolean>(false);
+  const [showNotificationInbox, setShowNotificationInbox] = useState(false);
 
   const loadPublicData = async () => {
     const shopsRes = await api.getShops();
@@ -250,11 +253,9 @@ export function App() {
         onLogout={handleLogout}
         onSwitchView={(view) => setActiveRoleView(view)}
         notificationsCount={notifications.filter((n) => !n.readAt).length}
-        onNotificationsClick={async () => {
+        onNotificationsClick={() => {
           if (!user) return;
-          await api.markNotificationsRead();
-          const notifRes = await api.getNotifications();
-          if (notifRes.success && notifRes.data) setNotifications(notifRes.data);
+          setShowNotificationInbox(true);
         }}
         onOpenFilter={() => {
           setActiveRoleView('MARKETPLACE');
@@ -340,6 +341,29 @@ export function App() {
           />
         )}
       </div>
+
+      {/* Notification inbox */}
+      {user && (
+        <NotificationInbox
+          open={showNotificationInbox}
+          onClose={() => setShowNotificationInbox(false)}
+          notifications={notifications}
+          onMarkRead={async (ids) => {
+            await api.markNotificationsRead(ids);
+            const notifRes = await api.getNotifications();
+            if (notifRes.success && notifRes.data) setNotifications(notifRes.data);
+          }}
+        />
+      )}
+
+      {user?.role === 'VENDOR' && (
+        <CheckoutCartWithRegister
+          onCheckoutComplete={() => {
+            loadUserData();
+            setActiveRoleView('VENDOR');
+          }}
+        />
+      )}
 
       {/* Secure PesaPal Payment Modal */}
       {showPesapalModal && activePesapalBooking && (

@@ -382,3 +382,107 @@ export interface AuthState {
   vendorProfile?: VendorProfile | null;
   hostProfile?: HostProfile | null;
 }
+
+export interface SavedSearch {
+  id: string;
+  userId: string;
+  name: string;
+  query?: string;
+  city?: string;
+  category?: string;
+  maxPriceTzs?: number;
+  shelfType?: string;
+  alertsEnabled: boolean;
+  lastAlertAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPreference {
+  userId: string;
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  bookingAlerts: boolean;
+  expiryReminders: boolean;
+  savedSearchAlerts: boolean;
+  marketingEmails: boolean;
+  updatedAt: string;
+}
+
+export interface EnterpriseAccount {
+  id: string;
+  ownerUserId: string;
+  brandName: string;
+  businessRegistration?: string;
+  memberUserIds: string[];
+  billingEmail: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InspectionSummary {
+  shelfId: string;
+  verifiedListing: boolean;
+  hostVerified: boolean;
+  lastInspectionAt?: string;
+  lastInspectionScore?: number;
+  lastStockLevelPercent?: number;
+  lastCondition?: string;
+  totalInspections: number;
+  trustScore: number;
+}
+
+export interface BookingReceipt {
+  receiptNumber: string;
+  bookingId: string;
+  vendorName: string;
+  vendorBusinessName?: string;
+  shelfName: string;
+  shopName: string;
+  shopCity: string;
+  startDate: string;
+  endDate: string;
+  durationMonths: number;
+  monthlyPriceTzs: number;
+  totalPriceTzs: number;
+  platformFeeTzs: number;
+  hostEarningsTzs: number;
+  paymentStatus: PaymentStatus;
+  paidAt?: string;
+  transactionReference?: string;
+  issuedAt: string;
+}
+
+export interface VendorAnalytics {
+  totalBookings: number;
+  activeBookings: number;
+  totalSpendTzs: number;
+  avgMonthlySpendTzs: number;
+  topCities: Array<{ city: string; count: number }>;
+  bookingsByStatus: Record<string, number>;
+  expiringSoon: number;
+  renewalRatePercent: number;
+}
+
+export interface HostAnalytics {
+  totalBookings: number;
+  pendingApprovals: number;
+  activeRentals: number;
+  totalEarningsTzs: number;
+  availableBalanceTzs: number;
+  occupancyRatePercent: number;
+  topShelves: Array<{ shelfId: string; shelfName: string; bookings: number; earningsTzs: number }>;
+  bookingsByStatus: Record<string, number>;
+}
+
+export interface DynamicPricingSuggestion {
+  shelfId: string;
+  currentPriceTzs: number;
+  suggestedPriceTzs: number;
+  demandScore: number;
+  occupancyPercent: number;
+  reason: string;
+}
+
+export type SupportedLocale = 'en' | 'sw';

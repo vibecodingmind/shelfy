@@ -19,6 +19,15 @@ import {
   Message,
   AuditLog,
   PlatformSettings,
+  BookingStatusHistory,
+  BookingReceipt,
+  SavedSearch,
+  NotificationPreference,
+  VendorAnalytics,
+  HostAnalytics,
+  InspectionSummary,
+  DynamicPricingSuggestion,
+  EnterpriseAccount,
 } from '../types/index.js';
 
 const TOKEN_KEY = 'shelfy_auth_token';
@@ -125,12 +134,27 @@ export const api = {
   },
   getShelfById: (id: string) => apiFetch<Shelf & { shop: Shop; reviews?: any[] }>(`/api/shelves/${id}`),
   getShelfAvailability: (id: string) => apiFetch<{ shelfId: string; availabilityStatus: string; monthlyPriceTzs: number; bookedRanges: Array<{ bookingId: string; startDate: string; endDate: string; status: string }> }>(`/api/shelves/${id}/availability`),
+  getInspectionSummary: (id: string) => apiFetch<InspectionSummary>(`/api/shelves/${id}/inspection-summary`),
+  getShelfReports: (id: string) => apiFetch<ShelfReport[]>(`/api/shelves/${id}/reports`),
+  getPricingSuggestion: (id: string) => apiFetch<DynamicPricingSuggestion>(`/api/shelves/${id}/pricing-suggestion`),
+  applyShelfPricing: (id: string, monthlyPriceTzs: number) =>
+    apiFetch<Shelf>(`/api/shelves/${id}/apply-pricing`, { method: 'POST', body: JSON.stringify({ monthlyPriceTzs }) }),
   createShelf: (shelfData: any) => apiFetch<Shelf>('/api/shelves', { method: 'POST', body: JSON.stringify(shelfData) }),
 
   // Bookings & Payments
   createBooking: (bookingData: any) => apiFetch<Booking>('/api/bookings', { method: 'POST', body: JSON.stringify(bookingData) }),
   getBookings: () => apiFetch<Booking[]>('/api/bookings'),
+  getPendingBookings: () => apiFetch<Booking[]>('/api/bookings/inbox/pending'),
+  getBookingHistory: (bookingId: string) => apiFetch<BookingStatusHistory[]>(`/api/bookings/${bookingId}/history`),
+  getBookingReceipt: (bookingId: string) => apiFetch<BookingReceipt>(`/api/bookings/${bookingId}/receipt`),
+  renewBooking: (bookingId: string, durationMonths?: number) =>
+    apiFetch<Booking>(`/api/bookings/${bookingId}/renew`, { method: 'POST', body: JSON.stringify({ durationMonths }) }),
+  exportBookingsCsv: () => fetch('/api/exports/bookings.csv', { headers: { Authorization: `Bearer ${getStoredToken()}` } }),
   updateBookingStatus: (bookingId: string, status: string) => apiFetch<Booking>(`/api/bookings/${bookingId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  quoteBatchCheckout: (items: Array<{ shelfId: string; durationMonths: number; startDate?: string }>) =>
+    apiFetch<any>('/api/bookings/quote', { method: 'POST', body: JSON.stringify({ items }) }),
+  createBatchBookings: (items: Array<{ shelfId: string; durationMonths: number; startDate?: string }>) =>
+    apiFetch<{ bookings: Booking[]; errors: string[] }>('/api/bookings/batch', { method: 'POST', body: JSON.stringify({ items }) }),
   getPayouts: () => apiFetch<Payout[]>('/api/payouts'),
   initiatePesapalSession: (bookingId: string, phoneNumber: string) =>
     apiFetch<any>('/api/payments/initiate-session', { method: 'POST', body: JSON.stringify({ bookingId, phoneNumber }) }),
@@ -174,8 +198,22 @@ export const api = {
   // Notifications & Messages
   getNotifications: () => apiFetch<Notification[]>('/api/notifications'),
   markNotificationsRead: (ids?: string[]) => apiFetch<Notification[]>('/api/notifications/read', { method: 'POST', body: JSON.stringify({ ids }) }),
+  getNotificationPreferences: () => apiFetch<NotificationPreference>('/api/notification-preferences'),
+  updateNotificationPreferences: (prefs: Partial<NotificationPreference>) =>
+    apiFetch<NotificationPreference>('/api/notification-preferences', { method: 'PUT', body: JSON.stringify(prefs) }),
   getMessages: () => apiFetch<Message[]>('/api/messages'),
   sendMessage: (msgData: any) => apiFetch<Message>('/api/messages', { method: 'POST', body: JSON.stringify(msgData) }),
+  getSavedSearches: () => apiFetch<SavedSearch[]>('/api/saved-searches'),
+  createSavedSearch: (data: Partial<SavedSearch>) => apiFetch<SavedSearch>('/api/saved-searches', { method: 'POST', body: JSON.stringify(data) }),
+  deleteSavedSearch: (id: string) => apiFetch<{ deleted: boolean }>(`/api/saved-searches/${id}`, { method: 'DELETE' }),
+  getVendorAnalytics: () => apiFetch<VendorAnalytics>('/api/analytics/vendor'),
+  getHostAnalytics: () => apiFetch<HostAnalytics>('/api/analytics/host'),
+  getEnterpriseAccount: () => apiFetch<EnterpriseAccount | null>('/api/enterprise/account'),
+  createEnterpriseAccount: (data: { brandName: string; businessRegistration?: string; billingEmail?: string }) =>
+    apiFetch<EnterpriseAccount>('/api/enterprise/account', { method: 'POST', body: JSON.stringify(data) }),
+  addEnterpriseMember: (email: string) =>
+    apiFetch<EnterpriseAccount>('/api/enterprise/account/members', { method: 'POST', body: JSON.stringify({ email }) }),
+  automateWithdrawal: (id: string) => apiFetch<any>(`/api/admin/withdrawals/${id}/automate`, { method: 'POST' }),
 
   // Admin & Platform Settings
   getSettings: () => apiFetch<PlatformSettings>('/api/settings'),
