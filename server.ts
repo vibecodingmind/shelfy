@@ -25,6 +25,7 @@ import { publicShops, publicShelves } from './src/server/domain/listings.js';
 import { uniqueSlug, findByIdOrSlug } from './src/server/domain/slugs.js';
 import { occupancySummary, occupancyWindow } from './src/server/domain/occupancy.js';
 import { registerP1Routes, runBookingMaintenance } from './src/server/p1Routes.js';
+import { registerPhaseRoutes, runSavedSearchAlerts } from './src/server/phaseRoutes.js';
 import { paymentsDueForReconcile } from './src/server/domain/reconcile.js';
 import { createAuthToken, consumeAuthToken, verifySandboxSignature, sandboxCompletionEnabled, rotateRefreshToken, revokeAuthTokens, REFRESH_TOKEN_TTL_MS } from './src/server/services/tokens.js';
 import { notify, dispatchExternalChannels } from './src/server/services/notify.js';
@@ -1701,6 +1702,7 @@ app.post('/api/ai/vendor-insights', requireAuth, requireRole('VENDOR', 'ADMIN'),
 
 async function startServer() {
   registerP1Routes(app);
+  registerPhaseRoutes(app);
   const uploadDir = uploadsDir();
   fs.mkdirSync(uploadDir, { recursive: true });
   app.use('/uploads', express.static(uploadDir));
@@ -1734,12 +1736,14 @@ async function startServer() {
     setInterval(() => {
       try {
         runBookingMaintenance();
+        runSavedSearchAlerts();
       } catch (err) {
         console.error('Booking maintenance failed:', err);
       }
       void runPaymentReconciliation().catch((err) => console.error('Payment reconcile failed:', err));
     }, 15 * 60 * 1000);
     runBookingMaintenance();
+    runSavedSearchAlerts();
     void runPaymentReconciliation().catch((err) => console.error('Payment reconcile failed:', err));
   } catch (err) {
     console.error('Post-listen bootstrap failed; /api/health remains up:', err);
@@ -1753,6 +1757,7 @@ export async function prepareHttpApp() {
   await ensureJwtSecret();
   if (!httpPrepared) {
     registerP1Routes(app);
+    registerPhaseRoutes(app);
     httpPrepared = true;
   }
   return app;

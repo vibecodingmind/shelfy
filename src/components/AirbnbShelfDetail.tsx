@@ -31,6 +31,7 @@ import {
 import { Shelf, Shop, User } from '../types/index.js';
 import { AvailabilityCalendar, BookedRange } from './AvailabilityCalendar.js';
 import { api } from '../lib/api.js';
+import { TrustBadges } from './TrustBadges.js';
 
 interface AirbnbShelfDetailProps {
   shelf: Shelf;
@@ -182,6 +183,7 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
               <span className="truncate">{shelf.shopCity}</span>
             </span>
           </div>
+          <TrustBadges shelfId={shelf.id} />
         </div>
 
         {/* 2. Airbnb 5-Photo Mosaic Gallery Grid */}

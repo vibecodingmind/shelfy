@@ -1,12 +1,14 @@
 {
   "name": "Shelfy Tanzania",
   "short_name": "Shelfy",
-  "description": "Shelf-space rental marketplace for Tanzania.",
+  "description": "Shelf-space rental marketplace for Tanzania. English & Kiswahili.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#020617",
   "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "shopping"],
   "icons": [
     {
       "src": "/icon.svg",

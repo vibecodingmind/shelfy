@@ -416,6 +416,9 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
       updatedAt: v.updatedAt.toISOString(),
     })),
     settings: ((settingsRow?.value as unknown) as DatabaseSchema['settings']) || ({} as DatabaseSchema['settings']),
+    savedSearches: [],
+    notificationPreferences: [],
+    enterpriseAccounts: [],
   };
 }
 

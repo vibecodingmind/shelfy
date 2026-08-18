@@ -14,7 +14,7 @@ import { getPrisma } from './prisma.js';
 import { importSchemaToPrisma, loadSchemaFromPrisma, persistSchemaToPrisma, relationalUserCount } from './relational.js';
 import { ensurePrismaMigrationHistory, runPrismaMigrateDeploy } from './services/prismaBoot.js';
 
-export const SEED_SCHEMA_VERSION = 6;
+export const SEED_SCHEMA_VERSION = 7;
 
 const DATA_DIR = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || process.cwd(), process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH ? '' : 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'shelfy.json');
@@ -105,6 +105,9 @@ const EMPTY_COLLECTIONS: Array<keyof DatabaseSchema> = [
   'authTokens',
   'ledgerAccounts',
   'ledgerEntries',
+  'savedSearches',
+  'notificationPreferences',
+  'enterpriseAccounts',
 ];
 
 function normalizeCategory(category: string): string {
