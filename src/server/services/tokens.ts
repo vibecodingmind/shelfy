@@ -67,10 +67,11 @@ export function rotateRefreshToken(db: DatabaseSchema, raw: string): { userId: s
 }
 
 export function sandboxSigningSecret(env: NodeJS.ProcessEnv = process.env): string | null {
-  const explicit = env.PESAPAL_SANDBOX_KEY?.trim();
+  const explicit = env.AZAMPAY_SANDBOX_KEY?.trim() || env.PESAPAL_SANDBOX_KEY?.trim();
   if (explicit) return explicit;
-  const pesapalLive = (env.PESAPAL_ENVIRONMENT || 'sandbox').toLowerCase() === 'live';
-  if (env.NODE_ENV === 'production' || pesapalLive) return null;
+  const azamLive = (env.AZAMPAY_ENVIRONMENT || env.AZAMPAY_ENV || 'sandbox').toLowerCase();
+  const live = azamLive === 'live' || azamLive === 'production';
+  if (env.NODE_ENV === 'production' || live) return null;
   return env.JWT_SECRET?.trim() || 'shelfy_dev_only_jwt_secret';
 }
 

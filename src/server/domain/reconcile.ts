@@ -1,5 +1,11 @@
 export function paymentsDueForReconcile(input: {
-  payments: Array<{ id: string; status: string; pesapalTrackingId?: string; createdAt: string }>;
+  payments: Array<{
+    id: string;
+    status: string;
+    pesapalTrackingId?: string;
+    azamPayTransactionId?: string;
+    createdAt: string;
+  }>;
   now?: Date;
   minAgeMinutes?: number;
 }): string[] {
@@ -8,7 +14,7 @@ export function paymentsDueForReconcile(input: {
   return input.payments
     .filter((payment) => {
       if (payment.status !== 'PENDING') return false;
-      if (!payment.pesapalTrackingId) return false;
+      if (!payment.azamPayTransactionId && !payment.pesapalTrackingId) return false;
       const created = new Date(payment.createdAt).getTime();
       if (Number.isNaN(created)) return false;
       return now.getTime() - created >= minAgeMs;

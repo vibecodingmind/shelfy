@@ -600,6 +600,11 @@ export function buildCompleteSeedData(): DatabaseSchema {
       monthlyPriceTzs: 75000,
       availabilityStatus: 'BOOKED',
       allowedCategories: ['Food & Beverages', 'Health & Beauty', 'Snacks & Confectionery', 'Organic Goods'],
+      shelfRules: [
+        'Keep products front-facing and within the marked shelf width.',
+        'Restock or remove sold-out facings within 48 hours.',
+        'No glass bottles on upper shelves without host approval.',
+      ],
       photos: getPhotos(0),
       status: 'ACTIVE',
       avgRating: 4.96,
@@ -1751,7 +1756,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
   const settings: PlatformSettings = {
     commissionPercentage: 10,
     autoApproveBookings: false,
-    pesapalEnvironment: 'sandbox',
+    azamPayEnvironment: 'sandbox',
     currency: 'TZS',
     maintenanceMode: false,
     shelfCategories: [

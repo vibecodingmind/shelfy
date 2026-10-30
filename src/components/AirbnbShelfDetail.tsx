@@ -1,63 +1,135 @@
 /**
- * Shelfy 🇹🇿 — Airbnb-Style Shelf Detail View
- * Complete with 5-photo mosaic gallery, host profile, highlights,
- * interactive double-booking prevention calendar, reviews breakdown, and sticky booking card.
+ * Shelfy — Public shelf detail (monthly rental, theme-aware)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  ArrowLeft,
-  Share2,
   Heart,
   Star,
-  MapPin,
-  CheckCircle2,
-  Clock,
-  Store,
-  Info,
-  Maximize2,
-  X,
-  CreditCard,
+  Flag,
+  Eye,
+  Upload,
 } from 'lucide-react';
 import { Shelf, Shop, User, Review } from '../types/index.js';
-import { AvailabilityCalendar, BookedRange } from './AvailabilityCalendar.js';
+import { BookedRange } from './AvailabilityCalendar.js';
 import { api } from '../lib/api.js';
-import { TrustBadges } from './TrustBadges.js';
-import { availabilityLabel, formatShelfType, formatShopType, shelfVolumeLitres } from './shelfFacts.js';
+import { formatShelfType } from './shelfFacts.js';
+import { formatInStoreLabelDisplay } from '../lib/shelfInStoreLabel.js';
+import { openStreetMapUrl, resolveShopCoords } from '../lib/shopMapLocation.js';
+import { ShelfShopLocationSection } from './shelf-detail/ShelfShopLocationSection.js';
+import { ShelfDetailGallery } from './shelf-detail/ShelfDetailGallery.js';
+import { ShelfDetailSpecs } from './shelf-detail/ShelfDetailSpecs.js';
+import { ShelfDetailTrustPanel } from './shelf-detail/ShelfDetailTrustPanel.js';
+import { ShelfBookingWidget } from './shelf-detail/ShelfBookingWidget.js';
+import { LegalDocumentModal, LegalModalSlug } from './LegalDocumentModal.js';
+import { ShelfCarouselRow } from './ShelfCarouselRow.js';
+import { SiteFooter } from './SiteFooter.js';
+import {
+  addMonthsIsoDate,
+  findEarliestAvailableStart,
+  isDayOccupied,
+  rangeOverlapsAnyBooking,
+  todayIsoDate,
+} from '../lib/monthlyRentalDates.js';
+
+const STOCK_PHOTOS = [
+  'https://images.unsplash.com/photo-1583258292688-d02132382025?w=1000',
+  'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1000',
+  'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=1000',
+  'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=1000',
+  'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1000',
+  'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=1000&q=80',
+  'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1000&q=80',
+  'https://images.unsplash.com/photo-1583258292688-d02132382025?w=1000&q=80',
+];
 
 interface AirbnbShelfDetailProps {
   shelf: Shelf;
+  shops?: Shop[];
   currentUser: User | null;
+  allShelves?: Shelf[];
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
   onBack: () => void;
+  onLoginClick?: () => void;
   onInitiateBooking: (shelf: Shelf, startDate: string, endDate: string, durationMonths: number, selectedCategory: string) => void;
-  onOpenHostChat?: (hostId: string) => void;
+  onOpenHostChat?: (shopId: string, shelfId?: string, shelfName?: string) => void;
+  onOpenRelatedShelf?: (shelf: Shelf) => void;
+  isFavoriteShelf?: (id: string) => boolean;
+  onToggleFavoriteShelf?: (id: string) => void;
+}
+
+function ratingBreakdown(reviews: Review[]) {
+  const counts = [0, 0, 0, 0, 0];
+  reviews.forEach((r) => {
+    const i = Math.min(5, Math.max(1, r.rating)) - 1;
+    counts[i] += 1;
+  });
+  return counts;
 }
 
 export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
-  shelf,
+  shelf: shelfProp,
+  shops = [],
   currentUser,
-  onBack,
+  allShelves = [],
+  isFavorite = false,
+  onToggleFavorite,
+  onBack: _onBack,
+  onLoginClick,
   onInitiateBooking,
   onOpenHostChat,
+  onOpenRelatedShelf,
+  isFavoriteShelf,
+  onToggleFavoriteShelf,
 }) => {
-  const [isSaved, setIsSaved] = useState(false);
+  const [detailShelf, setDetailShelf] = useState<Shelf>(shelfProp);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [activePhotoModalIndex, setActivePhotoModalIndex] = useState(0);
-
-  // Availability & Booking State
   const [bookedRanges, setBookedRanges] = useState<BookedRange[]>([]);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [durationMonths, setDurationMonths] = useState<number>(1);
-  const [isDateRangeValid, setIsDateRangeValid] = useState<boolean>(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>(
-    shelf.allowedCategories?.[0] || 'Food & Beverages'
-  );
+  const [activeDurationMonths, setActiveDurationMonths] = useState<number>(1);
+  const [isDateRangeValid, setIsDateRangeValid] = useState<boolean>(false);
+  const [initialDatesApplied, setInitialDatesApplied] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>(shelfProp.allowedCategories?.[0] || '');
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
   const [shopDetail, setShopDetail] = useState<Shop | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [bookingError, setBookingError] = useState('');
+  const [legalModalSlug, setLegalModalSlug] = useState<LegalModalSlug | null>(null);
 
-  // Fetch real-time availability from backend
+  const openPolicy = useCallback((slug: LegalModalSlug) => {
+    setLegalModalSlug(slug);
+  }, []);
+
+  useEffect(() => {
+    setDetailShelf(shelfProp);
+    setSelectedCategory(shelfProp.allowedCategories?.[0] || '');
+    setStartDate('');
+    setEndDate('');
+    setDurationMonths(1);
+    setActiveDurationMonths(1);
+    setIsDateRangeValid(false);
+    setInitialDatesApplied(false);
+    setBookingError('');
+  }, [shelfProp.id]);
+
+  const shelf = detailShelf;
+
+  useEffect(() => {
+    const shopName = shelf.shopName || shopDetail?.name || 'Shelfy';
+    const inStore = formatInStoreLabelDisplay(shelf);
+    const hasLabel = inStore && !inStore.includes('not set');
+    document.title = hasLabel
+      ? `${shelf.name} · ${inStore} · ${shopName} · Shelfy`
+      : `${shelf.name} · ${shopName} · Shelfy`;
+    return () => {
+      document.title = 'Shelfy';
+    };
+  }, [shelf.name, shelf.locationInsideShop, shelf.shopName, shopDetail?.name]);
+
   useEffect(() => {
     let isMounted = true;
     const loadAvailability = async () => {
@@ -68,7 +140,6 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
       }
       if (isMounted) setIsLoadingAvailability(false);
     };
-
     loadAvailability();
     return () => {
       isMounted = false;
@@ -79,505 +150,438 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
     let isMounted = true;
     api.getShelfById(shelf.id).then((res) => {
       if (!isMounted || !res.success || !res.data) return;
-      setShopDetail(res.data.shop || null);
-      setReviews(Array.isArray(res.data.reviews) ? res.data.reviews : []);
+      const data = res.data;
+      setDetailShelf((prev) => ({
+        ...prev,
+        ...data,
+        photos: data.photos?.length ? data.photos : prev.photos,
+      }));
+      setShopDetail(data.shop || null);
+      setReviews(Array.isArray(data.reviews) ? data.reviews : []);
     });
     return () => {
       isMounted = false;
     };
   }, [shelf.id]);
 
-  const photos = shelf.photos && shelf.photos.length > 0
-    ? shelf.photos
-    : [
-        'https://images.unsplash.com/photo-1583258292688-d02132382025?w=1000',
-        'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1000',
-        'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=1000',
-        'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=1000',
-        'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1000',
-      ];
+  const photos =
+    shelf.photos && shelf.photos.length > 0 ? shelf.photos : STOCK_PHOTOS;
 
-  // Price calculations
   const monthlyRate = shelf.monthlyPriceTzs;
-  const subtotal = monthlyRate * (durationMonths || 1);
-  const platformFee = Math.round(subtotal * 0.10);
-  const totalAmount = subtotal + platformFee;
+  const shopById = useMemo(() => new Map(shops.map((s) => [s.id, s])), [shops]);
+
+  const otherShopShelves = allShelves.filter(
+    (s) => s.shopId === shelf.shopId && s.id !== shelf.id && s.availabilityStatus === 'AVAILABLE'
+  );
+  const similarShelves = allShelves
+    .filter(
+      (s) =>
+        s.id !== shelf.id &&
+        s.availabilityStatus === 'AVAILABLE' &&
+        (s.shopCity === shelf.shopCity || s.shelfType === shelf.shelfType)
+    )
+    .slice(0, 20);
+
+  const isHostPreview = currentUser?.role === 'HOST' && shopDetail?.hostId === currentUser.id;
 
   const handleCalendarRangeChange = (start: string, end: string, months: number, isValid: boolean) => {
     setStartDate(start);
     setEndDate(end);
     setDurationMonths(months);
+    setActiveDurationMonths(months);
     setIsDateRangeValid(isValid);
+    if (isValid) setBookingError('');
   };
 
+  const applyDurationPreset = (months: number) => {
+    setActiveDurationMonths(months);
+    const today = todayIsoDate();
+    const baseStart =
+      startDate && startDate >= today && !isDayOccupied(startDate, bookedRanges)
+        ? startDate
+        : findEarliestAvailableStart(bookedRanges, months, today);
+
+    if (!baseStart) {
+      setBookingError(`No ${months}-month opening available soon. Try a shorter period.`);
+      setStartDate('');
+      setEndDate('');
+      setIsDateRangeValid(false);
+      return;
+    }
+
+    const end = addMonthsIsoDate(baseStart, months);
+    if (rangeOverlapsAnyBooking(baseStart, end, bookedRanges)) {
+      setBookingError('That period overlaps another booking.');
+      setIsDateRangeValid(false);
+      return;
+    }
+
+    setBookingError('');
+    handleCalendarRangeChange(baseStart, end, months, true);
+  };
+
+  useEffect(() => {
+    if (isLoadingAvailability || initialDatesApplied) return;
+    applyDurationPreset(1);
+    setInitialDatesApplied(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when availability loads per shelf
+  }, [isLoadingAvailability, shelf.id, initialDatesApplied]);
+
   const handleBookingSubmit = () => {
+    if (!currentUser) {
+      onLoginClick?.();
+      return;
+    }
+    const categories = shelf.allowedCategories || [];
+    if (!categories.length) {
+      setBookingError('This listing has no permitted categories. Contact support.');
+      return;
+    }
+    if (!selectedCategory || !categories.includes(selectedCategory)) {
+      setBookingError('Select a product category that matches this shelf.');
+      return;
+    }
     if (!startDate || !endDate) {
-      alert('Please select check-in and check-out dates on the calendar first.');
+      setBookingError('Choose a start date and rental length (1 mo, 3 mo, 6 mo, or 1 yr).');
       return;
     }
-    if (!isDateRangeValid) {
-      alert('Selected dates conflict with an existing booking. Please pick available dates.');
+    if (!isDateRangeValid || !endDate) {
+      setBookingError('Those dates are not available. Change the start date or duration.');
       return;
     }
+    setBookingError('');
     onInitiateBooking(shelf, startDate, endDate, durationMonths, selectedCategory);
   };
 
+  const handleContactHost = () => {
+    if (!currentUser) {
+      onLoginClick?.();
+      return;
+    }
+    if (shelf.shopId && onOpenHostChat) onOpenHostChat(shelf.shopId, shelf.id, shelf.name);
+  };
+
+  const handleReportListing = () => {
+    const reason = window.prompt('Briefly describe the issue with this listing (photos, location, etc.):');
+    if (!reason?.trim()) return;
+    const subject = encodeURIComponent(`Report listing: ${shelf.name} (${shelf.id})`);
+    const body = encodeURIComponent(`${reason.trim()}\n\nURL: ${window.location.href}`);
+    window.location.href = `mailto:hello@shelfy.co.tz?subject=${subject}&body=${body}`;
+  };
+
+  const resolvedCoords = resolveShopCoords(shopDetail, shelf, shopById);
+  const mapsUrl = resolvedCoords
+    ? openStreetMapUrl(resolvedCoords.latitude, resolvedCoords.longitude)
+    : null;
+  const inStoreLabelDisplay = formatInStoreLabelDisplay(shelf);
+
+  const reviewCount = shelf.reviewCount ?? reviews.length;
+  const breakdown = ratingBreakdown(reviews);
+
+  const favCheck = isFavoriteShelf ?? (() => false);
+  const favToggle = onToggleFavoriteShelf ?? (() => {});
+
+  const handleStartDateChange = (iso: string) => {
+    if (!iso) return;
+    const months = activeDurationMonths || durationMonths || 1;
+    if (isDayOccupied(iso, bookedRanges)) {
+      setBookingError('That start date is already booked. Pick another day.');
+      handleCalendarRangeChange(iso, '', months, false);
+      return;
+    }
+    const end = addMonthsIsoDate(iso, months);
+    if (rangeOverlapsAnyBooking(iso, end, bookedRanges)) {
+      setBookingError('That period overlaps another booking. Try a shorter duration or later start.');
+      handleCalendarRangeChange(iso, '', months, false);
+      return;
+    }
+    setBookingError('');
+    handleCalendarRangeChange(iso, end, months, true);
+  };
+
+  const locationLabel = [shelf.shopCity || shopDetail?.city, shopDetail?.region].filter(Boolean).join(', ');
+
+  const bookingWidgetProps = {
+    shelf,
+    shopName: shopDetail?.name,
+    reviewCount,
+    currentUser,
+    startDate,
+    endDate,
+    durationMonths,
+    activeDurationMonths,
+    selectedCategory,
+    onCategoryChange: setSelectedCategory,
+    onDurationPreset: applyDurationPreset,
+    onStartDateChange: handleStartDateChange,
+    minStartDate: todayIsoDate(),
+    monthlyRate,
+    bookingError,
+    onReserve: handleBookingSubmit,
+    onLogin: () => onLoginClick?.(),
+    onContactHost:
+      shelf.shopId && shopDetail?.hostId !== currentUser?.id ? handleContactHost : undefined,
+  };
+
   return (
-    <div id="airbnb-shelf-detail" className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-40 md:pb-28 lg:pb-20">
-      
-      {/* Top Floating Navigation Bar */}
-      <div className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-300 hover:text-white transition-colors bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 hover:border-slate-700"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Back to Marketplace</span>
-          <span className="sm:hidden">Back</span>
-        </button>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({ title: shelf.name, url: window.location.href });
-              } else {
-                navigator.clipboard.writeText(window.location.href);
-                alert('Listing link copied to clipboard!');
-              }
-            }}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-800 transition-all"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Share</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsSaved(!isSaved)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-800 transition-all"
-          >
-            <Heart className={`w-3.5 h-3.5 ${isSaved ? 'fill-rose-500 text-rose-500' : ''}`} />
-            <span className="hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-6 space-y-6">
-        
-        {/* Title & Headline Section */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
-            {shelf.name}
-          </h1>
-
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-slate-300 mt-2">
-            <div className="flex items-center gap-1 font-bold text-white shrink-0">
-              {shelf.avgRating ? (
-                <>
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span>{shelf.avgRating.toFixed(2)}</span>
-                  <span className="text-slate-400 font-medium">({shelf.reviewCount || reviews.length} vendor reviews)</span>
-                </>
-              ) : (
-                <span className="text-slate-400 font-medium">No vendor reviews yet</span>
-              )}
-            </div>
-            <span className="hidden sm:inline">•</span>
-            <span className={`font-semibold shrink-0 ${shelf.availabilityStatus === 'AVAILABLE' ? 'text-emerald-400' : 'text-amber-300'}`}>
-              {availabilityLabel(shelf.availabilityStatus)}
-            </span>
-            <span className="hidden md:inline">•</span>
-            <span className="flex items-center gap-1 text-slate-300 min-w-0">
-              <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="truncate">{shelf.shopAddress || shelf.shopCity}</span>
-            </span>
-          </div>
-          <TrustBadges shelfId={shelf.id} />
-        </div>
-
-        {/* 2. Airbnb 5-Photo Mosaic Gallery Grid */}
-        <div className="relative rounded-3xl overflow-hidden grid grid-cols-1 md:grid-cols-4 gap-2.5 h-[340px] sm:h-[420px] md:h-[480px] bg-slate-900">
-          
-          {/* Main Large Photo (Left Half) */}
-          <div
-            onClick={() => { setActivePhotoModalIndex(0); setShowAllPhotos(true); }}
-            className="md:col-span-2 h-full relative cursor-pointer group overflow-hidden"
-          >
-            <img
-              src={photos[0]}
-              alt={shelf.name}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
-          </div>
-
-          {/* Right Grid (4 photos in 2x2 on desktop) */}
-          <div className="hidden md:grid md:col-span-2 grid-cols-2 gap-2.5 h-full">
-            {photos.slice(1, 5).map((photoUrl, idx) => (
-              <div
-                key={idx}
-                onClick={() => { setActivePhotoModalIndex(idx + 1); setShowAllPhotos(true); }}
-                className="relative h-full cursor-pointer group overflow-hidden bg-slate-950"
-              >
-                <img
-                  src={photoUrl}
-                  alt={`${shelf.name} photo ${idx + 2}`}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
-              </div>
-            ))}
-          </div>
-
-          {/* "Show All Photos" Floating Button */}
-          <button
-            type="button"
-            onClick={() => setShowAllPhotos(true)}
-            className="absolute bottom-4 right-4 bg-slate-950/85 hover:bg-slate-950 text-white backdrop-blur-md px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 shadow-xl flex items-center gap-2 transition-all hover:scale-105"
-          >
-            <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Show all {photos.length} photos</span>
-          </button>
-        </div>
-
-        {/* 3. Two-Column Main Content Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 pt-4">
-          
-          {/* LEFT COLUMN: Host, Specs, Highlights, Calendar, Reviews */}
-          <div className="lg:col-span-2 space-y-8">
-            
-            {/* Host Header Card */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-6">
-              <div>
-                <h2 className="text-xl font-bold text-white">
-                  Retail Display Space in {shelf.shopName}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                  {shelf.shopAddress || shopDetail?.address}
-                  {shopDetail?.shopType ? ` • ${formatShopType(shopDetail.shopType)}` : ''}
-                  {shopDetail?.footTrafficScore ? ` • Foot traffic ${shopDetail.footTrafficScore}/10` : ''}
-                  {shelf.hostVerificationStatus === 'VERIFIED' ? ' • Verified host' : ''}
-                </p>
-              </div>
-
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold text-xl shadow-lg shrink-0">
-                <Store className="w-7 h-7" />
-              </div>
-            </div>
-
-            {/* Airbnb Highlights List */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-b border-slate-800 pb-6">
-              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                <span className="text-[10px] uppercase font-semibold text-slate-400 block">Placement</span>
-                <span className="text-sm font-bold text-white">{formatShelfType(shelf.shelfType)}</span>
-                <span className="text-xs text-slate-400 block mt-1">{shelf.locationInsideShop}</span>
-              </div>
-              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                <span className="text-[10px] uppercase font-semibold text-slate-400 block">Size</span>
-                <span className="text-sm font-mono font-bold text-white">{shelf.widthCm} × {shelf.heightCm} × {shelf.depthCm} cm</span>
-                <span className="text-xs text-slate-400 block mt-1">{shelfVolumeLitres(shelf)} of display volume</span>
-              </div>
-              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-                <span className="text-[10px] uppercase font-semibold text-slate-400 block">Booking</span>
-                <span className="text-sm font-bold text-emerald-400">{availabilityLabel(shelf.availabilityStatus)}</span>
-                <span className="text-xs text-slate-400 block mt-1">TZS {shelf.monthlyPriceTzs.toLocaleString()} / month</span>
-              </div>
-            </div>
-
-            {/* Physical Shelf Specifications Grid */}
-            <div className="border-b border-slate-800 pb-6 space-y-3">
-              <h3 className="text-base font-bold text-white">Shelf Specifications</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 block">Dimensions</span>
-                  <span className="text-sm font-mono font-bold text-white">{shelf.widthCm} × {shelf.heightCm} × {shelf.depthCm} cm</span>
-                </div>
-                <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 block">Shelf Tier</span>
-                  <span className="text-sm font-bold text-emerald-400">{formatShelfType(shelf.shelfType)}</span>
-                </div>
-                <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 block">Internal Location</span>
-                  <span className="text-sm font-bold text-white line-clamp-1">{shelf.locationInsideShop}</span>
-                </div>
-              </div>
-
-              {/* Allowed Product Categories */}
-              <div className="pt-2">
-                <span className="text-xs font-semibold text-slate-400 block mb-2">Permitted Product Categories:</span>
-                <div className="flex flex-wrap gap-2">
-                  {shelf.allowedCategories?.map((cat, i) => (
-                    <span
-                      key={i}
-                      className="px-3 py-1 bg-slate-900 border border-slate-700 text-xs font-medium text-slate-200 rounded-full flex items-center gap-1.5"
-                    >
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      {cat}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="border-b border-slate-800 pb-6 space-y-2">
-              <h3 className="text-base font-bold text-white">About this Retail Space</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                {shelf.description || 'The host has not added a description for this shelf yet.'}
-              </p>
-            </div>
-
-            {/* 4. Interactive Availability Calendar Section */}
-            <div className="border-b border-slate-800 pb-8 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-white">Select Rental Period</h3>
-                  <p className="text-xs text-slate-400">
-                    Verify real-time availability. Double-booking is strictly prevented by Shelfy booking engine.
-                  </p>
-                </div>
-                {isLoadingAvailability && (
-                  <span className="text-xs text-amber-400 font-mono flex items-center gap-1">
-                    <Clock className="w-3 h-3 animate-spin" /> Syncing calendar...
-                  </span>
-                )}
-              </div>
-
-              <AvailabilityCalendar
-                shelfId={shelf.id}
-                bookedRanges={bookedRanges}
-                monthlyPriceTzs={shelf.monthlyPriceTzs}
-                selectedStartDate={startDate}
-                selectedEndDate={endDate}
-                onDateRangeChange={handleCalendarRangeChange}
-              />
-            </div>
-
-            {/* 5. Verified Vendor Reviews & Rating Breakdown */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-white">Vendor reviews</h3>
-              {reviews.length === 0 ? (
-                <p className="text-sm text-slate-400">No reviews have been left for this shelf yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-xs text-white">{review.reviewerName}</span>
-                        <span className="text-[11px] text-slate-500">{new Date(review.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        {Array.from({ length: review.rating }).map((_, i) => (
-                          <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                        ))}
-                      </div>
-                      <p className="text-xs text-slate-300 leading-normal">{review.comment}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </div>
-
-          {/* RIGHT COLUMN: Sticky Airbnb Booking Widget */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
-              
-              {/* Header Price & Rating */}
-              <div className="flex items-baseline justify-between border-b border-slate-800 pb-4">
-                <div>
-                  <span className="text-2xl font-black text-white font-mono">
-                    TZS {shelf.monthlyPriceTzs.toLocaleString()}
-                  </span>
-                  <span className="text-xs text-slate-400 font-normal"> / month</span>
-                </div>
-
-                <div className="flex items-center gap-1 text-xs font-bold text-white">
-                  {shelf.avgRating ? (
-                    <>
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span>{shelf.avgRating.toFixed(2)}</span>
-                      <span className="text-slate-400">({shelf.reviewCount || reviews.length})</span>
-                    </>
-                  ) : (
-                    <span className="text-slate-400 font-medium">{availabilityLabel(shelf.availabilityStatus)}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Date Selector Box */}
-              <div className="border border-slate-700 rounded-2xl overflow-hidden bg-slate-950">
-                <div className="grid grid-cols-2 border-b border-slate-800">
-                  <div className="p-3 border-r border-slate-800">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">START</span>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        setStartDate(next);
-                        if (!next) return;
-                        const end = new Date(`${next}T00:00:00`);
-                        end.setMonth(end.getMonth() + Math.max(1, durationMonths));
-                        const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
-                        setEndDate(endStr);
-                        setDurationMonths(Math.max(1, durationMonths));
-                        setIsDateRangeValid(true);
-                      }}
-                      className="bg-transparent text-xs font-semibold text-white w-full focus:outline-none"
-                    />
-                  </div>
-                  <div className="p-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">END</span>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => {
-                        if (!startDate || !e.target.value) return;
-                        const startD = new Date(`${startDate}T00:00:00`);
-                        const endD = new Date(`${e.target.value}T00:00:00`);
-                        let months = (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth());
-                        if (endD.getDate() > startD.getDate()) months += 1;
-                        months = Math.max(1, months);
-                        const snapped = new Date(startD);
-                        snapped.setMonth(snapped.getMonth() + months);
-                        const endStr = `${snapped.getFullYear()}-${String(snapped.getMonth() + 1).padStart(2, '0')}-${String(snapped.getDate()).padStart(2, '0')}`;
-                        setEndDate(endStr);
-                        setDurationMonths(months);
-                        setIsDateRangeValid(true);
-                      }}
-                      className="bg-transparent text-xs font-semibold text-white w-full focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Category Selection */}
-                <div className="p-3">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">PRODUCT CATEGORY</span>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full bg-transparent text-xs font-semibold text-slate-200 focus:outline-none"
-                  >
-                    {shelf.allowedCategories?.map((c, i) => (
-                      <option key={i} value={c} className="bg-slate-900 text-white">{c}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Reserve Button */}
-              <button
-                type="button"
-                onClick={handleBookingSubmit}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-emerald-500 to-teal-400 text-slate-950 font-black text-sm hover:opacity-95 transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-              >
-                <CreditCard className="w-4 h-4" />
-                Reserve Space with PesaPal
-              </button>
-
-              <div className="text-center text-[11px] text-slate-400">
-                You won't be charged until you verify payment on the next screen.
-              </div>
-
-              {/* Itemized Price Breakdown */}
-              <div className="space-y-2 text-xs pt-4 border-t border-slate-800 font-sans">
-                <div className="flex justify-between text-slate-300">
-                  <span>TZS {monthlyRate.toLocaleString()} × {durationMonths} month(s)</span>
-                  <span className="font-mono">TZS {subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-slate-300">
-                  <span className="flex items-center gap-1">Shelfy Escrow & Insurance (10%) <Info className="w-3 h-3 text-slate-500" /></span>
-                  <span className="font-mono">TZS {platformFee.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-bold text-sm text-white pt-2 border-t border-slate-800">
-                  <span>Total Due (TZS)</span>
-                  <span className="font-mono text-emerald-400 font-black text-base">TZS {totalAmount.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Host Contact Pill */}
-              {shelf.shopId && (
-                <button
-                  type="button"
-                  onClick={() => onOpenHostChat && onOpenHostChat(shelf.shopId)}
-                  className="w-full py-2.5 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold border border-slate-800 transition-all flex items-center justify-center gap-2"
-                >
-                  <Store className="w-3.5 h-3.5 text-emerald-400" />
-                  Contact Shop Host
-                </button>
-              )}
-
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* Mobile sticky booking bar */}
-      <div className="lg:hidden fixed bottom-[4.75rem] md:bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[10px] text-slate-400 uppercase tracking-wide">From</div>
-            <div className="font-mono font-black text-emerald-400 text-sm truncate">
-              TZS {monthlyRate.toLocaleString()}
-              <span className="text-slate-400 font-normal text-xs"> /mo</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleBookingSubmit}
-            disabled={!startDate || !endDate || !isDateRangeValid}
-            className="shrink-0 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-emerald-500 to-teal-400 text-slate-950 font-black text-xs sm:text-sm disabled:opacity-50 touch-target"
-          >
-            Reserve
-          </button>
-        </div>
-      </div>
-
-      {/* 6. Photo Gallery Modal */}
-      {showAllPhotos && (
-        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col p-4 sm:p-8 animate-in fade-in">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-            <h3 className="text-sm font-bold text-white">{shelf.name} — Photo Gallery</h3>
-            <button
-              onClick={() => setShowAllPhotos(false)}
-              className="p-2 rounded-full bg-slate-900 text-slate-400 hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto max-w-4xl mx-auto w-full">
-            <img
-              src={photos[activePhotoModalIndex]}
-              alt={`Photo ${activePhotoModalIndex + 1}`}
-              className="max-h-[70vh] w-auto object-contain rounded-2xl shadow-2xl"
-            />
-            
-            {/* Thumbnails strip */}
-            <div className="flex gap-2 mt-4 overflow-x-auto p-2">
-              {photos.map((p, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActivePhotoModalIndex(i)}
-                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
-                    i === activePhotoModalIndex ? 'border-emerald-400 scale-105' : 'border-transparent opacity-60'
-                  }`}
-                >
-                  <img src={p} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
+    <div
+      id="airbnb-shelf-detail"
+      className="min-h-screen bg-[var(--shelfy-bg)] text-[var(--shelfy-fg)] font-sans pb-40 md:pb-28 lg:pb-20 overflow-visible"
+    >
+      {isHostPreview && (
+        <div className="bg-amber-500/15 border-b border-amber-500/40 px-4 py-2 text-center text-xs font-semibold text-amber-800 dark:text-amber-200 flex items-center justify-center gap-2">
+          <Eye className="w-4 h-4" />
+          Preview as vendor — customers see this page when browsing.
         </div>
       )}
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+        {/* Airbnb order: title + share/save, subtitle line, then photos */}
+        <header className="mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight leading-[1.15] text-[var(--shelfy-fg)]">
+                {shelf.name}
+              </h1>
+              <p className="mt-2 text-sm font-semibold text-[var(--shelfy-fg)]">
+                <span className="text-[var(--shelfy-muted)] font-medium">In-store:</span> {inStoreLabelDisplay}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-[var(--shelfy-fg)]">
+                {shelf.avgRating ? (
+                  <>
+                    <span className="inline-flex items-center gap-0.5 font-semibold">
+                      <Star className="w-3.5 h-3.5 fill-[var(--shelfy-fg)] text-[var(--shelfy-fg)]" />
+                      {shelf.avgRating.toFixed(2)}
+                    </span>
+                    <span className="text-[var(--shelfy-muted)]">·</span>
+                    <button type="button" className="font-semibold underline underline-offset-2">
+                      {reviewCount} review{reviewCount !== 1 ? 's' : ''}
+                    </button>
+                    <span className="text-[var(--shelfy-muted)]">·</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-[var(--shelfy-muted)]">New listing</span>
+                    <span className="text-[var(--shelfy-muted)]">·</span>
+                  </>
+                )}
+                <span className="text-[var(--shelfy-muted)]">{shelf.shopName || shopDetail?.name}</span>
+                {locationLabel && (
+                  <>
+                    <span className="text-[var(--shelfy-muted)]">·</span>
+                    {mapsUrl ? (
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold underline underline-offset-2 truncate max-w-[min(100%,320px)] hover:opacity-80"
+                      >
+                        {locationLabel}
+                      </a>
+                    ) : (
+                      <span className="font-semibold truncate max-w-[min(100%,320px)]">{locationLabel}</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 sm:gap-4 shrink-0 sm:pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: shelf.name, url: window.location.href });
+                  } else {
+                    navigator.clipboard.writeText(window.location.href);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-4 hover:opacity-80"
+              >
+                <Upload className="w-4 h-4" />
+                Share
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleFavorite?.()}
+                aria-label={isFavorite ? 'Remove favourite' : 'Save to favourites'}
+                aria-pressed={isFavorite}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-4 hover:opacity-80"
+              >
+                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
+                Save
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <ShelfDetailGallery
+          shelfName={shelf.name}
+          photos={photos}
+          showAllPhotos={showAllPhotos}
+          activePhotoModalIndex={activePhotoModalIndex}
+          onOpenPhoto={(i) => {
+            setActivePhotoModalIndex(i);
+            setShowAllPhotos(true);
+          }}
+          onOpenAll={() => setShowAllPhotos(true)}
+          onCloseAll={() => setShowAllPhotos(false)}
+          onSelectModalIndex={setActivePhotoModalIndex}
+        />
+
+        <div className="pt-6 lg:hidden">
+          <ShelfBookingWidget variant="compact" {...bookingWidgetProps} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-x-12 gap-y-10 pt-10 mt-2 border-t border-[var(--shelfy-border)] items-start">
+          <div className="min-w-0 space-y-10 order-1">
+            <section className="border-b border-[var(--shelfy-border)] pb-8 space-y-3">
+              <h2 className="text-[22px] font-semibold">About this shelf</h2>
+              <p className="text-base text-[var(--shelfy-fg)] leading-relaxed whitespace-pre-wrap">
+                {shelf.description || 'The host has not added a description for this shelf yet.'}
+              </p>
+            </section>
+
+            <ShelfShopLocationSection shelf={shelf} shop={shopDetail} shopsById={shopById} />
+
+            <ShelfDetailSpecs shelf={shelf} />
+
+            <ShelfDetailTrustPanel shelfId={shelf.id} />
+
+            {otherShopShelves.length > 0 && (
+              <div className="border-b border-[var(--shelfy-border)] pb-8">
+                <ShelfCarouselRow
+                  title="More shelves at this shop"
+                  shelves={otherShopShelves}
+                  shopById={shopById}
+                  onSelectShelf={(s) => onOpenRelatedShelf?.(s)}
+                  isFavorite={favCheck}
+                  onToggleFavorite={favToggle}
+                  responsiveCards
+                />
+              </div>
+            )}
+
+            <div id="policies" className="border-b border-[var(--shelfy-border)] pb-8 space-y-2 scroll-mt-28">
+              <h3 className="text-lg font-bold">Booking policies</h3>
+              <p className="text-xs text-[var(--shelfy-muted)] leading-relaxed">
+                Monthly rentals are billed in full-month blocks. Payment is held in escrow until the host confirms
+                placement. Cancellations follow our published policy based on how far ahead you cancel.
+              </p>
+              <div className="flex flex-wrap gap-3 text-xs">
+                <button
+                  type="button"
+                  onClick={() => openPolicy('cancellation')}
+                  className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+                >
+                  Cancellation policy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openPolicy('payout')}
+                  className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+                >
+                  Payout & escrow
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openPolicy('terms')}
+                  className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium"
+                >
+                  Terms of service
+                </button>
+              </div>
+            </div>
+
+            <div id="vendor-reviews" className="space-y-4 scroll-mt-28">
+              <h3 className="text-lg font-bold">Vendor reviews</h3>
+              {reviews.length === 0 ? (
+                <p className="text-sm text-[var(--shelfy-muted)]">
+                  No reviews yet. Trust scores and verification help you decide in the meantime.
+                </p>
+              ) : (
+                <>
+                  {reviews.length >= 3 && (
+                    <div className="space-y-1 max-w-xs">
+                      {[5, 4, 3, 2, 1].map((stars) => {
+                        const count = breakdown[stars - 1];
+                        const pct = reviews.length ? (count / reviews.length) * 100 : 0;
+                        return (
+                          <div key={stars} className="flex items-center gap-2 text-[11px]">
+                            <span className="w-3">{stars}</span>
+                            <div className="flex-1 h-1.5 bg-[var(--shelfy-input-bg)] rounded-full overflow-hidden">
+                              <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-[var(--shelfy-muted)] w-6">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {reviews.map((review) => (
+                      <div
+                        key={review.id}
+                        className="bg-[var(--shelfy-elevated)] p-4 rounded-2xl border border-[var(--shelfy-border)] space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-xs">{review.reviewerName}</span>
+                          <span className="text-[11px] text-[var(--shelfy-muted)]">
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: review.rating }).map((_, i) => (
+                            <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          ))}
+                        </div>
+                        <p className="text-xs text-[var(--shelfy-muted)] leading-normal">{review.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleReportListing}
+              className="text-xs text-[var(--shelfy-muted)] hover:text-rose-500 flex items-center gap-1.5 pt-4"
+            >
+              <Flag className="w-3.5 h-3.5" /> Report inaccurate photos or listing
+            </button>
+
+            {similarShelves.length > 0 && (
+              <section className="pt-10 border-t border-[var(--shelfy-border)] w-full min-w-0">
+                <ShelfCarouselRow
+                  title="Similar shelves"
+                  shelves={similarShelves}
+                  shopById={shopById}
+                  onSelectShelf={(s) => onOpenRelatedShelf?.(s)}
+                  isFavorite={favCheck}
+                  onToggleFavorite={favToggle}
+                  responsiveCards
+                />
+              </section>
+            )}
+          </div>
+
+          <aside
+            id="shelf-booking-panel"
+            className="order-2 hidden lg:block w-full min-w-0 lg:sticky lg:top-[calc(var(--shelfy-header-height)+0.75rem)] lg:self-start lg:z-20 scroll-mt-24 max-h-[calc(100vh-var(--shelfy-header-height)-1.5rem)] overflow-y-auto overscroll-behavior-contain"
+          >
+            <ShelfBookingWidget variant="sticky" {...bookingWidgetProps} />
+          </aside>
+        </div>
+
+        <SiteFooter />
+      </div>
+
+      <div className="lg:hidden">
+        <ShelfBookingWidget variant="mobile" {...bookingWidgetProps} />
+      </div>
+
+      <LegalDocumentModal slug={legalModalSlug} onClose={() => setLegalModalSlug(null)} />
     </div>
   );
 };

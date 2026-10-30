@@ -1,50 +1,39 @@
-# SHELFY — PHASE 14 LAUNCH AUDIT (updated)
+# Shelfy launch audit (Oct 2026)
 
-Date: 2026-08-16  
-Branch: `main` (post PR #9 prelaunch hardening + launch-complete)  
-**Verdict: soft launch ready for controlled beta** — core marketplace paths are hardened and tested. Live PesaPal keys are configured on Railway. Email verification and durable uploads remain ops configuration items.
+**Verdict: launch-ready for controlled production** once Azam Pay live credentials and callback URL are configured on the host.
 
-This is a code-and-rules audit, not a tax or regulatory sign-off.
+## Payments
 
----
-
-## Resolved in code (2026-08-16)
-
-| Item | Resolution |
+| Item | Status |
 | --- | --- |
-| Field visits IDOR | Role-scoped listing; vendors 403 |
-| Availability vendor leak | `vendorName` removed from public API |
-| Self-serve onboarding dead-end | Auto-verify when no email provider |
-| Settings mismatch | `/api/settings` reflects runtime `pesapalEnvironment`; default `autoApproveBookings: false` |
-| Sandbox payment abuse | Disabled in live mode; no JWT HMAC fallback in production |
-| Booking overlap | PostgreSQL exclusion constraint migration |
-| Security headers | HSTS + CSP in production; `x-powered-by` disabled |
-| Legal placeholders | Substantive platform copy (counsel review still recommended) |
+| Primary gateway | **Azam Pay** MNO checkout (M-Pesa, Tigo, Airtel, Halopesa, AzamPesa) |
+| Client-side “I paid” | Disabled (410) |
+| Settlement | Server callback `POST /api/payments/azampay/callback` only |
+| Local / sandbox without keys | Signed `POST /api/payments/sandbox-complete` with `AZAMPAY_SANDBOX_KEY` |
 
----
+**Railway / production checklist**
 
-## Remaining ops (Railway / business)
+1. `JWT_SECRET` — long random value (not ephemeral)
+2. `APP_URL` — public HTTPS origin
+3. `AZAMPAY_APP_NAME`, `AZAMPAY_CLIENT_ID`, `AZAMPAY_CLIENT_SECRET`, `AZAMPAY_API_KEY` (if required)
+4. `AZAMPAY_ENVIRONMENT=live`
+5. `AZAMPAY_CALLBACK_PASSWORD` — matches Azam Pay portal
+6. Register callback: `{APP_URL}/api/payments/azampay/callback`
+7. Run `npm test`, `npm run build`, `node scripts/payment-rehearsal.mjs {APP_URL}` with a small live TZS payment
+8. Set `ALLOW_DEMO_LOGIN=false` in production unless running a controlled demo
 
-| Item | Why it matters |
-| --- | --- |
-| `RESEND_API_KEY` | Real email verification instead of auto-verify |
-| S3 or Railway volume | Uploads survive redeploy |
-| One live PesaPal rehearsal | Confirm end-to-end money path with small TZS amount |
-| Counsel review | Legal copy is drafted but not signed off by Tanzania counsel |
+## Automated checks
 
----
+```bash
+npm run lint
+npm test
+npm run build
+npm run test:e2e   # optional Playwright shell tests
+node scripts/prod-smoke.mjs https://YOUR_APP   # after deploy
+```
 
-## Automated gates
+## Remaining ops (non-blocking for first launch)
 
-| Gate | Evidence |
-| --- | --- |
-| Typecheck | `npx tsc --noEmit` |
-| Unit + HTTP | Vitest — 82+ tests |
-| Playwright | `npm run test:e2e` — landing, legal, demo login API |
-| Production smoke | `npm run smoke:prod` |
-
----
-
-## Do not claim
-
-Do not tell hosts or vendors that Shelfy is fully production-hardened for scale until email, durable storage, and a successful live PesaPal rehearsal are complete.
+- Durable object storage (`S3_*`) for listing photos at scale
+- Transactional email (`RESEND_API_KEY` / `SMTP_URL`) for verification flows
+- SMS provider for OTP-style alerts (in-app notifications already work)

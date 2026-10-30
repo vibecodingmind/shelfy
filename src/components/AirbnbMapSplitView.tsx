@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Shelf, Shop } from '../types/index.js';
 import { AirbnbShelfCard } from './AirbnbShelfCard.js';
+import { OPENSTREETMAP_TILE_ATTRIBUTION, OPENSTREETMAP_TILE_URL } from '../lib/shopMapLocation.js';
 
 interface AirbnbMapSplitViewProps {
   shelves: Shelf[];
@@ -68,11 +69,9 @@ export const AirbnbMapSplitView: React.FC<AirbnbMapSplitViewProps> = ({
       scrollWheelZoom: true,
     });
 
-    // Use CartoDB Positron / Voyager Dark-compatible crisp tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a> | &copy; OpenStreetMap contributors',
+    L.tileLayer(OPENSTREETMAP_TILE_URL, {
+      attribution: OPENSTREETMAP_TILE_ATTRIBUTION,
       maxZoom: 19,
-      subdomains: 'abcd',
     }).addTo(map);
 
     mapInstanceRef.current = map;

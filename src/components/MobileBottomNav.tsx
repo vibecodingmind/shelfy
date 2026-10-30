@@ -25,7 +25,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const onMarket = activeRole === 'MARKETPLACE';
 
   return (
-    <nav className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-slate-800 bg-slate-950/95 backdrop-blur-md safe-bottom" aria-label="App">
+    <nav className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-[var(--shelfy-border)] bg-[var(--shelfy-bg)] backdrop-blur-md safe-bottom" aria-label="App">
       {accountOpen && (
         <div className="absolute bottom-full right-3 mb-2 w-52 rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-2xl">
           {!user ? (

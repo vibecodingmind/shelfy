@@ -47,6 +47,8 @@ export interface HostProfile {
   businessRegistration?: string;
   description?: string;
   phone: string;
+  /** Mobile money MSISDN for withdrawal payouts (TZ). */
+  payoutPhone?: string;
   verificationStatus: VerificationStatus;
 }
 
@@ -108,10 +110,13 @@ export interface Shelf {
   heightCm: number;
   depthCm: number;
   shelfType: ShelfType;
-  locationInsideShop: string; // e.g. "Aisle 2 - Front Section"
+  /** Host-defined in-store shelf label (aisle/slot inside the shop — not shop name or platform ID). */
+  locationInsideShop: string;
   monthlyPriceTzs: number;
   availabilityStatus: ShelfAvailability;
   allowedCategories: string[];
+  /** Host-defined rules for vendors using this shelf (display, restocking, etc.). */
+  shelfRules?: string[];
   photos: string[];
   status: 'ACTIVE' | 'INACTIVE';
   avgRating?: number;
@@ -195,9 +200,11 @@ export interface Payment {
   vendorId: string;
   amountTzs: number;
   currency: string; // TZS
-  provider: 'PESAPAL' | 'M_PESA' | 'AIRTEL_MONEY' | 'TIGO_PESA' | 'CARD';
+  provider: 'AZAM_PAY' | 'PESAPAL' | 'M_PESA' | 'AIRTEL_MONEY' | 'TIGO_PESA' | 'CARD';
   transactionReference: string;
   pesapalTrackingId?: string;
+  azamPayTransactionId?: string;
+  mnoProvider?: string;
   status: PaymentStatus;
   paidAt?: string;
   createdAt: string;
@@ -281,6 +288,8 @@ export interface Message {
   senderRole: UserRole;
   receiverId: string;
   bookingId?: string;
+  shopId?: string;
+  shelfId?: string;
   content: string;
   readAt?: string;
   createdAt: string;
@@ -347,7 +356,9 @@ export interface ShelfTypeOption {
 export interface PlatformSettings {
   commissionPercentage: number; // e.g., 10 for 10%
   autoApproveBookings: boolean;
-  pesapalEnvironment: 'sandbox' | 'live';
+  azamPayEnvironment: 'sandbox' | 'live';
+  /** @deprecated use azamPayEnvironment */
+  pesapalEnvironment?: 'sandbox' | 'live';
   currency: string; // "TZS"
   maintenanceMode: boolean;
   shelfCategories: string[];

@@ -14,15 +14,22 @@ import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRe
 import { analyzeShelfPhoto, recommendShelves, generateVendorInsights } from './src/server/ai.js';
 import { BookingStatus, User, UserRole } from './src/types/index.js';
 import { SHELF_TYPE_CATALOG } from './src/lib/shelfTypes.js';
+import { normalizeShelfRules } from './src/lib/shelfRules.js';
 import { validatePassword, demoLoginAllowed, isDemoEmail } from './src/server/domain/passwords.js';
 import { publicUser, publicUsers } from './src/server/domain/publicUser.js';
 import { addMonthsIsoDate, BLOCKING_BOOKING_STATUSES, calculateBookingQuote, datesOverlap } from './src/server/domain/pricing.js';
 import { assertTransition, initialBookingStatus, normalizeHostApproval } from './src/server/domain/bookingMachine.js';
-import { canMessageBookingCounterparties } from './src/server/domain/messages.js';
+import { canMessageBookingCounterparties, canMessageShopListing } from './src/server/domain/messages.js';
 import { canAccessBooking, canSelfRegister, isUserStatus, canListFieldVisits, filterFieldVisitsForUser } from './src/server/domain/rbac.js';
 import { newId } from './src/server/domain/ids.js';
 import { capturePaymentInLedger, financeSummaryForHost } from './src/server/services/finance.js';
-import { publicShops, publicShelves } from './src/server/domain/listings.js';
+import {
+  publicShops,
+  publicShelves,
+  hasMinimumListingPhotos,
+  MIN_LISTING_PHOTOS,
+  assertUniqueInStoreLabel,
+} from './src/server/domain/listings.js';
 import { uniqueSlug, findByIdOrSlug } from './src/server/domain/slugs.js';
 import { occupancySummary, occupancyWindow } from './src/server/domain/occupancy.js';
 import { registerP1Routes, runBookingMaintenance } from './src/server/p1Routes.js';
@@ -32,21 +39,21 @@ import { createAuthToken, consumeAuthToken, verifySandboxSignature, sandboxCompl
 import { notify, dispatchExternalChannels } from './src/server/services/notify.js';
 import { notificationProviders } from './src/server/domain/notifications.js';
 import { publicPlatformSettings } from './src/server/domain/publicSettings.js';
-import { normalizeTzPhone } from './src/server/domain/phone.js';
 import { uploadsDir } from './src/server/services/storage.js';
-import { opsHealthSnapshot } from './src/server/domain/opsHealth.js';
+import { adminIntegrationsPayload, opsHealthSnapshot } from './src/server/domain/opsHealth.js';
 import { ensureJwtSecret, resolvedAppUrl } from './src/server/services/jwtSecret.js';
 import { requestLogMiddleware } from './src/server/middleware/requestLog.js';
 import { corsOrigin, securityHeadersMiddleware } from './src/server/middleware/securityHeaders.js';
 import {
   amountsMatch,
-  getTransactionStatus,
-  mapPesapalStatus,
-  pesapalConfigured,
-  pesapalEnvironment,
-  registerIpn,
-  submitOrderRequest,
-} from './src/server/payments/pesapal.js';
+  azamPayConfigured,
+  azamPayEnvironment,
+  initiateMnoCheckout,
+  mapAzamPayCallbackStatus,
+  verifyAzamPayCallbackAuth,
+  type AzamMnoProvider,
+} from './src/server/payments/azampay.js';
+import { guessMnoProvider, normalizeTzPhone, toAzamMsisdn } from './src/server/domain/phone.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -453,6 +460,74 @@ app.get('/api/auth/me', requireAuth, (req: AuthenticatedRequest, res: Response) 
   });
 });
 
+// PUT /api/users/me — profile + role business fields (not email/role)
+app.put('/api/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const user = dbEngine.db.users.find((u) => u.id === req.user!.id);
+  if (!user) return res.status(404).json({ success: false, error: { message: 'User not found.' } });
+
+  const { name, phone, avatarUrl, vendorProfile: vendorPatch, hostProfile: hostPatch } = req.body || {};
+  const now = new Date().toISOString();
+
+  if (typeof name === 'string' && name.trim()) user.name = name.trim();
+  if (typeof phone === 'string') {
+    const normalized = normalizeTzPhone(phone) || phone.trim();
+    user.phone = normalized || user.phone;
+  }
+  if (typeof avatarUrl === 'string') user.avatarUrl = avatarUrl.trim() || undefined;
+  user.updatedAt = now;
+
+  if (user.role === 'VENDOR' && vendorPatch && typeof vendorPatch === 'object') {
+    const vp = dbEngine.db.vendorProfiles.find((v) => v.userId === user.id);
+    if (vp) {
+      if (typeof vendorPatch.businessName === 'string') vp.businessName = vendorPatch.businessName.trim();
+      if (typeof vendorPatch.businessRegistration === 'string') vp.businessRegistration = vendorPatch.businessRegistration.trim();
+      if (typeof vendorPatch.description === 'string') vp.description = vendorPatch.description.trim();
+      if (typeof vendorPatch.category === 'string') vp.category = vendorPatch.category.trim();
+      if (typeof vendorPatch.address === 'string') vp.address = vendorPatch.address.trim();
+      if (typeof vendorPatch.city === 'string') vp.city = vendorPatch.city.trim();
+      if (typeof vendorPatch.region === 'string') vp.region = vendorPatch.region.trim();
+    }
+  }
+
+  if (user.role === 'HOST' && hostPatch && typeof hostPatch === 'object') {
+    const hp = dbEngine.db.hostProfiles.find((h) => h.userId === user.id);
+    if (hp) {
+      if (typeof hostPatch.businessName === 'string') hp.businessName = hostPatch.businessName.trim();
+      if (typeof hostPatch.businessRegistration === 'string') hp.businessRegistration = hostPatch.businessRegistration.trim();
+      if (typeof hostPatch.description === 'string') hp.description = hostPatch.description.trim();
+      if (typeof hostPatch.phone === 'string') hp.phone = hostPatch.phone.trim();
+      if (typeof hostPatch.payoutPhone === 'string') {
+        hp.payoutPhone = normalizeTzPhone(hostPatch.payoutPhone) || hostPatch.payoutPhone.trim();
+      }
+    }
+  }
+
+  await dbEngine.saveAsync();
+  const vendorProfile = dbEngine.db.vendorProfiles.find((v) => v.userId === user.id);
+  const hostProfile = dbEngine.db.hostProfiles.find((h) => h.userId === user.id);
+  res.json({ success: true, data: { user: publicUser(user), vendorProfile, hostProfile } });
+});
+
+app.post('/api/users/me/change-password', requireAuth, authLimiter, (req: AuthenticatedRequest, res: Response) => {
+  const user = dbEngine.db.users.find((u) => u.id === req.user!.id);
+  if (!user) return res.status(404).json({ success: false, error: { message: 'User not found.' } });
+  const currentPassword = String(req.body.currentPassword || '');
+  const newPassword = String(req.body.newPassword || '');
+  if (!bcrypt.compareSync(currentPassword, user.passwordHash)) {
+    return res.status(403).json({ success: false, error: { message: 'Current password is incorrect.' } });
+  }
+  const passwordCheck = validatePassword(newPassword);
+  if (passwordCheck.ok === false) {
+    return res.status(400).json({ success: false, error: { message: passwordCheck.message } });
+  }
+  user.passwordHash = bcrypt.hashSync(newPassword, 10);
+  user.updatedAt = new Date().toISOString();
+  revokeAuthTokens(dbEngine.db, user.id, 'REFRESH');
+  dbEngine.save();
+  logAuditEvent(user.id, user.name, user.role, 'PASSWORD_CHANGED', 'User', user.id);
+  res.json({ success: true, data: { ok: true } });
+});
+
 // ==========================================
 // 2. SHOPS & SHELVES (MARKETPLACE)
 // ==========================================
@@ -480,6 +555,12 @@ app.post('/api/shops', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authenti
   if (!name || !address || !city) {
     return res.status(400).json({ success: false, error: { message: 'Shop name, address, and city are required.' } });
   }
+  if (!hasMinimumListingPhotos(photos)) {
+    return res.status(400).json({
+      success: false,
+      error: { message: `Upload at least ${MIN_LISTING_PHOTOS} shop photos.` },
+    });
+  }
 
   const shopId = `shop_${Date.now()}`;
   const now = new Date().toISOString();
@@ -495,7 +576,7 @@ app.post('/api/shops', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authenti
     region: region || city,
     latitude: Number.isFinite(Number(latitude)) ? Number(latitude) : -6.7924,
     longitude: Number.isFinite(Number(longitude)) ? Number(longitude) : 39.2083,
-    photos: photos && photos.length ? photos : ['https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=800'],
+    photos,
     status: 'ACTIVE' as const,
     verificationStatus: 'PENDING' as const,
     listingStatus: 'DRAFT' as const,
@@ -587,7 +668,7 @@ app.get('/api/shelves/:id/availability', (req: Request, res: Response) => {
 
 // POST /api/shelves
 app.post('/api/shelves', requireAuth, requireRole('HOST', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-  const { shopId, name, description, widthCm, heightCm, depthCm, shelfType, locationInsideShop, monthlyPriceTzs, allowedCategories, photos } = req.body;
+  const { shopId, name, description, widthCm, heightCm, depthCm, shelfType, locationInsideShop, monthlyPriceTzs, allowedCategories, shelfRules, photos } = req.body;
   const user = req.user!;
 
   const shop = dbEngine.db.shops.find((s) => s.id === shopId);
@@ -598,6 +679,20 @@ app.post('/api/shelves', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authen
   // Verify ownership
   if (user.role !== 'ADMIN' && shop.hostId !== user.id) {
     return res.status(403).json({ success: false, error: { message: 'You do not own this shop.' } });
+  }
+
+  const shelfPhotos =
+    photos && Array.isArray(photos) && photos.length ? photos : shop.photos;
+  if (!hasMinimumListingPhotos(shelfPhotos)) {
+    return res.status(400).json({
+      success: false,
+      error: { message: `Upload at least ${MIN_LISTING_PHOTOS} shelf photos.` },
+    });
+  }
+
+  const labelCheck = assertUniqueInStoreLabel(dbEngine.db.shelves, shopId, locationInsideShop || '');
+  if (labelCheck.ok === false) {
+    return res.status(400).json({ success: false, error: { message: labelCheck.message } });
   }
 
   const shelfId = `shelf_${Date.now()}`;
@@ -618,11 +713,12 @@ app.post('/api/shelves', requireAuth, requireRole('HOST', 'ADMIN'), (req: Authen
     heightCm: Number(heightCm) || 40,
     depthCm: Number(depthCm) || 40,
     shelfType: shelfType || 'EYE_LEVEL',
-    locationInsideShop: locationInsideShop || 'Main Aisle',
+    locationInsideShop: labelCheck.normalized,
     monthlyPriceTzs: Number(monthlyPriceTzs) || 50000,
     availabilityStatus: 'AVAILABLE' as const,
     allowedCategories: allowedCategories || ['Food & Beverages', 'General Merchandise'],
-    photos: photos && photos.length ? photos : shop.photos,
+    shelfRules: normalizeShelfRules(shelfRules),
+    photos: shelfPhotos,
     status: 'ACTIVE' as const,
     verificationStatus: 'PENDING' as const,
     listingStatus: 'DRAFT' as const,
@@ -812,7 +908,8 @@ async function applyVerifiedPayment(paymentId: string, trackingId: string, sourc
   const now = new Date().toISOString();
   payment.status = 'PAID';
   payment.paidAt = now;
-  payment.pesapalTrackingId = trackingId || payment.pesapalTrackingId;
+  payment.azamPayTransactionId = trackingId || payment.azamPayTransactionId;
+  payment.pesapalTrackingId = payment.pesapalTrackingId || trackingId;
   dbEngine.db.paymentAttempts.push({
     id: newId('pa'),
     paymentId: payment.id,
@@ -843,28 +940,42 @@ async function applyVerifiedPayment(paymentId: string, trackingId: string, sourc
   return { payment, booking, alreadySettled: false };
 }
 
-async function verifyPesapalAndSettle(orderTrackingId: string) {
-  const status = await getTransactionStatus(orderTrackingId);
-  const payment = dbEngine.db.payments.find(
-    (p) => p.pesapalTrackingId === orderTrackingId || p.transactionReference === status.merchant_reference
+function findPaymentForAzamReference(externalReference?: string, transactionId?: string) {
+  const ext = externalReference?.trim();
+  const tx = transactionId?.trim();
+  return dbEngine.db.payments.find(
+    (p) =>
+      (ext && p.transactionReference === ext) ||
+      (tx && p.azamPayTransactionId === tx) ||
+      (ext && p.azamPayTransactionId === ext)
   );
-  if (!payment) {
-    throw Object.assign(new Error('No payment matches this PesaPal reference.'), { status: 404 });
+}
+
+async function applyAzamPayCallback(body: Record<string, unknown>, source: string) {
+  if (!verifyAzamPayCallbackAuth(body)) {
+    throw Object.assign(new Error('Azam Pay callback authentication failed.'), { status: 401 });
   }
-  if (!amountsMatch(payment.amountTzs, status.amount) || (status.currency && status.currency !== payment.currency)) {
+  const externalRef = String(body.externalId ?? body.externalreference ?? body.externalReference ?? body.reference ?? '');
+  const transactionId = String(body.transactionId ?? body.transactionid ?? body.transid ?? '');
+  const payment = findPaymentForAzamReference(externalRef, transactionId);
+  if (!payment) {
+    throw Object.assign(new Error('No payment matches this Azam Pay reference.'), { status: 404 });
+  }
+  const reportedAmount = body.amount ?? body.Amount;
+  if (reportedAmount !== undefined && !amountsMatch(payment.amountTzs, reportedAmount as string | number)) {
     dbEngine.db.paymentAttempts.push({
       id: newId('pa'),
       paymentId: payment.id,
       status: 'AMOUNT_MISMATCH',
-      payload: status as any,
+      payload: body,
       createdAt: new Date().toISOString(),
     });
     await dbEngine.saveAsync();
-    throw Object.assign(new Error('PesaPal amount/currency does not match the booking.'), { status: 409 });
+    throw Object.assign(new Error('Azam Pay amount does not match the booking.'), { status: 409 });
   }
-  const mapped = mapPesapalStatus(status.status_code);
+  const mapped = mapAzamPayCallbackStatus(body);
   if (mapped === 'PAID') {
-    return applyVerifiedPayment(payment.id, orderTrackingId, 'pesapal_get_transaction_status');
+    return applyVerifiedPayment(payment.id, transactionId || externalRef, source);
   }
   if (mapped === 'FAILED') {
     payment.status = 'FAILED';
@@ -872,33 +983,21 @@ async function verifyPesapalAndSettle(orderTrackingId: string) {
     if (booking && booking.status === 'PAYMENT_PENDING') {
       const from = booking.status;
       booking.status = 'PAYMENT_FAILED';
-      recordBookingHistory(booking.id, from, 'PAYMENT_FAILED', undefined, 'SYSTEM', 'pesapal_failed');
+      recordBookingHistory(booking.id, from, 'PAYMENT_FAILED', undefined, 'SYSTEM', 'azampay_failed');
     }
     await dbEngine.saveAsync();
   }
-  return { payment, booking: dbEngine.db.bookings.find((b) => b.id === payment.bookingId), alreadySettled: false, status };
+  return { payment, booking: dbEngine.db.bookings.find((b) => b.id === payment.bookingId), alreadySettled: false, status: mapped };
 }
 
 export async function runPaymentReconciliation() {
-  if (!pesapalConfigured()) return { checked: 0, settled: 0, skipped: 'pesapal_not_configured' as const };
-  const ids = paymentsDueForReconcile({ payments: dbEngine.db.payments });
-  let settled = 0;
-  for (const id of ids) {
-    const payment = dbEngine.db.payments.find((p) => p.id === id);
-    if (!payment?.pesapalTrackingId) continue;
-    try {
-      const result = await verifyPesapalAndSettle(payment.pesapalTrackingId);
-      if (result.payment.status === 'PAID') settled += 1;
-    } catch (err) {
-      console.error('Payment reconcile failed', id, err);
-    }
-  }
-  return { checked: ids.length, settled };
+  if (!azamPayConfigured()) return { checked: 0, settled: 0, skipped: 'azampay_not_configured' as const };
+  return { checked: 0, settled: 0, skipped: 'azampay_uses_callbacks' as const };
 }
 
-// POST /api/payments/initiate-session
+// POST /api/payments/initiate-session — Azam Pay MNO push
 app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireRole('VENDOR', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
-  const { bookingId, phoneNumber } = req.body;
+  const { bookingId, phoneNumber, provider: providerInput } = req.body;
   const user = req.user!;
 
   const booking = dbEngine.db.bookings.find((b) => b.id === bookingId && (user.role === 'ADMIN' || b.vendorId === user.id));
@@ -915,7 +1014,7 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
       success: false,
       error: {
         message:
-          'A valid Tanzania mobile number is required for M-Pesa/Tigo/Airtel checkout. Enter your number (e.g. 0754 123 456) and try again.',
+          'A valid Tanzania mobile number is required for Azam Pay (M-Pesa, Tigo, Airtel). Enter your number (e.g. 0754 123 456) and try again.',
       },
     });
   }
@@ -923,6 +1022,11 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
     user.phone = billingPhone;
     user.updatedAt = new Date().toISOString();
   }
+
+  const allowedProviders = ['Mpesa', 'Tigo', 'Airtel', 'Halopesa', 'Azampesa'] as const;
+  const provider = allowedProviders.includes(providerInput)
+    ? (providerInput as AzamMnoProvider)
+    : guessMnoProvider(billingPhone);
 
   const existing = dbEngine.db.payments.find((p) => p.bookingId === booking.id && p.status === 'PENDING');
   const transactionReference = existing?.transactionReference || `SHELFY-${booking.id}-${Date.now()}`;
@@ -933,38 +1037,39 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
     vendorId: booking.vendorId,
     amountTzs: booking.totalPriceTzs,
     currency: 'TZS',
-    provider: 'PESAPAL' as const,
+    provider: 'AZAM_PAY' as const,
     transactionReference,
     status: 'PENDING' as const,
+    mnoProvider: provider,
     createdAt: now,
   };
   if (!existing) dbEngine.db.payments.push(payment);
+  payment.provider = 'AZAM_PAY';
+  payment.mnoProvider = provider;
 
-  let redirectUrl: string | undefined;
-  let orderTrackingId = payment.pesapalTrackingId;
-  let mode: 'PESAPAL' | 'PENDING_GATEWAY' = 'PENDING_GATEWAY';
+  let mode: 'AZAM_PAY' | 'PENDING_GATEWAY' = 'PENDING_GATEWAY';
+  let transactionId: string | undefined;
+  let pushMessage: string | undefined;
 
-  if (pesapalConfigured()) {
+  if (azamPayConfigured()) {
     try {
-      const ipnId = await registerIpn(`${appUrl()}/api/payments/pesapal/ipn`);
-      const submitted = await submitOrderRequest({
-        id: transactionReference,
-        currency: 'TZS',
-        amount: booking.totalPriceTzs,
-        description: `Shelfy shelf rental ${booking.shelfName}`,
-        callbackUrl: `${appUrl()}/api/payments/pesapal/callback`,
-        notificationId: ipnId,
-        billingAddress: {
-          email_address: user.email,
-          phone_number: billingPhone,
-          first_name: user.name.split(' ')[0] || user.name,
-          last_name: user.name.split(' ').slice(1).join(' ') || 'Vendor',
+      const checkout = await initiateMnoCheckout({
+        accountNumber: toAzamMsisdn(billingPhone),
+        amountTzs: booking.totalPriceTzs,
+        externalId: transactionReference,
+        provider,
+        additionalProperties: {
+          paymentId: payment.id,
+          bookingId: booking.id,
+          vendorId: booking.vendorId,
         },
       });
-      orderTrackingId = submitted.orderTrackingId;
-      redirectUrl = submitted.redirectUrl;
-      payment.pesapalTrackingId = submitted.orderTrackingId;
-      mode = 'PESAPAL';
+      transactionId = checkout.transactionId;
+      payment.azamPayTransactionId = checkout.transactionId;
+      mode = 'AZAM_PAY';
+      pushMessage =
+        checkout.message ||
+        'Check your phone and approve the Azam Pay prompt. Shelfy activates the booking only after Azam Pay confirms payment.';
     } catch (err: any) {
       dbEngine.db.paymentAttempts.push({
         id: newId('pa'),
@@ -973,6 +1078,11 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
         payload: { message: err.message },
         createdAt: now,
       });
+      await dbEngine.saveAsync();
+      return res.status(502).json({
+        success: false,
+        error: { message: err.message || 'Could not start Azam Pay checkout. Try again or contact support.' },
+      });
     }
   }
 
@@ -980,7 +1090,7 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
     id: newId('pa'),
     paymentId: payment.id,
     status: 'INITIATED',
-    payload: { mode, transactionReference },
+    payload: { mode, transactionReference, provider },
     createdAt: now,
   });
   if (booking.status === 'APPROVED') {
@@ -996,10 +1106,10 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
       paymentId: payment.id,
       bookingId: booking.id,
       transactionReference,
-      orderTrackingId,
-      redirectUrl,
+      transactionId,
       mode,
-      pesapalEnvironment: pesapalEnvironment(),
+      mnoProvider: provider,
+      azamPayEnvironment: azamPayEnvironment(),
       amountTzs: booking.totalPriceTzs,
       platformFeeTzs: booking.platformFeeTzs,
       hostEarningsTzs: booking.hostEarningsTzs,
@@ -1015,9 +1125,9 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       status: payment.status,
       message:
-        mode === 'PESAPAL'
-          ? 'Continue on PesaPal to complete payment. Shelfy will activate the booking only after GetTransactionStatus confirms COMPLETED.'
-          : 'Payment is pending gateway confirmation. This environment has no PesaPal keys; completion requires IPN verification or a signed sandbox complete.',
+        mode === 'AZAM_PAY'
+          ? pushMessage
+          : 'Azam Pay is not configured on this server. Set AZAMPAY_APP_NAME, AZAMPAY_CLIENT_ID, and AZAMPAY_CLIENT_SECRET, or use signed sandbox completion in local dev.',
     },
   });
 });
@@ -1025,44 +1135,23 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
 app.post('/api/payments/callback-verify', paymentLimiter, requireAuth, (_req: AuthenticatedRequest, res: Response) => {
   return res.status(410).json({
     success: false,
-    error: { message: 'Client-side payment confirmation is disabled. Shelfy verifies PesaPal via GetTransactionStatus / IPN only.' },
+    error: { message: 'Client-side payment confirmation is disabled. Shelfy verifies Azam Pay via server callback only.' },
   });
 });
 
-app.get('/api/payments/pesapal/ipn', paymentLimiter, handlePesapalIpn);
-app.post('/api/payments/pesapal/ipn', paymentLimiter, handlePesapalIpn);
-
-async function handlePesapalIpn(req: Request, res: Response) {
-  const orderTrackingId = String(req.query.OrderTrackingId || req.body?.OrderTrackingId || req.body?.orderTrackingId || '');
-  if (!orderTrackingId) {
-    return res.status(400).json({ orderNotificationType: 'IPNCHANGE', status: 500 });
-  }
+app.post('/api/payments/azampay/callback', paymentLimiter, async (req: Request, res: Response) => {
   try {
-    if (!pesapalConfigured()) {
-      return res.json({ orderNotificationType: 'IPNCHANGE', orderTrackingId, status: 500 });
-    }
-    const result = await verifyPesapalAndSettle(orderTrackingId);
-    return res.json({
-      orderNotificationType: 'IPNCHANGE',
-      orderTrackingId,
-      orderMerchantReference: result.payment.transactionReference,
-      status: 200,
-    });
-  } catch {
-    return res.json({ orderNotificationType: 'IPNCHANGE', orderTrackingId, status: 500 });
+    const result = await applyAzamPayCallback((req.body || {}) as Record<string, unknown>, 'azampay_callback');
+    return res.json({ received: true, settled: result.payment.status === 'PAID', paymentId: result.payment.id });
+  } catch (err: any) {
+    const status = err.status || 400;
+    console.error('Azam Pay callback failed:', err.message);
+    return res.status(status).json({ received: false, error: err.message });
   }
-}
+});
 
-app.get('/api/payments/pesapal/callback', paymentLimiter, async (req: Request, res: Response) => {
-  const orderTrackingId = String(req.query.OrderTrackingId || '');
-  try {
-    if (orderTrackingId && pesapalConfigured()) {
-      await verifyPesapalAndSettle(orderTrackingId);
-    }
-  } catch (err) {
-    console.error('PesaPal callback verify failed:', err);
-  }
-  res.redirect(`/?payment=returned&tracking=${encodeURIComponent(orderTrackingId)}`);
+app.get('/api/payments/azampay/return', paymentLimiter, (_req: Request, res: Response) => {
+  res.redirect('/?payment=azam-return');
 });
 
 app.post('/api/payments/:id/sync', paymentLimiter, requireAuth, requireRole('VENDOR', 'ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
@@ -1070,15 +1159,19 @@ app.post('/api/payments/:id/sync', paymentLimiter, requireAuth, requireRole('VEN
   if (!payment || (req.user!.role !== 'ADMIN' && payment.vendorId !== req.user!.id)) {
     return res.status(404).json({ success: false, error: { message: 'Payment not found.' } });
   }
-  if (!payment.pesapalTrackingId || !pesapalConfigured()) {
-    return res.json({ success: true, data: { payment, booking: dbEngine.db.bookings.find((b) => b.id === payment.bookingId), pending: true } });
-  }
-  try {
-    const result = await verifyPesapalAndSettle(payment.pesapalTrackingId);
-    res.json({ success: true, data: result });
-  } catch (err: any) {
-    res.status(err.status || 400).json({ success: false, error: { message: err.message } });
-  }
+  const booking = dbEngine.db.bookings.find((b) => b.id === payment.bookingId);
+  res.json({
+    success: true,
+    data: {
+      payment,
+      booking,
+      pending: payment.status === 'PENDING',
+      message:
+        payment.status === 'PENDING'
+          ? 'Waiting for Azam Pay confirmation. If you approved on your phone, give it a moment and tap refresh again.'
+          : undefined,
+    },
+  });
 });
 
 app.get('/api/payments/by-booking/:bookingId', requireAuth, (req: AuthenticatedRequest, res: Response) => {
@@ -1091,11 +1184,11 @@ app.get('/api/payments/by-booking/:bookingId', requireAuth, (req: AuthenticatedR
 });
 
 app.post('/api/payments/sandbox-complete', paymentLimiter, async (req: Request, res: Response) => {
-  if (pesapalEnvironment() === 'live' && pesapalConfigured()) {
-    return res.status(403).json({ success: false, error: { message: 'Sandbox completion is disabled when live PesaPal is configured.' } });
+  if (azamPayEnvironment() === 'live' && azamPayConfigured()) {
+    return res.status(403).json({ success: false, error: { message: 'Sandbox completion is disabled when live Azam Pay is configured.' } });
   }
   if (!sandboxCompletionEnabled()) {
-    return res.status(403).json({ success: false, error: { message: 'Sandbox completion is not configured. Set PESAPAL_SANDBOX_KEY.' } });
+    return res.status(403).json({ success: false, error: { message: 'Sandbox completion is not configured. Set AZAMPAY_SANDBOX_KEY.' } });
   }
   const paymentId = String(req.body.paymentId || '');
   const signature = String(req.headers['x-sandbox-signature'] || req.body.signature || '');
@@ -1113,15 +1206,19 @@ app.post('/api/payments/sandbox-complete', paymentLimiter, async (req: Request, 
 app.post('/api/admin/payments/:id/reconcile', requireAuth, requireRole('ADMIN'), async (req: AuthenticatedRequest, res: Response) => {
   const payment = dbEngine.db.payments.find((p) => p.id === req.params.id);
   if (!payment) return res.status(404).json({ success: false, error: { message: 'Payment not found.' } });
-  if (payment.pesapalTrackingId && pesapalConfigured()) {
-    try {
-      const result = await verifyPesapalAndSettle(payment.pesapalTrackingId);
-      return res.json({ success: true, data: result });
-    } catch (err: any) {
-      return res.status(400).json({ success: false, error: { message: err.message } });
-    }
+  if (payment.status === 'PAID') {
+    return res.json({
+      success: true,
+      data: { payment, booking: dbEngine.db.bookings.find((b) => b.id === payment.bookingId), alreadySettled: true },
+    });
   }
-  return res.status(400).json({ success: false, error: { message: 'No PesaPal tracking id to reconcile. Use signed sandbox complete in non-live setups.' } });
+  return res.status(400).json({
+    success: false,
+    error: {
+      message:
+        'Azam Pay settlements arrive via callback. Replay the callback payload or use signed sandbox completion in non-live environments.',
+    },
+  });
 });
 
 app.post('/api/jobs/payment-reconcile', requireAuth, requireRole('ADMIN'), async (_req: AuthenticatedRequest, res: Response) => {
@@ -1430,21 +1527,44 @@ app.get('/api/messages', requireAuth, (req: AuthenticatedRequest, res: Response)
 
 // POST /api/messages
 app.post('/api/messages', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const { receiverId, bookingId, content } = req.body;
+  const { receiverId, bookingId, content, shopId, shelfId } = req.body;
   const user = req.user!;
 
-  if (!receiverId || !content) {
+  if (!receiverId || !content || !String(content).trim()) {
     return res.status(400).json({ success: false, error: { message: 'Receiver and message content required.' } });
   }
+
   const booking = bookingId ? dbEngine.db.bookings.find((b) => b.id === bookingId) : undefined;
-  const allowed = canMessageBookingCounterparties({
-    senderId: user.id,
-    senderRole: user.role,
-    receiverId,
-    booking,
-  });
-  if (allowed.ok === false) {
-    return res.status(403).json({ success: false, error: { message: allowed.message } });
+  let shopForListing: (typeof dbEngine.db.shops)[0] | undefined;
+
+  if (bookingId && booking) {
+    const allowed = canMessageBookingCounterparties({
+      senderId: user.id,
+      senderRole: user.role,
+      receiverId,
+      booking,
+    });
+    if (allowed.ok === false) {
+      return res.status(403).json({ success: false, error: { message: allowed.message } });
+    }
+  } else if (shopId) {
+    shopForListing = dbEngine.db.shops.find((s) => s.id === shopId);
+    if (!shopForListing) {
+      return res.status(404).json({ success: false, error: { message: 'Shop not found.' } });
+    }
+    const allowed = canMessageShopListing({
+      senderId: user.id,
+      receiverId,
+      shop: shopForListing,
+    });
+    if (allowed.ok === false) {
+      return res.status(403).json({ success: false, error: { message: allowed.message } });
+    }
+  } else {
+    return res.status(400).json({
+      success: false,
+      error: { message: 'Link this message to a booking or a shop listing.' },
+    });
   }
 
   const msgId = `msg_${Date.now()}`;
@@ -1456,8 +1576,10 @@ app.post('/api/messages', requireAuth, (req: AuthenticatedRequest, res: Response
     senderName: user.name,
     senderRole: user.role,
     receiverId,
-    bookingId,
-    content,
+    bookingId: bookingId || undefined,
+    shopId: shopId || shopForListing?.id || undefined,
+    shelfId: shelfId || undefined,
+    content: String(content).trim(),
     createdAt: now,
   };
 
@@ -1466,14 +1588,45 @@ app.post('/api/messages', requireAuth, (req: AuthenticatedRequest, res: Response
   dbEngine.db.notifications.push({
     id: `notif_${Date.now()}`,
     userId: receiverId,
-    title: `New Message from ${user.name} 💬`,
-    message: content.length > 60 ? `${content.slice(0, 60)}...` : content,
+    title: `New message from ${user.name}`,
+    message: msg.content.length > 60 ? `${msg.content.slice(0, 60)}...` : msg.content,
     type: 'INFO',
     createdAt: now,
   });
 
   dbEngine.save();
   res.json({ success: true, data: msg });
+});
+
+// POST /api/messages/mark-read
+app.post('/api/messages/mark-read', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const { shopId, bookingId, peerId } = req.body as {
+    shopId?: string;
+    bookingId?: string;
+    peerId?: string;
+  };
+  const now = new Date().toISOString();
+  let count = 0;
+  dbEngine.db.messages.forEach((m) => {
+    if (m.receiverId !== userId || m.readAt) return;
+    if (shopId && m.shopId === shopId) {
+      m.readAt = now;
+      count += 1;
+      return;
+    }
+    if (bookingId && m.bookingId === bookingId) {
+      m.readAt = now;
+      count += 1;
+      return;
+    }
+    if (peerId && (m.senderId === peerId || m.receiverId === peerId)) {
+      m.readAt = now;
+      count += 1;
+    }
+  });
+  dbEngine.save();
+  res.json({ success: true, data: { marked: count } });
 });
 
 // ==========================================
@@ -1603,21 +1756,46 @@ app.get('/api/settings', (req: Request, res: Response) => {
   res.json({ success: true, data: publicPlatformSettings(dbEngine.db.settings) });
 });
 
+// GET /api/admin/integrations — status only, no secrets
+app.get('/api/admin/integrations', requireAuth, requireRole('ADMIN'), (_req: AuthenticatedRequest, res: Response) => {
+  res.json({ success: true, data: adminIntegrationsPayload() });
+});
+
+app.get('/api/admin/payments/overview', requireAuth, requireRole('ADMIN'), (_req: AuthenticatedRequest, res: Response) => {
+  const payments = [...dbEngine.db.payments].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 25);
+  const attempts = [...(dbEngine.db.paymentAttempts || [])]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 40);
+  res.json({ success: true, data: { payments, attempts } });
+});
+
 // PUT /api/admin/settings
 app.put('/api/admin/settings', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
-  const { commissionPercentage, autoApproveBookings, shelfCategories, shelfTypes } = req.body;
-  if (typeof commissionPercentage === 'number') {
-    dbEngine.db.settings.commissionPercentage = commissionPercentage;
-  }
-  if (typeof autoApproveBookings === 'boolean') {
-    dbEngine.db.settings.autoApproveBookings = autoApproveBookings;
-  }
+  const {
+    commissionPercentage,
+    autoApproveBookings,
+    shelfCategories,
+    shelfTypes,
+    maintenanceMode,
+    minWithdrawalTzs,
+    bookingGraceHours,
+    cancellationFeePercent,
+    freeCancelDays,
+    currency,
+  } = req.body;
+  const s = dbEngine.db.settings;
+  if (typeof commissionPercentage === 'number') s.commissionPercentage = commissionPercentage;
+  if (typeof autoApproveBookings === 'boolean') s.autoApproveBookings = autoApproveBookings;
+  if (typeof maintenanceMode === 'boolean') s.maintenanceMode = maintenanceMode;
+  if (typeof minWithdrawalTzs === 'number' && minWithdrawalTzs >= 0) s.minWithdrawalTzs = Math.round(minWithdrawalTzs);
+  if (typeof bookingGraceHours === 'number' && bookingGraceHours >= 0) s.bookingGraceHours = bookingGraceHours;
+  if (typeof cancellationFeePercent === 'number') s.cancellationFeePercent = cancellationFeePercent;
+  if (typeof freeCancelDays === 'number' && freeCancelDays >= 0) s.freeCancelDays = freeCancelDays;
+  if (typeof currency === 'string' && currency.trim()) s.currency = currency.trim();
   if (Array.isArray(shelfCategories)) {
-    dbEngine.db.settings.shelfCategories = shelfCategories.filter((c: any) => typeof c === 'string' && c.trim().length > 0);
+    s.shelfCategories = shelfCategories.filter((c: any) => typeof c === 'string' && c.trim().length > 0);
   }
-  if (Array.isArray(shelfTypes)) {
-    dbEngine.db.settings.shelfTypes = shelfTypes;
-  }
+  if (Array.isArray(shelfTypes)) s.shelfTypes = shelfTypes;
   dbEngine.save();
 
   logAuditEvent(
@@ -1627,9 +1805,9 @@ app.put('/api/admin/settings', requireAuth, requireRole('ADMIN'), (req: Authenti
     'SETTINGS_UPDATED',
     'PlatformSettings',
     'global',
-    `Updated platform settings (commission: ${commissionPercentage}%, categories: ${dbEngine.db.settings.shelfCategories?.length || 0})`
+    `Updated platform settings (commission: ${s.commissionPercentage}%, maintenance: ${s.maintenanceMode})`
   );
-  res.json({ success: true, data: dbEngine.db.settings });
+  res.json({ success: true, data: s });
 });
 
 // ==========================================

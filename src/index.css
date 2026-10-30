@@ -1,7 +1,49 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant light (&:where(.light, .light *));
+
 @theme {
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Shared surface — header + main use --shelfy-bg */
+.light {
+  --shelfy-bg: #ffffff;
+  --shelfy-fg: #0f172a;
+  --shelfy-muted: #64748b;
+  --shelfy-border: #e2e8f0;
+  --shelfy-elevated: #f1f5f9;
+  --shelfy-input-bg: #f8fafc;
+  --shelfy-card-bg: #ffffff;
+  --shelfy-card-border: #e2e8f0;
+  --shelfy-chip-idle: #f1f5f9;
+  --shelfy-chip-idle-fg: #475569;
+  --shelfy-header-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+}
+
+.dark {
+  --shelfy-bg: #0f172a;
+  --shelfy-fg: #f8fafc;
+  --shelfy-muted: #94a3b8;
+  --shelfy-border: #1e293b;
+  --shelfy-elevated: #1e293b;
+  --shelfy-input-bg: #020617;
+  --shelfy-card-bg: #1e293b;
+  --shelfy-card-border: #334155;
+  --shelfy-chip-idle: rgba(30, 41, 59, 0.8);
+  --shelfy-chip-idle-fg: #cbd5e1;
+  --shelfy-header-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+:root {
+  --shelfy-header-height: 4rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --shelfy-header-height: 4.5rem;
+  }
 }
 
 html {
@@ -10,7 +52,9 @@ html {
 
 body {
   font-family: var(--font-sans);
-  overflow-x: hidden;
+  overflow-x: clip;
+  background-color: var(--shelfy-bg);
+  color: var(--shelfy-fg);
 }
 
 .safe-bottom {

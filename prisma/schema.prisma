@@ -236,6 +236,7 @@ model Shelf {
   monthlyPriceTzs         Int
   availabilityStatus      ShelfAvailability  @default(AVAILABLE)
   allowedCategories       Json
+  shelfRules              Json               @default("[]")
   photos                  Json
   status                  ShopStatus         @default(ACTIVE)
   verificationStatus      VerificationStatus @default(PENDING)

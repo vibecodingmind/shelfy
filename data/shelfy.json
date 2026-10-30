@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 7,
   "users": [
     {
       "id": "usr_admin",
@@ -11,7 +11,9 @@
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "failedLoginCount": 0,
+      "lastLoginAt": "2026-10-30T15:33:23.423Z"
     },
     {
       "id": "usr_vendor_1",
@@ -23,7 +25,9 @@
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "failedLoginCount": 0,
+      "lastLoginAt": "2026-10-30T15:06:18.427Z"
     },
     {
       "id": "usr_host_1",
@@ -35,7 +39,9 @@
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "failedLoginCount": 0,
+      "lastLoginAt": "2026-10-30T13:32:02.580Z"
     },
     {
       "id": "usr_agent_1",
@@ -47,7 +53,9 @@
       "status": "ACTIVE",
       "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "failedLoginCount": 0,
+      "lastLoginAt": "2026-10-30T13:49:19.292Z"
     },
     {
       "id": "usr_vendor_2",
@@ -166,7 +174,9 @@
       "footTrafficScore": 9,
       "shopType": "SUPERMARKET",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-juma-mini-market-mikocheni"
     },
     {
       "id": "shop_2",
@@ -189,7 +199,9 @@
       "footTrafficScore": 8,
       "shopType": "SUPERMARKET",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "mwanza-mwanza-lake-super-mart"
     },
     {
       "id": "shop_3",
@@ -212,7 +224,9 @@
       "footTrafficScore": 10,
       "shopType": "CONVENIENCE",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-kariakoo-mega-commercial-store"
     },
     {
       "id": "shop_4",
@@ -234,7 +248,9 @@
       "footTrafficScore": 8,
       "shopType": "BOUTIQUE",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "arusha-arusha-clock-tower-retail-hub"
     },
     {
       "id": "shop_5",
@@ -256,7 +272,9 @@
       "footTrafficScore": 9,
       "shopType": "SPECIALTY",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "zanzibar-stone-town-spice-gourmet-mart"
     },
     {
       "id": "shop_6",
@@ -278,7 +296,9 @@
       "footTrafficScore": 9,
       "shopType": "SUPERMARKET",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-masaki-peninsula-gourmet-emporium"
     },
     {
       "id": "shop_7",
@@ -300,7 +320,9 @@
       "footTrafficScore": 8,
       "shopType": "CONVENIENCE",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-sinza-mori-high-traffic-express"
     },
     {
       "id": "shop_8",
@@ -322,7 +344,9 @@
       "footTrafficScore": 9,
       "shopType": "SUPERMARKET",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "dodoma-dodoma-capital-central-supermarket"
     },
     {
       "id": "shop_9",
@@ -344,7 +368,9 @@
       "footTrafficScore": 8,
       "shopType": "MINI_MARKET",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-mbezi-beach-seaside-fresh-market"
     },
     {
       "id": "shop_10",
@@ -366,7 +392,9 @@
       "footTrafficScore": 8,
       "shopType": "BOUTIQUE",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "zanzibar-paje-beach-island-boutique-deli"
     },
     {
       "id": "shop_11",
@@ -388,7 +416,9 @@
       "footTrafficScore": 9,
       "shopType": "PHARMACY",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-posta-cbd-executive-pharmacy-mart"
     },
     {
       "id": "shop_12",
@@ -410,7 +440,9 @@
       "footTrafficScore": 9,
       "shopType": "SUPERMARKET",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "mwanza-rock-city-mall-retail-center"
     },
     {
       "id": "shop_13",
@@ -432,7 +464,9 @@
       "footTrafficScore": 8,
       "shopType": "SUPERMARKET",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "arusha-njiro-complex-fresh-supermarket"
     },
     {
       "id": "shop_14",
@@ -454,7 +488,9 @@
       "footTrafficScore": 8,
       "shopType": "CONVENIENCE",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "mbeya-mwanjelwa-highland-plaza-mart"
     },
     {
       "id": "shop_15",
@@ -476,7 +512,9 @@
       "footTrafficScore": 9,
       "shopType": "SPECIALTY",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-oysterbay-village-walk-market"
     }
   ],
   "shelves": [
@@ -518,7 +556,10 @@
       "avgRating": 4.96,
       "reviewCount": 38,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-juma-mini-market-mikocheni-eye-level-prime-front-bay-a1"
     },
     {
       "id": "shelf_2",
@@ -557,7 +598,10 @@
       "avgRating": 5,
       "reviewCount": 29,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-juma-mini-market-mikocheni-cashier-checkout-impulse-box-b2"
     },
     {
       "id": "shelf_3",
@@ -576,7 +620,7 @@
       "shelfType": "ENTRANCE_DISPLAY",
       "locationInsideShop": "Front Glass Atrium Entrance",
       "monthlyPriceTzs": 160000,
-      "availabilityStatus": "BOOKED",
+      "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Organic Goods",
         "Cosmetics",
@@ -598,7 +642,10 @@
       "avgRating": 4.98,
       "reviewCount": 52,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-masaki-peninsula-gourmet-emporium-lobby-glass-entrance-sho"
     },
     {
       "id": "shelf_4",
@@ -620,8 +667,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Dairy",
-        "Fresh Drinks"
+        "Dairy & Fresh",
+        "Beverages & Juices"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=1000&auto=format&fit=crop&q=80",
@@ -637,7 +684,10 @@
       "avgRating": 4.93,
       "reviewCount": 44,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-masaki-peninsula-gourmet-emporium-chilled-artisanal-bevera"
     },
     {
       "id": "shelf_5",
@@ -659,10 +709,10 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Cosmetics",
-        "Electronics",
-        "Packaged Goods",
-        "Fashion",
-        "Household Goods"
+        "Electronics & Tech",
+        "Food & Beverages",
+        "Gifts & Crafts",
+        "Gifts & Crafts"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1542838132-92c53300491e?w=1000&auto=format&fit=crop&q=80",
@@ -678,7 +728,10 @@
       "avgRating": 4.97,
       "reviewCount": 76,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-kariakoo-mega-commercial-store-mega-traffic-entrance-podiu"
     },
     {
       "id": "shelf_6",
@@ -699,10 +752,10 @@
       "monthlyPriceTzs": 110000,
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
-        "Snacks",
+        "Snacks & Confectionery",
         "Cosmetics",
         "Health & Beauty",
-        "Confectionery"
+        "Snacks & Confectionery"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1528698827591-e19ccd7bc23d?w=1000&auto=format&fit=crop&q=80",
@@ -718,7 +771,10 @@
       "avgRating": 4.88,
       "reviewCount": 33,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-kariakoo-mega-commercial-store-kariakoo-checkout-impulse-c"
     },
     {
       "id": "shelf_7",
@@ -741,8 +797,8 @@
       "allowedCategories": [
         "Cosmetics",
         "Health & Beauty",
-        "Skincare",
-        "Supplements"
+        "Health & Beauty",
+        "Supplements & Herbal"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=1000&auto=format&fit=crop&q=80",
@@ -758,7 +814,10 @@
       "avgRating": 4.95,
       "reviewCount": 41,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-posta-cbd-executive-pharmacy-mart-samora-ave-skincare-well"
     },
     {
       "id": "shelf_8",
@@ -780,8 +839,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Snacks",
-        "Personal Care"
+        "Snacks & Confectionery",
+        "Health & Beauty"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1555421689-491a97ff2040?w=1000&auto=format&fit=crop&q=80",
@@ -797,7 +856,10 @@
       "avgRating": 4.87,
       "reviewCount": 22,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-sinza-mori-high-traffic-express-sinza-express-eye-level-ra"
     },
     {
       "id": "shelf_9",
@@ -820,7 +882,7 @@
       "allowedCategories": [
         "Food & Beverages",
         "Organic Goods",
-        "Breakfast Items"
+        "Food & Beverages"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=1000&auto=format&fit=crop&q=80",
@@ -836,7 +898,10 @@
       "avgRating": 4.91,
       "reviewCount": 28,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-mbezi-beach-seaside-fresh-market-mbezi-beach-family-grocer"
     },
     {
       "id": "shelf_10",
@@ -860,7 +925,7 @@
         "Spices",
         "Organic Goods",
         "Food & Beverages",
-        "Gourmet Gifts"
+        "Gifts & Crafts"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1506617420156-8e4536971650?w=1000&auto=format&fit=crop&q=80",
@@ -876,7 +941,10 @@
       "avgRating": 4.99,
       "reviewCount": 61,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-oysterbay-village-walk-market-oysterbay-premium-wine-tea-r"
     },
     {
       "id": "shelf_11",
@@ -899,7 +967,7 @@
       "allowedCategories": [
         "Food & Beverages",
         "Health & Beauty",
-        "Snacks"
+        "Snacks & Confectionery"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1516594798947-e65505dbb29d?w=1000&auto=format&fit=crop&q=80",
@@ -915,7 +983,10 @@
       "avgRating": 4.89,
       "reviewCount": 24,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "mwanza-mwanza-lake-super-mart-lake-victoria-view-eye-level-shelf-mw1"
     },
     {
       "id": "shelf_12",
@@ -937,8 +1008,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Cosmetics",
-        "Electronics",
-        "Fashion",
+        "Electronics & Tech",
+        "Gifts & Crafts",
         "Health & Beauty"
       ],
       "photos": [
@@ -955,7 +1026,10 @@
       "avgRating": 4.94,
       "reviewCount": 39,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "mwanza-rock-city-mall-retail-center-rock-city-mall-entrance-showcase-rc1"
     },
     {
       "id": "shelf_13",
@@ -976,8 +1050,8 @@
       "monthlyPriceTzs": 85000,
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
-        "Snacks",
-        "Confectionery",
+        "Snacks & Confectionery",
+        "Snacks & Confectionery",
         "Cosmetics",
         "Food & Beverages"
       ],
@@ -995,7 +1069,10 @@
       "avgRating": 4.86,
       "reviewCount": 19,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "mwanza-rock-city-mall-retail-center-rock-city-checkout-impulse-counter-r"
     },
     {
       "id": "shelf_14",
@@ -1019,7 +1096,7 @@
         "Food & Beverages",
         "Spices",
         "Organic Goods",
-        "Souvenirs"
+        "Gifts & Crafts"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1000&auto=format&fit=crop&q=80",
@@ -1035,7 +1112,10 @@
       "avgRating": 4.97,
       "reviewCount": 47,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "arusha-arusha-clock-tower-retail-hub-safari-gateway-organic-shelf-ar1"
     },
     {
       "id": "shelf_15",
@@ -1057,8 +1137,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Household Goods",
-        "Snacks"
+        "Gifts & Crafts",
+        "Snacks & Confectionery"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=1000&auto=format&fit=crop&q=80",
@@ -1074,7 +1154,10 @@
       "avgRating": 4.9,
       "reviewCount": 31,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "arusha-njiro-complex-fresh-supermarket-njiro-suburban-family-shelf-ar2"
     },
     {
       "id": "shelf_16",
@@ -1096,8 +1179,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Dairy",
-        "Juices"
+        "Dairy & Fresh",
+        "Beverages & Juices"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=1000&auto=format&fit=crop&q=80",
@@ -1113,7 +1196,10 @@
       "avgRating": 4.88,
       "reviewCount": 18,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "arusha-njiro-complex-fresh-supermarket-njiro-chilled-fresh-beverage-cool"
     },
     {
       "id": "shelf_17",
@@ -1137,7 +1223,7 @@
         "Spices",
         "Organic Goods",
         "Cosmetics",
-        "Souvenirs"
+        "Gifts & Crafts"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1542838132-92c53300491e?w=1000&auto=format&fit=crop&q=80",
@@ -1153,7 +1239,10 @@
       "avgRating": 4.99,
       "reviewCount": 82,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "zanzibar-stone-town-spice-gourmet-mart-stone-town-heritage-clove-display"
     },
     {
       "id": "shelf_18",
@@ -1177,7 +1266,7 @@
         "Cosmetics",
         "Health & Beauty",
         "Organic Goods",
-        "Snacks"
+        "Snacks & Confectionery"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1528698827591-e19ccd7bc23d?w=1000&auto=format&fit=crop&q=80",
@@ -1193,7 +1282,10 @@
       "avgRating": 4.96,
       "reviewCount": 45,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "zanzibar-paje-beach-island-boutique-deli-paje-beach-sun-skincare-stand-z"
     },
     {
       "id": "shelf_19",
@@ -1215,8 +1307,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Juices",
-        "Energy Drinks"
+        "Beverages & Juices",
+        "Beverages & Juices"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=1000&auto=format&fit=crop&q=80",
@@ -1232,7 +1324,10 @@
       "avgRating": 4.92,
       "reviewCount": 27,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "zanzibar-paje-beach-island-boutique-deli-zanzibar-island-cold-drink-bay-"
     },
     {
       "id": "shelf_20",
@@ -1255,8 +1350,8 @@
       "allowedCategories": [
         "Food & Beverages",
         "Health & Beauty",
-        "Snacks",
-        "Tea & Coffee"
+        "Snacks & Confectionery",
+        "Food & Beverages"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1555421689-491a97ff2040?w=1000&auto=format&fit=crop&q=80",
@@ -1272,7 +1367,10 @@
       "avgRating": 4.93,
       "reviewCount": 35,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dodoma-dodoma-capital-central-supermarket-dodoma-parliament-aisle-shelf-"
     },
     {
       "id": "shelf_21",
@@ -1293,8 +1391,8 @@
       "monthlyPriceTzs": 80000,
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
-        "Confectionery",
-        "Snacks",
+        "Snacks & Confectionery",
+        "Snacks & Confectionery",
         "Cosmetics"
       ],
       "photos": [
@@ -1311,7 +1409,10 @@
       "avgRating": 4.85,
       "reviewCount": 16,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dodoma-dodoma-capital-central-supermarket-dodoma-capital-checkout-bay-dd"
     },
     {
       "id": "shelf_22",
@@ -1333,8 +1434,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Household Goods",
-        "Snacks"
+        "Gifts & Crafts",
+        "Snacks & Confectionery"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1506617420156-8e4536971650?w=1000&auto=format&fit=crop&q=80",
@@ -1350,7 +1451,10 @@
       "avgRating": 4.86,
       "reviewCount": 20,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "mbeya-mwanjelwa-highland-plaza-mart-mbeya-highland-transit-shelf-mby1"
     },
     {
       "id": "shelf_23",
@@ -1372,8 +1476,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Dry Goods",
-        "Household Goods"
+        "Food & Beverages",
+        "Gifts & Crafts"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1516594798947-e65505dbb29d?w=1000&auto=format&fit=crop&q=80",
@@ -1389,7 +1493,10 @@
       "avgRating": 4.82,
       "reviewCount": 14,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "mbeya-mwanjelwa-highland-plaza-mart-mbeya-upper-display-rack-mby2"
     },
     {
       "id": "shelf_24",
@@ -1411,8 +1518,8 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Household Goods",
-        "Cleaning"
+        "Gifts & Crafts",
+        "Gifts & Crafts"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1579113800032-c38bd7635818?w=1000&auto=format&fit=crop&q=80",
@@ -1428,7 +1535,10 @@
       "avgRating": 4.84,
       "reviewCount": 17,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-juma-mini-market-mikocheni-mikocheni-high-capacity-bottom-"
     },
     {
       "id": "shelf_25",
@@ -1449,7 +1559,7 @@
       "monthlyPriceTzs": 70000,
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
-        "Snacks",
+        "Snacks & Confectionery",
         "Cosmetics",
         "Food & Beverages"
       ],
@@ -1467,7 +1577,10 @@
       "avgRating": 4.88,
       "reviewCount": 26,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-sinza-mori-high-traffic-express-sinza-shekilango-checkout-"
     },
     {
       "id": "shelf_26",
@@ -1489,7 +1602,7 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
-        "Dairy",
+        "Dairy & Fresh",
         "Organic Goods"
       ],
       "photos": [
@@ -1506,7 +1619,10 @@
       "avgRating": 4.9,
       "reviewCount": 23,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-mbezi-beach-seaside-fresh-market-mbezi-beach-chilled-dairy"
     },
     {
       "id": "shelf_27",
@@ -1530,7 +1646,7 @@
         "Cosmetics",
         "Organic Goods",
         "Health & Beauty",
-        "Gifts"
+        "Gifts & Crafts"
       ],
       "photos": [
         "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=1000&auto=format&fit=crop&q=80",
@@ -1546,7 +1662,10 @@
       "avgRating": 4.98,
       "reviewCount": 57,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-oysterbay-village-walk-market-oysterbay-entrance-floral-co"
     },
     {
       "id": "shelf_28",
@@ -1568,7 +1687,7 @@
       "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Health & Beauty",
-        "Supplements",
+        "Supplements & Herbal",
         "Organic Goods"
       ],
       "photos": [
@@ -1585,7 +1704,10 @@
       "avgRating": 4.94,
       "reviewCount": 34,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "dar-es-salaam-posta-cbd-executive-pharmacy-mart-samora-ave-vitamins-supp"
     },
     {
       "id": "shelf_29",
@@ -1608,7 +1730,7 @@
       "allowedCategories": [
         "Organic Goods",
         "Cosmetics",
-        "Souvenirs",
+        "Gifts & Crafts",
         "Spices"
       ],
       "photos": [
@@ -1625,7 +1747,10 @@
       "avgRating": 4.95,
       "reviewCount": 48,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "arusha-arusha-clock-tower-retail-hub-arusha-clock-tower-entrance-glass-c"
     },
     {
       "id": "shelf_30",
@@ -1665,7 +1790,10 @@
       "avgRating": 4.99,
       "reviewCount": 68,
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-08-16T05:54:14.571Z",
+      "verificationStatus": "VERIFIED",
+      "listingStatus": "PUBLISHED",
+      "slug": "zanzibar-stone-town-spice-gourmet-mart-zanzibar-vanilla-essential-oils-c"
     }
   ],
   "products": [
@@ -1794,10 +1922,10 @@
       "totalPriceTzs": 225000,
       "platformFeeTzs": 22500,
       "hostEarningsTzs": 202500,
-      "status": "ACTIVE",
+      "status": "EXPIRING",
       "paymentStatus": "PAID",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-10-30T12:03:10.795Z"
     },
     {
       "id": "bk_1002",
@@ -1816,10 +1944,10 @@
       "totalPriceTzs": 160000,
       "platformFeeTzs": 16000,
       "hostEarningsTzs": 144000,
-      "status": "ACTIVE",
+      "status": "COMPLETED",
       "paymentStatus": "PAID",
       "createdAt": "2026-08-16T05:54:14.571Z",
-      "updatedAt": "2026-08-16T05:54:14.571Z"
+      "updatedAt": "2026-10-30T12:03:10.795Z"
     },
     {
       "id": "bk_1003",
@@ -1843,6 +1971,52 @@
       "notes": "Requesting checkout counter placement for clove gift tins.",
       "createdAt": "2026-08-16T05:54:14.571Z",
       "updatedAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "bk_mvv06wuh_4924bab0",
+      "vendorId": "usr_vendor_1",
+      "vendorName": "Amina Salum (Kilimanjaro Organics)",
+      "vendorBusinessName": "Amina Salum (Kilimanjaro Organics)",
+      "shelfId": "shelf_2",
+      "shelfName": "Cashier Checkout Impulse Box B2",
+      "shopName": "Juma Mini Market — Mikocheni",
+      "shopCity": "Dar es Salaam",
+      "hostId": "usr_host_1",
+      "startDate": "2026-10-30",
+      "endDate": "2026-11-30",
+      "durationMonths": 1,
+      "monthlyPriceTzs": 95000,
+      "totalPriceTzs": 95000,
+      "platformFeeTzs": 9500,
+      "hostEarningsTzs": 85500,
+      "status": "PENDING_APPROVAL",
+      "paymentStatus": "PENDING",
+      "notes": "[MULTI-CHECKOUT]",
+      "createdAt": "2026-10-30T13:23:56.489Z",
+      "updatedAt": "2026-10-30T13:23:56.489Z"
+    },
+    {
+      "id": "bk_mvv3w6y3_bfb3a2f7",
+      "vendorId": "usr_vendor_1",
+      "vendorName": "Amina Salum (Kilimanjaro Organics)",
+      "vendorBusinessName": "Amina Salum (Kilimanjaro Organics)",
+      "shelfId": "shelf_10",
+      "shelfName": "Oysterbay Premium Wine & Tea Rack OY1",
+      "shopName": "Oysterbay Village Walk Market",
+      "shopCity": "Dar es Salaam",
+      "hostId": "usr_host_1",
+      "startDate": "2026-10-30",
+      "endDate": "2026-11-30",
+      "durationMonths": 1,
+      "monthlyPriceTzs": 135000,
+      "totalPriceTzs": 135000,
+      "platformFeeTzs": 13500,
+      "hostEarningsTzs": 121500,
+      "status": "PENDING_APPROVAL",
+      "paymentStatus": "PENDING",
+      "notes": "[MULTI-CHECKOUT]",
+      "createdAt": "2026-10-30T15:07:34.827Z",
+      "updatedAt": "2026-10-30T15:07:34.827Z"
     }
   ],
   "payments": [
@@ -1965,7 +2139,8 @@
       "title": "Field Audit Completed 📋",
       "message": "Field Agent Baraka John verified your Mikocheni shelf display with a 96% AI score.",
       "type": "SUCCESS",
-      "createdAt": "2026-08-16T05:54:14.571Z"
+      "createdAt": "2026-08-16T05:54:14.571Z",
+      "readAt": "2026-10-30T15:28:38.921Z"
     },
     {
       "id": "notif_2",
@@ -1990,6 +2165,71 @@
       "message": "Your Lobby Glass Entrance Showcase M1 booking is paid and live.",
       "type": "SUCCESS",
       "createdAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "notif_mvuxb1vw_c19e3e94",
+      "userId": "usr_vendor_1",
+      "title": "Booking expiring",
+      "message": "Eye-Level Prime Front Bay A1 expires on 2026-10-31.",
+      "type": "WARNING",
+      "createdAt": "2026-10-30T12:03:10.796Z",
+      "readAt": "2026-10-30T15:28:38.921Z"
+    },
+    {
+      "id": "notif_mvuxb1vw_560d38a7",
+      "userId": "usr_host_1",
+      "title": "Booking expiring",
+      "message": "Eye-Level Prime Front Bay A1 is in its final week.",
+      "type": "INFO",
+      "createdAt": "2026-10-30T12:03:10.796Z"
+    },
+    {
+      "id": "notif_mvuxb1wf_38b89d3f",
+      "userId": "usr_host_3",
+      "title": "Booking completed",
+      "message": "Lobby Glass Entrance Showcase M1 is complete. TZS 144,000 is now available to withdraw.",
+      "type": "SUCCESS",
+      "createdAt": "2026-10-30T12:03:10.815Z"
+    },
+    {
+      "id": "notif_mvuxb1wf_3823a4a1",
+      "userId": "usr_vendor_2",
+      "title": "Booking completed",
+      "message": "Your rental of Lobby Glass Entrance Showcase M1 has ended.",
+      "type": "INFO",
+      "createdAt": "2026-10-30T12:03:10.815Z"
+    },
+    {
+      "id": "notif_mvv06wuh_7707166a",
+      "userId": "usr_host_1",
+      "title": "New booking request",
+      "message": "Amina Salum (Kilimanjaro Organics) booked \"Cashier Checkout Impulse Box B2\" (cart checkout).",
+      "type": "INFO",
+      "createdAt": "2026-10-30T13:23:56.489Z"
+    },
+    {
+      "id": "notif_mvv3w6y3_c8271968",
+      "userId": "usr_host_1",
+      "title": "New booking request",
+      "message": "Amina Salum (Kilimanjaro Organics) booked \"Oysterbay Premium Wine & Tea Rack OY1\" (cart checkout).",
+      "type": "INFO",
+      "createdAt": "2026-10-30T15:07:34.827Z"
+    },
+    {
+      "id": "notif_1793373516639",
+      "userId": "usr_host_1",
+      "title": "New Message from Amina Salum (Kilimanjaro Organics) 💬",
+      "message": "okay",
+      "type": "INFO",
+      "createdAt": "2026-10-30T15:18:36.639Z"
+    },
+    {
+      "id": "notif_1793373937779",
+      "userId": "usr_host_1",
+      "title": "New Message from Amina Salum (Kilimanjaro Organics) 💬",
+      "message": "OK",
+      "type": "INFO",
+      "createdAt": "2026-10-30T15:25:37.779Z"
     }
   ],
   "messages": [
@@ -2002,9 +2242,40 @@
       "bookingId": "bk_1001",
       "content": "Habari Amina, I just inspected your shelf at Mikocheni. Everything looks neat and 24 jars of honey are in stock!",
       "createdAt": "2026-08-16T05:54:14.571Z"
+    },
+    {
+      "id": "msg_1793373516639",
+      "senderId": "usr_vendor_1",
+      "senderName": "Amina Salum (Kilimanjaro Organics)",
+      "senderRole": "VENDOR",
+      "receiverId": "usr_host_1",
+      "bookingId": "bk_1001",
+      "content": "okay",
+      "createdAt": "2026-10-30T15:18:36.639Z"
+    },
+    {
+      "id": "msg_1793373937779",
+      "senderId": "usr_vendor_1",
+      "senderName": "Amina Salum (Kilimanjaro Organics)",
+      "senderRole": "VENDOR",
+      "receiverId": "usr_host_1",
+      "bookingId": "bk_1001",
+      "content": "OK",
+      "createdAt": "2026-10-30T15:25:37.779Z"
     }
   ],
   "auditLogs": [
+    {
+      "id": "log_1793374425074_r1xj",
+      "userId": "usr_admin",
+      "userName": "Shelfy Admin",
+      "userRole": "ADMIN",
+      "action": "SETTINGS_UPDATED",
+      "resource": "PlatformSettings",
+      "resourceId": "global",
+      "details": "Updated platform settings (commission: 5%, categories: 12)",
+      "timestamp": "2026-10-30T15:33:45.074Z"
+    },
     {
       "id": "log_1",
       "userId": "usr_admin",
@@ -2043,8 +2314,8 @@
   ],
   "disputes": [],
   "settings": {
-    "commissionPercentage": 10,
-    "autoApproveBookings": true,
+    "commissionPercentage": 5,
+    "autoApproveBookings": false,
     "pesapalEnvironment": "sandbox",
     "currency": "TZS",
     "maintenanceMode": false,
@@ -2062,6 +2333,10 @@
       "Baked Goods",
       "Supplements & Herbal"
     ],
+    "minWithdrawalTzs": 20000,
+    "bookingGraceHours": 24,
+    "cancellationFeePercent": 10,
+    "freeCancelDays": 7,
     "shelfTypes": [
       {
         "id": "EYE_LEVEL",
@@ -2112,5 +2387,235 @@
         "icon": "🪟"
       }
     ]
-  }
+  },
+  "bookingStatusHistory": [
+    {
+      "id": "bsh_mvuxb1vv_ff894ed3",
+      "bookingId": "bk_1001",
+      "fromStatus": "ACTIVE",
+      "toStatus": "EXPIRING",
+      "actorRole": "SYSTEM",
+      "reason": "Scheduled booking maintenance",
+      "createdAt": "2026-10-30T12:03:10.796Z"
+    },
+    {
+      "id": "bsh_mvuxb1vw_1e5ad841",
+      "bookingId": "bk_1002",
+      "fromStatus": "ACTIVE",
+      "toStatus": "COMPLETED",
+      "actorRole": "SYSTEM",
+      "reason": "Scheduled booking maintenance",
+      "createdAt": "2026-10-30T12:03:10.796Z"
+    },
+    {
+      "id": "bsh_mvv06wuh_4ac6872c",
+      "bookingId": "bk_mvv06wuh_4924bab0",
+      "toStatus": "PENDING_APPROVAL",
+      "actorId": "usr_vendor_1",
+      "actorRole": "VENDOR",
+      "reason": "Multi-shelf checkout",
+      "createdAt": "2026-10-30T13:23:56.489Z"
+    },
+    {
+      "id": "bsh_mvv3w6y3_d8c3d5c5",
+      "bookingId": "bk_mvv3w6y3_bfb3a2f7",
+      "toStatus": "PENDING_APPROVAL",
+      "actorId": "usr_vendor_1",
+      "actorRole": "VENDOR",
+      "reason": "Multi-shelf checkout",
+      "createdAt": "2026-10-30T15:07:34.827Z"
+    }
+  ],
+  "paymentAttempts": [],
+  "withdrawals": [],
+  "verificationRequests": [],
+  "authTokens": [
+    {
+      "id": "tok_mvv051ti_68f77e89",
+      "userId": "usr_agent_1",
+      "type": "REFRESH",
+      "tokenHash": "a6219d2bcbb1153c47fca93efdac3f55defb9e3f62544404cd7bb58eb95d59c8",
+      "expiresAt": "2026-11-06T13:22:29.622Z",
+      "createdAt": "2026-10-30T13:22:29.622Z",
+      "usedAt": "2026-10-30T13:22:35.922Z"
+    },
+    {
+      "id": "tok_mvv060uw_90743814",
+      "userId": "usr_vendor_1",
+      "type": "REFRESH",
+      "tokenHash": "e2b8496c66c5b07bcc9a3af2ff7c971dc517e8c9007f3fbb7f50466e0048bd26",
+      "expiresAt": "2026-11-06T13:23:15.032Z",
+      "createdAt": "2026-10-30T13:23:15.032Z",
+      "usedAt": "2026-10-30T13:36:08.152Z"
+    },
+    {
+      "id": "tok_mvv0hbx0_e57eb76a",
+      "userId": "usr_host_1",
+      "type": "REFRESH",
+      "tokenHash": "1692507b50d0f5149aba9f2a2b86d263467c796d480c432791d527abc7e45ecd",
+      "expiresAt": "2026-11-06T13:32:02.580Z",
+      "createdAt": "2026-10-30T13:32:02.580Z",
+      "usedAt": "2026-10-30T13:32:09.299Z"
+    },
+    {
+      "id": "tok_mvv13jul_9062a9bc",
+      "userId": "usr_agent_1",
+      "type": "REFRESH",
+      "tokenHash": "73c667bddff64ca9545cba8037fedb9e6c77f97f2d4068032ea8dc7363e8a72b",
+      "expiresAt": "2026-11-06T13:49:19.293Z",
+      "createdAt": "2026-10-30T13:49:19.293Z",
+      "usedAt": "2026-10-30T13:49:26.889Z"
+    },
+    {
+      "id": "tok_mvv3uk00_83c6e5f7",
+      "userId": "usr_vendor_1",
+      "type": "REFRESH",
+      "tokenHash": "7910a7872a3d9746f63124894e49fe1e5f919b26fc51136f2e91fb7cd922bb38",
+      "expiresAt": "2026-11-06T15:06:18.432Z",
+      "createdAt": "2026-10-30T15:06:18.432Z",
+      "usedAt": "2026-10-30T15:33:15.438Z"
+    },
+    {
+      "id": "tok_mvv4tduo_ba53745f",
+      "userId": "usr_admin",
+      "type": "REFRESH",
+      "tokenHash": "cb75807fe2d86dc848dd5bf421718308c41af1a915c73d4739c00d2c3b5c1005",
+      "expiresAt": "2026-11-06T15:33:23.424Z",
+      "createdAt": "2026-10-30T15:33:23.424Z",
+      "usedAt": "2026-10-30T15:35:02.510Z"
+    }
+  ],
+  "ledgerAccounts": [
+    {
+      "id": "acct_PLATFORM_platform_PLATFORM_CLEARING",
+      "ownerType": "PLATFORM",
+      "ownerId": "platform",
+      "type": "PLATFORM_CLEARING"
+    },
+    {
+      "id": "acct_PLATFORM_platform_PLATFORM_COMMISSION",
+      "ownerType": "PLATFORM",
+      "ownerId": "platform",
+      "type": "PLATFORM_COMMISSION"
+    },
+    {
+      "id": "acct_HOST_usr_host_1_HOST_PENDING",
+      "ownerType": "HOST",
+      "ownerId": "usr_host_1",
+      "type": "HOST_PENDING"
+    },
+    {
+      "id": "acct_HOST_usr_host_3_HOST_PENDING",
+      "ownerType": "HOST",
+      "ownerId": "usr_host_3",
+      "type": "HOST_PENDING"
+    },
+    {
+      "id": "acct_HOST_usr_host_3_HOST_AVAILABLE",
+      "ownerType": "HOST",
+      "ownerId": "usr_host_3",
+      "type": "HOST_AVAILABLE"
+    }
+  ],
+  "ledgerEntries": [
+    {
+      "id": "le_mvuxb09s_fce818ed",
+      "accountId": "acct_PLATFORM_platform_PLATFORM_CLEARING",
+      "amountTzs": 225000,
+      "direction": "DEBIT",
+      "type": "VENDOR_PAYMENT",
+      "refType": "Payment",
+      "refId": "pay_1",
+      "idempotencyKey": "payment:pay_1:captured:0",
+      "memo": "Vendor payment for booking bk_1001",
+      "createdAt": "2026-10-30T12:03:08.704Z"
+    },
+    {
+      "id": "le_mvuxb09s_65735a5d",
+      "accountId": "acct_PLATFORM_platform_PLATFORM_COMMISSION",
+      "amountTzs": 22500,
+      "direction": "CREDIT",
+      "type": "PLATFORM_COMMISSION",
+      "refType": "Payment",
+      "refId": "pay_1",
+      "idempotencyKey": "payment:pay_1:captured:1",
+      "memo": "Vendor payment for booking bk_1001",
+      "createdAt": "2026-10-30T12:03:08.704Z"
+    },
+    {
+      "id": "le_mvuxb09s_aa9e7394",
+      "accountId": "acct_HOST_usr_host_1_HOST_PENDING",
+      "amountTzs": 202500,
+      "direction": "CREDIT",
+      "type": "HOST_PAYABLE",
+      "refType": "Payment",
+      "refId": "pay_1",
+      "idempotencyKey": "payment:pay_1:captured:2",
+      "memo": "Vendor payment for booking bk_1001",
+      "createdAt": "2026-10-30T12:03:08.704Z"
+    },
+    {
+      "id": "le_mvuxb09s_4c10614a",
+      "accountId": "acct_PLATFORM_platform_PLATFORM_CLEARING",
+      "amountTzs": 160000,
+      "direction": "DEBIT",
+      "type": "VENDOR_PAYMENT",
+      "refType": "Payment",
+      "refId": "pay_2",
+      "idempotencyKey": "payment:pay_2:captured:0",
+      "memo": "Vendor payment for booking bk_1002",
+      "createdAt": "2026-10-30T12:03:08.704Z"
+    },
+    {
+      "id": "le_mvuxb09t_db6d6775",
+      "accountId": "acct_PLATFORM_platform_PLATFORM_COMMISSION",
+      "amountTzs": 16000,
+      "direction": "CREDIT",
+      "type": "PLATFORM_COMMISSION",
+      "refType": "Payment",
+      "refId": "pay_2",
+      "idempotencyKey": "payment:pay_2:captured:1",
+      "memo": "Vendor payment for booking bk_1002",
+      "createdAt": "2026-10-30T12:03:08.704Z"
+    },
+    {
+      "id": "le_mvuxb09t_c75e4440",
+      "accountId": "acct_HOST_usr_host_3_HOST_PENDING",
+      "amountTzs": 144000,
+      "direction": "CREDIT",
+      "type": "HOST_PAYABLE",
+      "refType": "Payment",
+      "refId": "pay_2",
+      "idempotencyKey": "payment:pay_2:captured:2",
+      "memo": "Vendor payment for booking bk_1002",
+      "createdAt": "2026-10-30T12:03:08.704Z"
+    },
+    {
+      "id": "le_mvuxb1vw_eafd8099",
+      "accountId": "acct_HOST_usr_host_3_HOST_PENDING",
+      "amountTzs": 144000,
+      "direction": "DEBIT",
+      "type": "HOST_RELEASE",
+      "refType": "Booking",
+      "refId": "bk_1002",
+      "idempotencyKey": "booking:bk_1002:release:0",
+      "memo": "Release host payable for completed booking bk_1002",
+      "createdAt": "2026-10-30T12:03:10.796Z"
+    },
+    {
+      "id": "le_mvuxb1vw_75184bb9",
+      "accountId": "acct_HOST_usr_host_3_HOST_AVAILABLE",
+      "amountTzs": 144000,
+      "direction": "CREDIT",
+      "type": "HOST_RELEASE",
+      "refType": "Booking",
+      "refId": "bk_1002",
+      "idempotencyKey": "booking:bk_1002:release:1",
+      "memo": "Release host payable for completed booking bk_1002",
+      "createdAt": "2026-10-30T12:03:10.796Z"
+    }
+  ],
+  "savedSearches": [],
+  "notificationPreferences": [],
+  "enterpriseAccounts": []
 }

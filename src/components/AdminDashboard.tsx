@@ -29,6 +29,7 @@ import {
 import { User, AuditLog, PlatformSettings, Shop, Shelf, Booking, ShelfTypeOption } from '../types/index.js';
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 import { api } from '../lib/api.js';
+import { AdminPlatformSettings } from './AdminPlatformSettings.js';
 
 interface AdminDashboardProps {
   stats: any;
@@ -54,11 +55,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateSettings,
 }) => {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'SHOPS' | 'CATEGORIES' | 'BOOKINGS' | 'VERIFY' | 'PAYOUTS' | 'DISPUTES' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
-  const [commissionInput, setCommissionInput] = useState<number>(settings?.commissionPercentage || 10);
   const [verifications, setVerifications] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [disputes, setDisputes] = useState<any[]>([]);
   const [payoutRef, setPayoutRef] = useState('');
+  const [shelfListingFilter, setShelfListingFilter] = useState('');
 
   useEffect(() => {
     api.getVerifications().then((res) => {
@@ -421,7 +422,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="text-2xl font-black text-emerald-400">
                   TZS {(stats?.totalRevenueTzs || 0).toLocaleString()}
                 </div>
-                <div className="text-[11px] text-emerald-400 font-medium mt-1">PesaPal Verified Payments</div>
+                <div className="text-[11px] text-emerald-400 font-medium mt-1">Azam Pay verified payments</div>
               </div>
 
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
@@ -551,6 +552,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'SHOPS' && (
           <div className="space-y-6">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <h2 className="text-base font-bold text-white">Shelf moderation ({shelves.length})</h2>
+                <select
+                  value={shelfListingFilter}
+                  onChange={(e) => setShelfListingFilter(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white max-w-xs"
+                >
+                  <option value="">All listing statuses</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="SUBMITTED">Submitted</option>
+                  <option value="UNDER_REVIEW">Under review</option>
+                  <option value="PUBLISHED">Published</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="SUSPENDED">Suspended</option>
+                </select>
+              </div>
+              <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] sticky top-0">
+                    <tr>
+                      <th className="p-2">Shelf</th>
+                      <th className="p-2">In-store label</th>
+                      <th className="p-2">Shop / host</th>
+                      <th className="p-2">Status</th>
+                      <th className="p-2">Preview</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {shelves
+                      .filter((sh) => !shelfListingFilter || (sh.listingStatus || sh.verificationStatus || 'DRAFT') === shelfListingFilter)
+                      .map((sh) => {
+                        const shop = shops.find((s) => s.id === sh.shopId);
+                        return (
+                          <tr key={sh.id} className="hover:bg-slate-800/30">
+                            <td className="p-2">
+                              <div className="font-bold text-white">{sh.name}</div>
+                              <div className="text-[10px] text-slate-500">{sh.shelfType} · TZS {sh.monthlyPriceTzs.toLocaleString()}/mo</div>
+                            </td>
+                            <td className="p-2 text-slate-400 max-w-[140px]">
+                              {sh.locationInsideShop?.trim() ? sh.locationInsideShop : '—'}
+                            </td>
+                            <td className="p-2">
+                              <div>{sh.shopName || shop?.name}</div>
+                              <div className="text-[10px] text-slate-500">{shop?.hostName} · {sh.shopCity}</div>
+                            </td>
+                            <td className="p-2">
+                              <span className="px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-bold text-[10px]">
+                                {sh.listingStatus || sh.verificationStatus || 'DRAFT'}
+                              </span>
+                            </td>
+                            <td className="p-2">
+                              {sh.slug || sh.id ? (
+                                <a
+                                  href={`/s/${sh.slug || sh.id}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-emerald-400 hover:underline"
+                                >
+                                  View listing
+                                </a>
+                              ) : (
+                                '—'
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <h2 className="text-base font-bold text-white mb-4">Platform Retail Shops ({shops.length})</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {shops.map((sp) => (
@@ -559,6 +633,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <div>
                       <div className="text-xs font-bold text-white">{sp.name}</div>
                       <div className="text-[11px] text-emerald-400">{sp.city} • {sp.address}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        Map:{' '}
+                        {Number.isFinite(sp.latitude) && Number.isFinite(sp.longitude)
+                          ? `${sp.latitude.toFixed(4)}, ${sp.longitude.toFixed(4)}`
+                          : 'No map pin'}
+                      </div>
                       <div className="text-[10px] text-slate-400 mt-1">Host: {sp.hostName}</div>
                       <div className="mt-2 flex items-center gap-2">
                         <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${sp.verificationStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
@@ -688,34 +768,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {/* TAB 5: SETTINGS */}
         {activeTab === 'SETTINGS' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl">
-            <h2 className="text-lg font-bold text-white mb-4">Platform Business Settings</h2>
-            <div className="space-y-6">
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-2">Platform Commission Percentage (%)</label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="range"
-                    min={5}
-                    max={25}
-                    value={commissionInput}
-                    onChange={(e) => setCommissionInput(Number(e.target.value))}
-                    className="flex-1 accent-emerald-500"
-                  />
-                  <span className="text-lg font-mono font-bold text-amber-400">{commissionInput}%</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => onUpdateSettings({ commissionPercentage: commissionInput })}
-                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs"
-              >
-                Save Platform Commission Rule
-              </button>
-            </div>
-          </div>
+          <AdminPlatformSettings
+            settings={settings}
+            onUpdateSettings={onUpdateSettings}
+            onSaved={showNotification}
+          />
         )}
 
         {/* TAB 6: AUDIT LOGS */}

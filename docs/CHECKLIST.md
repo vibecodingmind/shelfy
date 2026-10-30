@@ -2,7 +2,7 @@
 
 Update this file as work lands. Do not mark a line done unless tests (or an explicit exception) exist.
 
-Last updated: 2026-08-16 — PR #9 prelaunch hardening merged; legal copy + Playwright E2E on `cursor/launch-complete-b9de`
+Last updated: 2026-10-30 — Azam Pay primary checkout; admin platform settings (integrations, business rules, payments ops); account settings + host payout profile UI
 
 ---
 
@@ -61,13 +61,13 @@ Last updated: 2026-08-16 — PR #9 prelaunch hardening merged; legal copy + Play
 
 - [x] Server-created payment + attempt
 - [x] Client-confirm routes removed (`callback-verify`, fake `checkout`)
-- [x] PesaPal Auth / RegisterIPN / SubmitOrder / GetTransactionStatus
-- [x] IPN + callback handlers
+- [x] **Azam Pay** checkout session + callback (`POST /api/payments/azampay/*`)
 - [x] Idempotency
 - [x] Amount / reference validation
-- [x] Signed sandbox complete (no frontend “I paid”)
-- [ ] Live PesaPal credentials on Railway (ops)
-- [x] Reconciliation job (polls pending PesaPal tracking ids; no-op without keys)
+- [x] Signed sandbox complete (no frontend “I paid”; legacy path where configured)
+- [ ] Live Azam Pay credentials on Railway (ops; env-only — see admin Settings → Integrations)
+- [x] Reconciliation job (admin trigger + poll pending; no-op without gateway keys)
+- [x] Admin payments overview UI (recent payments/attempts, reconcile button)
 
 ## FINANCE
 
@@ -82,6 +82,9 @@ Last updated: 2026-08-16 — PR #9 prelaunch hardening merged; legal copy + Play
 
 ## OPERATIONS
 
+- [x] Admin platform settings UI (commission, auto-approve, maintenance, min withdrawal, cancel rules)
+- [x] Admin integrations status (`GET /api/admin/integrations`; read-only, no secrets in UI)
+- [x] Admin invite field agent (Settings → Team)
 - [x] Agent assignment (admin creates visit with shop coordinates)
 - [x] GPS vs shop coordinates (250m check-in)
 - [x] Field reports require assigned visit + check-in
@@ -115,4 +118,7 @@ Last updated: 2026-08-16 — PR #9 prelaunch hardening merged; legal copy + Play
 - [x] Legal page copy (substantive draft; counsel review recommended)
 - [x] PWA shell (manifest + service worker; `/api` is never cached)
 - [x] Production monitoring (JSON `/api` request logs + health flags; not a full APM)
-- [ ] Live PesaPal keys + stable `JWT_SECRET` (Railway ops)
+- [x] Account settings (profile, password, notification prefs) from avatar menu
+- [x] Host payout phone + withdrawal history (Host workspace → Settings)
+- [ ] Live Azam Pay keys + stable `JWT_SECRET` (Railway ops)
+- [ ] Affiliates / referrals (see [AFFILIATES_SPEC.md](./AFFILIATES_SPEC.md))

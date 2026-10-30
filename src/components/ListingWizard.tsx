@@ -1,8 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Shop } from '../types/index.js';
 import { api } from '../lib/api.js';
-import { CITY_COORDINATES, coordinatesForCity } from '../server/domain/listings.js';
+import { CITY_COORDINATES, coordinatesForCity, MIN_LISTING_PHOTOS, hasMinimumListingPhotos } from '../server/domain/listings.js';
+import {
+  IN_STORE_LABEL_FIELD,
+  IN_STORE_LABEL_HELPER,
+  IN_STORE_LABEL_PLACEHOLDER,
+  isValidInStoreLabel,
+  normalizeInStoreLabel,
+} from '../lib/shelfInStoreLabel.js';
+import { ListingPhotoUpload, uploadListingPhotos } from './ListingPhotoUpload.js';
+import { ShopLocationMap } from './shelf-detail/ShopLocationMap.js';
+import { parseShelfRulesText } from '../lib/shelfRules.js';
 
 const STEPS = ['Shop', 'Location', 'Photo', 'Shelf', 'Pricing', 'Review'] as const;
 
@@ -28,17 +38,19 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
   const [address, setAddress] = useState('');
   const [latitude, setLatitude] = useState(CITY_COORDINATES['Dar es Salaam'].latitude);
   const [longitude, setLongitude] = useState(CITY_COORDINATES['Dar es Salaam'].longitude);
-  const [shopPhoto, setShopPhoto] = useState('');
+  const [shopPhotos, setShopPhotos] = useState<string[]>([]);
 
   const [shelfName, setShelfName] = useState('');
   const [shelfType, setShelfType] = useState(shelfTypes[0]?.id || 'EYE_LEVEL');
-  const [locationInsideShop, setLocationInsideShop] = useState('Main aisle');
+  const [locationInsideShop, setLocationInsideShop] = useState('');
+  const [showFineTuneCoords, setShowFineTuneCoords] = useState(false);
   const [widthCm, setWidthCm] = useState(120);
   const [heightCm, setHeightCm] = useState(40);
   const [depthCm, setDepthCm] = useState(40);
   const [monthlyPrice, setMonthlyPrice] = useState(70000);
   const [categories, setCategories] = useState<string[]>(shelfCategories.slice(0, 2));
-  const [shelfPhoto, setShelfPhoto] = useState('');
+  const [shelfPhotos, setShelfPhotos] = useState<string[]>([]);
+  const [shelfRulesText, setShelfRulesText] = useState('');
 
   const cities = Object.keys(CITY_COORDINATES);
   const visibleSteps = useMemo(() => (mode === 'EXISTING' ? [3, 4, 5] : [0, 1, 2, 3, 4, 5]), [mode]);
@@ -52,25 +64,33 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
     setLongitude(coords.longitude);
   };
 
-  const readPhoto = (file: File, setter: (url: string) => void) => {
-    const reader = new FileReader();
-    reader.onload = () => setter(String(reader.result || ''));
-    reader.readAsDataURL(file);
-  };
-
   const canAdvance = () => {
     if (step === 0) return shopName.trim().length >= 3 && description.trim().length >= 10;
     if (step === 1) return address.trim().length >= 5 && Number.isFinite(latitude) && Number.isFinite(longitude);
-    if (step === 2) return Boolean(shopPhoto);
-    if (step === 3) return shelfName.trim().length >= 3 && widthCm > 0 && heightCm > 0 && depthCm > 0;
-    if (step === 4) return monthlyPrice > 0 && categories.length > 0 && Boolean(shelfPhoto);
+    if (step === 2) return hasMinimumListingPhotos(shopPhotos);
+    if (step === 3) {
+      return (
+        shelfName.trim().length >= 3 &&
+        isValidInStoreLabel(locationInsideShop) &&
+        widthCm > 0 &&
+        heightCm > 0 &&
+        depthCm > 0
+      );
+    }
+    if (step === 4) return monthlyPrice > 0 && categories.length > 0 && hasMinimumListingPhotos(shelfPhotos);
     return true;
   };
 
   const next = () => {
     setError('');
     if (!canAdvance()) {
-      setError('Complete this step before continuing.');
+      if (step === 2) {
+        setError(`Add at least ${MIN_LISTING_PHOTOS} shop photos to continue.`);
+      } else if (step === 4) {
+        setError(`Add at least ${MIN_LISTING_PHOTOS} shelf photos to continue.`);
+      } else {
+        setError('Complete this step before continuing.');
+      }
       return;
     }
     const nextStep = visibleSteps[stepIndex + 1];
@@ -88,7 +108,7 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
     try {
       let shopId = existingShopId;
       if (mode === 'NEW') {
-        const shopPhotoRes = await api.uploadImage(shopPhoto, 'shop');
+        const shopPhotoUrls = await uploadListingPhotos(shopPhotos, 'shop');
         const shopRes = await api.createShop({
           name: shopName,
           description,
@@ -98,26 +118,28 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
           latitude,
           longitude,
           shopType,
-          photos: shopPhotoRes.data?.url ? [shopPhotoRes.data.url] : [],
+          photos: shopPhotoUrls,
         });
         if (!shopRes.success || !shopRes.data) throw new Error(shopRes.error?.message || 'Could not create shop.');
         shopId = shopRes.data.id;
         const submitted = await api.submitListing('shop', shopId);
         if (!submitted.success) throw new Error(submitted.error?.message || 'Shop created but not submitted.');
       }
-      const shelfPhotoRes = await api.uploadImage(shelfPhoto, 'shelf');
+      const shelfPhotoUrls = await uploadListingPhotos(shelfPhotos, 'shelf');
+      const inStoreLabel = normalizeInStoreLabel(locationInsideShop);
       const shelfRes = await api.createShelf({
         shopId,
         name: shelfName,
-        description: `${shelfName} at ${locationInsideShop}`,
+        description: `${shelfName} at ${inStoreLabel}`,
         shelfType,
-        locationInsideShop,
+        locationInsideShop: inStoreLabel,
+        shelfRules: parseShelfRulesText(shelfRulesText),
         widthCm,
         heightCm,
         depthCm,
         monthlyPriceTzs: monthlyPrice,
         allowedCategories: categories,
-        photos: shelfPhotoRes.data?.url ? [shelfPhotoRes.data.url] : [],
+        photos: shelfPhotoUrls,
       });
       if (!shelfRes.success || !shelfRes.data) throw new Error(shelfRes.error?.message || 'Could not create shelf.');
       const submittedShelf = await api.submitListing('shelf', shelfRes.data.id);
@@ -130,6 +152,11 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
       setBusy(false);
     }
   };
+
+  const handleMapCoords = useCallback((lat: number, lng: number) => {
+    setLatitude(lat);
+    setLongitude(lng);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -184,24 +211,40 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
             <label className="block text-slate-400">Street address
               <input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white" />
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block text-slate-400">Latitude
-                <input type="number" step="0.0001" value={latitude} onChange={(e) => setLatitude(Number(e.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white" />
-              </label>
-              <label className="block text-slate-400">Longitude
-                <input type="number" step="0.0001" value={longitude} onChange={(e) => setLongitude(Number(e.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white" />
-              </label>
+            <div>
+              <p className="text-slate-400 mb-1">Shop map pin</p>
+              <p className="text-[10px] text-slate-500 mb-2">Click the map or drag the pin to mark where customers find your shop.</p>
+              <ShopLocationMap
+                key={city}
+                latitude={latitude}
+                longitude={longitude}
+                interactive
+                onCoordsChange={handleMapCoords}
+                heightClassName="h-[220px]"
+              />
             </div>
+            <button
+              type="button"
+              onClick={() => setShowFineTuneCoords((v) => !v)}
+              className="text-[11px] text-emerald-400 hover:underline"
+            >
+              {showFineTuneCoords ? 'Hide fine-tune coordinates' : 'Fine-tune coordinates'}
+            </button>
+            {showFineTuneCoords && (
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block text-slate-400">Latitude
+                  <input type="number" step="0.0001" value={latitude} onChange={(e) => setLatitude(Number(e.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white" />
+                </label>
+                <label className="block text-slate-400">Longitude
+                  <input type="number" step="0.0001" value={longitude} onChange={(e) => setLongitude(Number(e.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white" />
+                </label>
+              </div>
+            )}
           </div>
         )}
 
         {step === 2 && (
-          <div className="space-y-3 text-xs">
-            <label className="block text-slate-400">Shop photo (JPEG, PNG, or WebP)
-              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => e.target.files?.[0] && readPhoto(e.target.files[0], setShopPhoto)} className="mt-1 block w-full text-slate-300" />
-            </label>
-            {shopPhoto && <img src={shopPhoto} alt="Shop preview" className="h-28 w-full object-cover rounded-lg border border-slate-800" />}
-          </div>
+          <ListingPhotoUpload label="Shop photos" photos={shopPhotos} onChange={setShopPhotos} />
         )}
 
         {step === 3 && (
@@ -226,9 +269,28 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
                 {shelfTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </label>
-            <label className="block text-slate-400">Location inside shop
-              <input value={locationInsideShop} onChange={(e) => setLocationInsideShop(e.target.value)} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white" />
+            <label className="block text-slate-400">
+              {IN_STORE_LABEL_FIELD}
+              <input
+                value={locationInsideShop}
+                onChange={(e) => setLocationInsideShop(e.target.value)}
+                placeholder={IN_STORE_LABEL_PLACEHOLDER}
+                required
+                className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white"
+              />
             </label>
+            <p className="text-[10px] text-slate-500 -mt-1">{IN_STORE_LABEL_HELPER}</p>
+            <label className="block text-slate-400">
+              Shelf rules (optional)
+              <textarea
+                value={shelfRulesText}
+                onChange={(e) => setShelfRulesText(e.target.value)}
+                rows={4}
+                placeholder={'One rule per line, e.g.\nRestock every Monday\nFront-facing labels required\nNo glass containers'}
+                className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white text-[11px]"
+              />
+            </label>
+            <p className="text-[10px] text-slate-500 -mt-1">Vendors see these on the shelf page after permitted categories.</p>
             <div className="grid grid-cols-3 gap-2">
               <label className="block text-slate-400">W cm<input type="number" value={widthCm} onChange={(e) => setWidthCm(Number(e.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white" /></label>
               <label className="block text-slate-400">H cm<input type="number" value={heightCm} onChange={(e) => setHeightCm(Number(e.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white" /></label>
@@ -255,18 +317,15 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
                 </label>
               ))}
             </div>
-            <label className="block text-slate-400">Shelf photo
-              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => e.target.files?.[0] && readPhoto(e.target.files[0], setShelfPhoto)} className="mt-1 block w-full text-slate-300" />
-            </label>
-            {shelfPhoto && <img src={shelfPhoto} alt="Shelf preview" className="h-28 w-full object-cover rounded-lg border border-slate-800" />}
+            <ListingPhotoUpload label="Shelf photos" photos={shelfPhotos} onChange={setShelfPhotos} />
           </div>
         )}
 
         {step === 5 && (
           <div className="text-xs text-slate-300 space-y-2">
-            {mode === 'NEW' && <div><span className="text-slate-500">Shop:</span> {shopName} · {city}</div>}
+            {mode === 'NEW' && <div><span className="text-slate-500">Shop:</span> {shopName} · {city} · {shopPhotos.length} photos</div>}
             {mode === 'EXISTING' && <div><span className="text-slate-500">Shop:</span> {shops.find((s) => s.id === existingShopId)?.name}</div>}
-            <div><span className="text-slate-500">Shelf:</span> {shelfName} · TZS {monthlyPrice.toLocaleString()}/mo</div>
+            <div><span className="text-slate-500">Shelf:</span> {shelfName} · In-store: {normalizeInStoreLabel(locationInsideShop) || '—'} · TZS {monthlyPrice.toLocaleString()}/mo · {shelfPhotos.length} photos</div>
             <div><span className="text-slate-500">Categories:</span> {categories.join(', ')}</div>
             <p className="text-amber-400">This will submit the listing for admin verification. It will not appear in the public marketplace until verified.</p>
           </div>
@@ -279,7 +338,7 @@ export function ListingWizard({ shops, shelfCategories, shelfTypes, onClose, onC
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           {step === 5 ? (
-            <button type="button" onClick={submit} disabled={busy} className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl">
+            <button type="button" onClick={submit} disabled={busy || !hasMinimumListingPhotos(shelfPhotos)} className="px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl disabled:opacity-50">
               {busy ? 'Submitting…' : 'Create & submit for verification'}
             </button>
           ) : (

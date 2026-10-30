@@ -2,7 +2,7 @@
  * Shelfy 🇹🇿 — Host Workspace (Shop & Shelf Owner Dashboard)
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Store,
   Layers,
@@ -16,10 +16,25 @@ import {
   X,
   CreditCard,
   Building,
+  MessageSquare,
+  Settings,
 } from 'lucide-react';
-import { User, HostProfile, Shop, Shelf, Booking, Payout } from '../types/index.js';
+import { HostSettingsPanel } from './HostSettingsPanel.js';
+import { User, HostProfile, Shop, Shelf, Booking, Payout, Message } from '../types/index.js';
+import { MessagesWorkspace } from './MessagesWorkspace.js';
+import { buildMessageThreads } from '../lib/messageThreads.js';
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 import { api } from '../lib/api.js';
+import { coordinatesForCity } from '../server/domain/listings.js';
+import { hasValidShopCoords } from '../lib/shopMapLocation.js';
+import {
+  formatInStoreLabelDisplay,
+  IN_STORE_LABEL_FIELD,
+  IN_STORE_LABEL_HELPER,
+  IN_STORE_LABEL_PLACEHOLDER,
+  normalizeInStoreLabel,
+} from '../lib/shelfInStoreLabel.js';
+import { formatShelfRulesForEdit, parseShelfRulesText } from '../lib/shelfRules.js';
 import { ListingWizard } from './ListingWizard.js';
 import { HostAnalyticsPanel } from './HostAnalyticsPanel.js';
 import { HostApprovalInbox } from './HostApprovalInbox.js';
@@ -31,6 +46,11 @@ interface HostDashboardProps {
   shelves: Shelf[];
   bookings: Booking[];
   payouts: Payout[];
+  messages?: Message[];
+  openMessagesSignal?: number;
+  initialMessageThreadId?: string | null;
+  onInitialMessageThreadConsumed?: () => void;
+  onMessagesTabActiveChange?: (active: boolean) => void;
   shelfCategories?: string[];
   shelfTypes?: { id: string; name: string }[];
   onRefreshData: () => void;
@@ -43,11 +63,31 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
   shelves,
   bookings,
   payouts,
+  messages = [],
+  openMessagesSignal = 0,
+  initialMessageThreadId,
+  onInitialMessageThreadConsumed,
+  onMessagesTabActiveChange,
   shelfCategories,
   shelfTypes,
   onRefreshData,
 }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SHOPS' | 'SHELVES' | 'BOOKINGS' | 'EARNINGS' | 'APPROVALS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<
+    'OVERVIEW' | 'SHOPS' | 'SHELVES' | 'BOOKINGS' | 'EARNINGS' | 'APPROVALS' | 'MESSAGES' | 'SETTINGS'
+  >('OVERVIEW');
+
+  const messageUnread = useMemo(
+    () => buildMessageThreads(user, messages, shops, bookings).reduce((n, t) => n + t.unread, 0),
+    [user, messages, shops, bookings]
+  );
+
+  useEffect(() => {
+    if (openMessagesSignal > 0) setActiveTab('MESSAGES');
+  }, [openMessagesSignal]);
+
+  useEffect(() => {
+    onMessagesTabActiveChange?.(activeTab === 'MESSAGES');
+  }, [activeTab, onMessagesTabActiveChange]);
   const [finance, setFinance] = useState<any>(null);
   const [withdrawAmount, setWithdrawAmount] = useState(20000);
 
@@ -61,6 +101,12 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
 
   // Add Shelf Modal
   const [showShelfModal, setShowShelfModal] = useState(false);
+  const [editingShelf, setEditingShelf] = useState<Shelf | null>(null);
+  const [editShelfName, setEditShelfName] = useState('');
+  const [editMonthlyPrice, setEditMonthlyPrice] = useState(70000);
+  const [editLocation, setEditLocation] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editShelfRulesText, setEditShelfRulesText] = useState('');
   const [selectedShopId, setSelectedShopId] = useState('');
   const [shelfName, setShelfName] = useState('');
   const [shelfType, setShelfType] = useState('EYE_LEVEL');
@@ -111,10 +157,14 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
   // Submit Shop
   const handleCreateShop = async (e: React.FormEvent) => {
     e.preventDefault();
+    const coords = coordinatesForCity(shopCity);
     const res = await api.createShop({
       name: shopName,
       address: shopAddress,
       city: shopCity,
+      region: shopCity,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
       shopType,
     });
     if (res.success) {
@@ -170,7 +220,9 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
               { id: 'SHELVES', label: 'Shelves', icon: Layers },
               { id: 'BOOKINGS', label: 'Bookings', icon: Calendar },
               { id: 'APPROVALS', label: 'Approvals', icon: CheckCircle2 },
+              { id: 'MESSAGES', label: 'Messages', icon: MessageSquare },
               { id: 'EARNINGS', label: 'Earnings', icon: DollarSign },
+              { id: 'SETTINGS', label: 'Settings', icon: Settings },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -185,7 +237,12 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  {item.label}
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.id === 'MESSAGES' && messageUnread > 0 && (
+                    <span className="min-w-[1.25rem] h-5 px-1 rounded-full bg-sky-500 text-slate-950 text-[10px] font-black flex items-center justify-center">
+                      {messageUnread > 9 ? '9+' : messageUnread}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -287,6 +344,9 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                       <div>
                         <div className="font-bold text-white text-xs">{sp.name}</div>
                         <div className="text-[10px] text-emerald-400">{sp.city} • {sp.address}</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          Map: {hasValidShopCoords(sp.latitude, sp.longitude) ? 'set' : 'not set — refine in listing wizard'}
+                        </div>
                         <div className="text-[10px] text-slate-400 mt-1">Foot Traffic Score: {sp.footTrafficScore}/10</div>
                       </div>
                     </div>
@@ -340,6 +400,9 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                     <div>
                       <div className="font-bold text-white text-sm">{sp.name}</div>
                       <div className="text-[11px] text-emerald-400">{sp.city} • {sp.address}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        Map: {hasValidShopCoords(sp.latitude, sp.longitude) ? 'set' : 'not set — refine in listing wizard'}
+                      </div>
                       <div className="text-[10px] text-slate-400 mt-1">Type: {sp.shopType.replace('_', ' ')}</div>
                       <span className={`mt-2 inline-block text-[10px] px-2 py-0.5 rounded font-bold ${sp.verificationStatus === 'VERIFIED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
                         {sp.listingStatus || sp.verificationStatus}
@@ -390,12 +453,29 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                       <div>
                         <div className="font-bold text-white text-sm">{sh.name}</div>
                         <div className="text-[11px] text-emerald-400">{sh.shopName} • {sh.shopCity}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">
+                          In-store: {formatInStoreLabelDisplay(sh)}
+                        </div>
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${sh.availabilityStatus === 'AVAILABLE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
                         {sh.availabilityStatus}
                       </span>
                     </div>
                     <div className="mt-3 text-xs text-slate-300">TZS {sh.monthlyPriceTzs.toLocaleString()}/mo • {sh.shelfType.replace('_', ' ')}</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingShelf(sh);
+                        setEditShelfName(sh.name);
+                        setEditMonthlyPrice(sh.monthlyPriceTzs);
+                        setEditLocation(sh.locationInsideShop || '');
+                        setEditDescription(sh.description || '');
+                        setEditShelfRulesText(formatShelfRulesForEdit(sh.shelfRules));
+                      }}
+                      className="mt-2 text-[10px] px-2 py-1 rounded bg-slate-800 text-slate-200 font-bold border border-slate-700"
+                    >
+                      Edit shelf
+                    </button>
                     <button
                       type="button"
                       onClick={async () => {
@@ -430,6 +510,32 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'MESSAGES' && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-bold text-white">Messages</h2>
+              <p className="text-xs text-slate-400 mt-1">Vendor inquiries about your shops and booking conversations.</p>
+            </div>
+            <MessagesWorkspace
+              user={user}
+              messages={messages}
+              shops={shops}
+              bookings={bookings}
+              onSent={onRefreshData}
+              variant="portal"
+              initialThreadId={initialMessageThreadId}
+              onInitialThreadConsumed={onInitialMessageThreadConsumed}
+            />
+          </div>
+        )}
+
+        {activeTab === 'SETTINGS' && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-bold text-white">Host settings</h2>
+            <HostSettingsPanel user={user} hostProfile={hostProfile} onUpdated={onRefreshData} />
           </div>
         )}
 
@@ -564,6 +670,92 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
         )}
 
       </main>
+
+      {editingShelf && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 relative">
+            <button onClick={() => setEditingShelf(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-lg font-bold text-white mb-4">Edit shelf listing</h2>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editingShelf) return;
+                const res = await api.updateShelf(editingShelf.id, {
+                  name: editShelfName,
+                  monthlyPriceTzs: editMonthlyPrice,
+                  locationInsideShop: normalizeInStoreLabel(editLocation),
+                  description: editDescription,
+                  shelfRules: parseShelfRulesText(editShelfRulesText),
+                });
+                if (res.success) {
+                  setEditingShelf(null);
+                  onRefreshData();
+                } else {
+                  alert(res.error?.message || 'Could not update shelf.');
+                }
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div>
+                <label className="text-slate-400 block mb-1 font-semibold">Shelf name</label>
+                <input
+                  value={editShelfName}
+                  onChange={(e) => setEditShelfName(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 block mb-1 font-semibold">Monthly price (TZS)</label>
+                <input
+                  type="number"
+                  min={10000}
+                  value={editMonthlyPrice}
+                  onChange={(e) => setEditMonthlyPrice(Number(e.target.value))}
+                  required
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 block mb-1 font-semibold">{IN_STORE_LABEL_FIELD}</label>
+                <input
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  placeholder={IN_STORE_LABEL_PLACEHOLDER}
+                  required
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">{IN_STORE_LABEL_HELPER}</p>
+              </div>
+              <div>
+                <label className="text-slate-400 block mb-1 font-semibold">Description</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={3}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white"
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 block mb-1 font-semibold">Shelf rules</label>
+                <textarea
+                  value={editShelfRulesText}
+                  onChange={(e) => setEditShelfRulesText(e.target.value)}
+                  rows={4}
+                  placeholder="One rule per line for vendors renting this shelf"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white text-xs"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Shown on the public shelf page after permitted categories.</p>
+              </div>
+              <button type="submit" className="w-full py-3 bg-emerald-500 text-slate-950 font-black rounded-xl">
+                Save changes
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showWizard && (
         <ListingWizard

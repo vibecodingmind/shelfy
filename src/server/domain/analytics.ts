@@ -68,7 +68,7 @@ export function hostAnalytics(
       settings: (data as DatabaseSchema).settings || {
         commissionPercentage: 10,
         autoApproveBookings: false,
-        pesapalEnvironment: 'sandbox',
+        azamPayEnvironment: 'sandbox',
         currency: 'TZS',
         maintenanceMode: false,
         shelfCategories: [],

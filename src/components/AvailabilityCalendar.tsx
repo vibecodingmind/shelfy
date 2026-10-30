@@ -1,402 +1,381 @@
 /**
- * Shelfy 🇹🇿 — Interactive Shelf Availability Calendar
- * Shows existing bookings, visualizes occupancy, and strictly prevents double-booking.
+ * Monthly shelf rental calendar — Airbnb-style dual month, duration presets.
+ * Selection state is controlled by the parent (single source of truth).
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import {
-  ChevronLeft,
-  ChevronRight,
-  Calendar as CalendarIcon,
-  AlertCircle,
-  CheckCircle2,
-  Lock,
-  Clock,
-  Sparkles,
-} from 'lucide-react';
+  addMonthsIsoDate,
+  findEarliestAvailableStart,
+  isDayOccupied,
+  rangeOverlapsAnyBooking,
+  todayIsoDate,
+} from '../lib/monthlyRentalDates.js';
 
 export interface BookedRange {
   bookingId?: string;
-  startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
+  startDate: string;
+  endDate: string;
   status?: string;
   vendorName?: string;
 }
 
+const DURATION_PRESETS = [
+  { months: 1, label: '1 mo' },
+  { months: 3, label: '3 mo' },
+  { months: 6, label: '6 mo' },
+  { months: 12, label: '1 yr' },
+] as const;
+
 interface AvailabilityCalendarProps {
-  shelfId: string;
+  shelfId?: string;
   bookedRanges: BookedRange[];
   monthlyPriceTzs: number;
   selectedStartDate?: string;
   selectedEndDate?: string;
+  activeDurationMonths?: number | null;
   onDateRangeChange: (start: string, end: string, monthsCount: number, isValid: boolean) => void;
+  onDurationPreset?: (months: number) => void;
+  compact?: boolean;
+  /** When false, duration chips are hidden (e.g. booking widget shows them) */
+  showDurationPresets?: boolean;
 }
 
-export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
-  shelfId,
-  bookedRanges = [],
-  monthlyPriceTzs,
-  selectedStartDate: initialStart,
-  selectedEndDate: initialEnd,
-  onDateRangeChange,
-}) => {
-  const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [startDate, setStartDate] = useState<string>(initialStart || '');
-  const [endDate, setEndDate] = useState<string>(initialEnd || '');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+function formatDateStrUTC(year: number, month: number, day: number): string {
+  const d = new Date(Date.UTC(year, month, day));
+  return d.toISOString().slice(0, 10);
+}
 
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+function buildMonthGrid(year: number, month: number, bookedRanges: BookedRange[], todayStr: string) {
+  const firstDayIndex = new Date(Date.UTC(year, month, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const daysInPrevMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
-  // Helper to format date as YYYY-MM-DD
-  const formatDateStr = (d: Date): string => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
+  const days: Array<{
+    dateStr: string;
+    dayNumber: number;
+    isCurrentMonth: boolean;
+    isPast: boolean;
+    isBooked: boolean;
+  }> = [];
 
-  const todayStr = useMemo(() => formatDateStr(new Date()), []);
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    const dayNum = daysInPrevMonth - i;
+    const dateStr = formatDateStrUTC(year, month - 1, dayNum);
+    days.push({
+      dateStr,
+      dayNumber: dayNum,
+      isCurrentMonth: false,
+      isPast: dateStr < todayStr,
+      isBooked: isDayOccupied(dateStr, bookedRanges),
+    });
+  }
 
-  // Check if a date string is inside any booked range
-  const isDateBooked = (dateStr: string): { booked: boolean } => {
-    for (const range of bookedRanges) {
-      if (dateStr >= range.startDate && dateStr <= range.endDate) {
-        return { booked: true };
-      }
-    }
-    return { booked: false };
-  };
+  for (let i = 1; i <= daysInMonth; i++) {
+    const dateStr = formatDateStrUTC(year, month, i);
+    days.push({
+      dateStr,
+      dayNumber: i,
+      isCurrentMonth: true,
+      isPast: dateStr < todayStr,
+      isBooked: isDayOccupied(dateStr, bookedRanges),
+    });
+  }
 
-  // Check if a whole range [startStr, endStr] contains any booked days
-  const doesRangeOverlapBooked = (startStr: string, endStr: string): boolean => {
-    for (const range of bookedRanges) {
-      // Overlap condition: max(start1, start2) <= min(end1, end2)
-      if (startStr <= range.endDate && endStr >= range.startDate) {
-        return true;
-      }
-    }
-    return false;
-  };
+  const remaining = (7 - (days.length % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    const dateStr = formatDateStrUTC(year, month + 1, i);
+    days.push({
+      dateStr,
+      dayNumber: i,
+      isCurrentMonth: false,
+      isPast: dateStr < todayStr,
+      isBooked: isDayOccupied(dateStr, bookedRanges),
+    });
+  }
 
-  // Calculate days in current month
-  const calendarDays = useMemo(() => {
-    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrevMonth = new Date(year, month, 0).getDate();
+  return days;
+}
 
-    const days: Array<{
-      dateStr: string;
-      dayNumber: number;
-      isCurrentMonth: boolean;
-      isPast: boolean;
-      isBooked: boolean;
-    }> = [];
-
-    // Prev month trailing days
-    for (let i = firstDayIndex - 1; i >= 0; i--) {
-      const d = new Date(year, month - 1, daysInPrevMonth - i);
-      const str = formatDateStr(d);
-      const { booked } = isDateBooked(str);
-      days.push({
-        dateStr: str,
-        dayNumber: d.getDate(),
-        isCurrentMonth: false,
-        isPast: str < todayStr,
-        isBooked: booked,
-      });
-    }
-
-    // Current month days
-    for (let i = 1; i <= daysInMonth; i++) {
-      const d = new Date(year, month, i);
-      const str = formatDateStr(d);
-      const { booked } = isDateBooked(str);
-      days.push({
-        dateStr: str,
-        dayNumber: i,
-        isCurrentMonth: true,
-        isPast: str < todayStr,
-        isBooked: booked,
-      });
-    }
-
-    // Next month leading days to complete 35 or 42 grid cells
-    const remaining = (7 - (days.length % 7)) % 7;
-    for (let i = 1; i <= remaining; i++) {
-      const d = new Date(year, month + 1, i);
-      const str = formatDateStr(d);
-      const { booked } = isDateBooked(str);
-      days.push({
-        dateStr: str,
-        dayNumber: i,
-        isCurrentMonth: false,
-        isPast: str < todayStr,
-        isBooked: booked,
-      });
-    }
-
-    return days;
-  }, [year, month, bookedRanges, todayStr]);
-
-  // Navigate months
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-  };
-
-  // Click day handler
-  const handleDateClick = (dateStr: string, isPast: boolean, isBooked: boolean) => {
-    if (isPast) return;
-    if (isBooked) {
-      setErrorMessage('This date is already booked. Please select open dates.');
-      return;
-    }
-
-    setErrorMessage(null);
-
-    // If no start date or both already set, reset and start fresh
-    if (!startDate || (startDate && endDate)) {
-      setStartDate(dateStr);
-      setEndDate('');
-      onDateRangeChange(dateStr, '', 1, false);
-    } else if (startDate && !endDate) {
-      if (dateStr <= startDate) {
-        setStartDate(dateStr);
-        setEndDate('');
-        onDateRangeChange(dateStr, '', 1, false);
-      } else {
-        const startD = new Date(`${startDate}T00:00:00`);
-        const endD = new Date(`${dateStr}T00:00:00`);
-        let months = (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth());
-        if (endD.getDate() > startD.getDate()) months += 1;
-        months = Math.max(1, months);
-        const snapped = new Date(startD);
-        snapped.setMonth(snapped.getMonth() + months);
-        const endStr = formatDateStr(snapped);
-        if (doesRangeOverlapBooked(startDate, endStr)) {
-          setErrorMessage('That monthly plan overlaps a booking. Choose another start month.');
-          return;
-        }
-        setEndDate(endStr);
-        onDateRangeChange(startDate, endStr, months, true);
-      }
-    }
-  };
-
-  // Preset durations (1 month, 3 months, 6 months)
-  const applyPresetDuration = (months: number) => {
-    const baseStart = startDate && startDate >= todayStr ? startDate : todayStr;
-    const startD = new Date(baseStart);
-    const endD = new Date(startD);
-    endD.setMonth(endD.getMonth() + months);
-    const endStr = formatDateStr(endD);
-
-    if (doesRangeOverlapBooked(baseStart, endStr)) {
-      setErrorMessage(`Cannot book ${months} month(s) from ${baseStart}: Overlaps with an existing reservation.`);
-      return;
-    }
-
-    setStartDate(baseStart);
-    setEndDate(endStr);
-    setErrorMessage(null);
-    onDateRangeChange(baseStart, endStr, months, true);
-  };
-
-  // Summary computations
-  const durationMonths = useMemo(() => {
-    if (!startDate || !endDate) return 1;
-    const startD = new Date(`${startDate}T00:00:00`);
-    const endD = new Date(`${endDate}T00:00:00`);
-    const months = (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth());
-    return Math.max(1, months);
-  }, [startDate, endDate]);
-
-  const estimatedTotal = durationMonths * monthlyPriceTzs;
+function MonthPanel({
+  year,
+  month,
+  bookedRanges,
+  todayStr,
+  startDate,
+  endDate,
+  onDayClick,
+}: {
+  year: number;
+  month: number;
+  bookedRanges: BookedRange[];
+  todayStr: string;
+  startDate: string;
+  endDate: string;
+  onDayClick: (dateStr: string, isPast: boolean, isBooked: boolean) => void;
+}) {
+  const days = useMemo(() => buildMonthGrid(year, month, bookedRanges, todayStr), [year, month, bookedRanges, todayStr]);
 
   return (
-    <div id="availability-calendar" className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl text-white">
-      
-      {/* Calendar Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-slate-800 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-emerald-400" />
-            <h3 className="text-base font-bold text-white">Interactive Availability Calendar</h3>
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Rentals run in whole months. The end date snaps to the same day, one or more months after check-in.
-          </p>
-        </div>
-
-        {/* Quick Month Navigation */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={handlePrevMonth}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          <span className="text-sm font-bold min-w-32 text-center text-white">
-            {monthNames[month]} {year}
-          </span>
-
-          <button
-            type="button"
-            onClick={handleNextMonth}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all"
-            aria-label="Next month"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Quick Duration Presets */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Quick Select:</span>
-        <button
-          type="button"
-          onClick={() => applyPresetDuration(1)}
-          className="px-3 py-1 bg-slate-800 hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-500/30 text-xs font-semibold rounded-lg border border-slate-700 transition-all"
-        >
-          1 Month
-        </button>
-        <button
-          type="button"
-          onClick={() => applyPresetDuration(3)}
-          className="px-3 py-1 bg-slate-800 hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-500/30 text-xs font-semibold rounded-lg border border-slate-700 transition-all"
-        >
-          3 Months (Quarter)
-        </button>
-        <button
-          type="button"
-          onClick={() => applyPresetDuration(6)}
-          className="px-3 py-1 bg-slate-800 hover:bg-emerald-500/20 hover:text-emerald-300 hover:border-emerald-500/30 text-xs font-semibold rounded-lg border border-slate-700 transition-all"
-        >
-          6 Months
-        </button>
-      </div>
-
-      {/* Conflict Error Message */}
-      {errorMessage && (
-        <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs flex items-center gap-2 animate-in fade-in">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {/* Weekday Labels */}
-      <div className="grid grid-cols-7 gap-1 text-center mb-1">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
-          <div key={i} className="text-[11px] font-semibold text-slate-500 py-1">
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-semibold text-[var(--shelfy-fg)] mb-3 text-center">
+        {MONTH_NAMES[month]} {year}
+      </p>
+      <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+          <div key={i} className="text-[10px] font-semibold text-[var(--shelfy-muted)] py-1">
             {d}
           </div>
         ))}
       </div>
+      <div className="grid grid-cols-7 gap-0.5">
+        {days.map((day) => {
+          const isStart = startDate === day.dateStr;
+          const isEndDay = endDate === day.dateStr;
+          const inRange =
+            startDate && endDate && day.dateStr >= startDate && day.dateStr < endDate;
 
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1 mb-5">
-        {calendarDays.map((day, idx) => {
-          const isSelectedStart = startDate === day.dateStr;
-          const isSelectedEnd = endDate === day.dateStr;
-          const isInSelectedRange =
-            startDate && endDate && day.dateStr >= startDate && day.dateStr <= endDate;
-
-          let cellBg = 'bg-slate-950/60 text-slate-300 hover:bg-slate-800';
+          let cellClass =
+            'relative aspect-square max-h-10 rounded-lg text-xs font-medium flex items-center justify-center transition-colors ';
 
           if (day.isPast) {
-            cellBg = 'bg-slate-950/30 text-slate-600 cursor-not-allowed';
+            cellClass += 'text-[var(--shelfy-muted)]/40 cursor-not-allowed line-through decoration-[var(--shelfy-border)]';
           } else if (day.isBooked) {
-            cellBg = 'bg-rose-950/30 text-rose-400/80 border border-rose-900/40 cursor-not-allowed';
-          } else if (isSelectedStart || isSelectedEnd) {
-            cellBg = 'bg-emerald-500 text-slate-950 font-black shadow-lg shadow-emerald-500/30';
-          } else if (isInSelectedRange) {
-            cellBg = 'bg-emerald-500/20 text-emerald-300 border-y border-emerald-500/30';
+            cellClass += 'text-rose-500/70 bg-rose-500/10 cursor-not-allowed line-through';
+          } else if (isStart || isEndDay) {
+            cellClass += 'bg-[var(--shelfy-fg)] text-[var(--shelfy-bg)] font-bold z-[1]';
+          } else if (inRange) {
+            cellClass += 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 rounded-none first:rounded-l-lg last:rounded-r-lg';
           } else if (!day.isCurrentMonth) {
-            cellBg = 'bg-slate-950/20 text-slate-600 hover:bg-slate-800/40';
+            cellClass += 'text-[var(--shelfy-muted)]/50 hover:bg-[var(--shelfy-elevated)]';
+          } else {
+            cellClass += 'text-[var(--shelfy-fg)] hover:bg-[var(--shelfy-elevated)] hover:border hover:border-[var(--shelfy-border)]';
           }
 
           return (
             <button
-              key={idx}
+              key={day.dateStr + day.dayNumber}
               type="button"
               disabled={day.isPast || day.isBooked}
-              onClick={() => handleDateClick(day.dateStr, day.isPast, day.isBooked)}
-              title={
-                day.isBooked
-                  ? 'Booked'
-                  : day.isPast
-                  ? 'Past date'
-                  : `Select ${day.dateStr}`
-              }
-              className={`relative h-11 rounded-xl text-xs font-semibold flex flex-col items-center justify-center transition-all ${cellBg}`}
+              onClick={() => onDayClick(day.dateStr, day.isPast, day.isBooked)}
+              className={cellClass}
+              title={day.isBooked ? 'Booked' : day.dateStr}
             >
-              <span>{day.dayNumber}</span>
-              {day.isBooked && !day.isPast && (
-                <span className="text-[9px] text-rose-400 font-mono scale-90 flex items-center gap-0.5">
-                  <Lock className="w-2.5 h-2.5" /> Booked
-                </span>
-              )}
-              {isSelectedStart && (
-                <span className="text-[8px] font-black uppercase tracking-tighter text-slate-950 -mt-0.5">Start</span>
-              )}
-              {isSelectedEnd && (
-                <span className="text-[8px] font-black uppercase tracking-tighter text-slate-950 -mt-0.5">End</span>
-              )}
+              {day.dayNumber}
             </button>
           );
         })}
       </div>
+    </div>
+  );
+}
 
-      {/* Legend & Summary Footer */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800 text-xs">
-        
-        {/* Color Legend */}
-        <div className="flex flex-wrap items-center gap-3 text-slate-400">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-emerald-500" />
-            <span className="text-[11px]">Selected</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-slate-800 border border-slate-700" />
-            <span className="text-[11px]">Available</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-rose-900/60 border border-rose-700" />
-            <span className="text-[11px]">Occupied / Booked</span>
-          </div>
+export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
+  bookedRanges = [],
+  monthlyPriceTzs,
+  selectedStartDate = '',
+  selectedEndDate = '',
+  activeDurationMonths = null,
+  onDateRangeChange,
+  onDurationPreset,
+  compact = false,
+  showDurationPresets = true,
+}) => {
+  const [viewStart, setViewStart] = useState(() => {
+    const t = new Date();
+    return { year: t.getUTCFullYear(), month: t.getUTCMonth() };
+  });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pendingDuration, setPendingDuration] = useState<number>(activeDurationMonths || 1);
+
+  const todayStr = todayIsoDate();
+  const startDate = selectedStartDate || '';
+  const endDate = selectedEndDate || '';
+
+  const secondMonth = useMemo(() => {
+    const m = viewStart.month + 1;
+    if (m > 11) return { year: viewStart.year + 1, month: 0 };
+    return { year: viewStart.year, month: m };
+  }, [viewStart]);
+
+  const durationMonths = useMemo(() => {
+    if (!startDate || !endDate) return pendingDuration || 1;
+    const startD = new Date(`${startDate}T00:00:00.000Z`);
+    const endD = new Date(`${endDate}T00:00:00.000Z`);
+    let months = (endD.getUTCFullYear() - startD.getUTCFullYear()) * 12 + (endD.getUTCMonth() - startD.getUTCMonth());
+    if (endD.getUTCDate() > startD.getUTCDate()) months += 1;
+    if (endD.getUTCDate() < startD.getUTCDate()) months -= 1;
+    return Math.max(1, months);
+  }, [startDate, endDate, pendingDuration]);
+
+  const applyDuration = (months: number, explicitStart?: string) => {
+    setPendingDuration(months);
+    onDurationPreset?.(months);
+
+    const baseStart =
+      explicitStart ||
+      (startDate && startDate >= todayStr && !isDayOccupied(startDate, bookedRanges) ? startDate : null) ||
+      findEarliestAvailableStart(bookedRanges, months, todayStr);
+
+    if (!baseStart) {
+      setErrorMessage(`No ${months}-month opening in the next two years. Try a shorter stay.`);
+      onDateRangeChange('', '', months, false);
+      return;
+    }
+
+    const endStr = addMonthsIsoDate(baseStart, months);
+    if (rangeOverlapsAnyBooking(baseStart, endStr, bookedRanges)) {
+      const next = findEarliestAvailableStart(bookedRanges, months, baseStart);
+      if (!next) {
+        setErrorMessage(`Cannot book ${months} month(s) — shelf is reserved in that period.`);
+        onDateRangeChange(baseStart, '', months, false);
+        return;
+      }
+      const nextEnd = addMonthsIsoDate(next, months);
+      setErrorMessage(null);
+      onDateRangeChange(next, nextEnd, months, true);
+      return;
+    }
+
+    setErrorMessage(null);
+    onDateRangeChange(baseStart, endStr, months, true);
+  };
+
+  const handleDayClick = (dateStr: string, isPast: boolean, isBooked: boolean) => {
+    if (isPast || isBooked) {
+      setErrorMessage(isBooked ? 'That day is already booked.' : 'Past dates cannot be selected.');
+      return;
+    }
+    setErrorMessage(null);
+
+    const months = pendingDuration || activeDurationMonths || 1;
+    const endStr = addMonthsIsoDate(dateStr, months);
+
+    if (rangeOverlapsAnyBooking(dateStr, endStr, bookedRanges)) {
+      setErrorMessage(`A ${months}-month stay from this date overlaps another booking. Try another start date or duration.`);
+      onDateRangeChange(dateStr, '', months, false);
+      return;
+    }
+
+    onDateRangeChange(dateStr, endStr, months, true);
+  };
+
+  const shiftView = (delta: number) => {
+    setViewStart((prev) => {
+      let m = prev.month + delta;
+      let y = prev.year;
+      while (m < 0) {
+        m += 12;
+        y -= 1;
+      }
+      while (m > 11) {
+        m -= 12;
+        y += 1;
+      }
+      return { year: y, month: m };
+    });
+  };
+
+  const estimatedTotal = durationMonths * monthlyPriceTzs;
+  const presetActive = activeDurationMonths ?? pendingDuration;
+
+  return (
+    <div
+      id="availability-calendar"
+      className={`bg-[var(--shelfy-card-bg)] border border-[var(--shelfy-border)] rounded-2xl shadow-sm text-[var(--shelfy-fg)] ${
+        compact ? 'p-4' : 'p-5'
+      }`}
+    >
+      {showDurationPresets && (
+      <div className="flex flex-wrap gap-2 mb-4">
+        {DURATION_PRESETS.map(({ months, label }) => (
+          <button
+            key={months}
+            type="button"
+            onClick={() => applyDuration(months)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              presetActive === months
+                ? 'bg-[var(--shelfy-fg)] text-[var(--shelfy-bg)] border-[var(--shelfy-fg)]'
+                : 'bg-[var(--shelfy-bg)] text-[var(--shelfy-fg)] border-[var(--shelfy-border)] hover:border-emerald-500/50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      )}
+
+      {errorMessage && (
+        <div className="mb-3 p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-600 dark:text-rose-400 text-xs flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{errorMessage}</span>
         </div>
+      )}
 
-        {/* Selected Range Display */}
-        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Duration & Period</span>
-            <span className="font-semibold text-white">
-              {startDate ? startDate : 'Select Start'} → {endDate ? endDate : 'Select End'}
-            </span>
-          </div>
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Subtotal</span>
-            <span className="font-mono font-bold text-emerald-400 text-sm">
-              TZS {estimatedTotal.toLocaleString()}
-            </span>
-          </div>
-        </div>
-
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={() => shiftView(-1)}
+          className="p-2 rounded-full border border-[var(--shelfy-border)] hover:bg-[var(--shelfy-elevated)]"
+          aria-label="Previous month"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-[11px] text-[var(--shelfy-muted)]">Tap a start date · end auto-set by duration</span>
+        <button
+          type="button"
+          onClick={() => shiftView(1)}
+          className="p-2 rounded-full border border-[var(--shelfy-border)] hover:bg-[var(--shelfy-elevated)]"
+          aria-label="Next month"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
 
+      <div className={`flex gap-6 ${compact ? 'flex-col sm:flex-row' : 'flex-col md:flex-row'}`}>
+        <MonthPanel
+          year={viewStart.year}
+          month={viewStart.month}
+          bookedRanges={bookedRanges}
+          todayStr={todayStr}
+          startDate={startDate}
+          endDate={endDate}
+          onDayClick={handleDayClick}
+        />
+        <MonthPanel
+          year={secondMonth.year}
+          month={secondMonth.month}
+          bookedRanges={bookedRanges}
+          todayStr={todayStr}
+          startDate={startDate}
+          endDate={endDate}
+          onDayClick={handleDayClick}
+        />
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-[var(--shelfy-border)] flex flex-wrap items-end justify-between gap-3 text-xs">
+        <div>
+          <span className="text-[10px] uppercase tracking-wider text-[var(--shelfy-muted)] block">Your rental</span>
+          <span className="font-semibold">
+            {startDate || 'Start'} → {endDate || 'End'}
+          </span>
+          <span className="text-[var(--shelfy-muted)] block mt-0.5">
+            {durationMonths} month{durationMonths !== 1 ? 's' : ''} · end date is checkout day (exclusive)
+          </span>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] uppercase tracking-wider text-[var(--shelfy-muted)] block">Rent subtotal</span>
+          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+            TZS {estimatedTotal.toLocaleString()}
+          </span>
+        </div>
+      </div>
     </div>
   );
 };

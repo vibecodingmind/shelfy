@@ -14,9 +14,10 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'vitest_jwt_secret_shelfy';
 process.env.ALLOW_DEMO_LOGIN = 'true';
 process.env.NODE_ENV = 'test';
 delete process.env.DATABASE_URL;
-delete process.env.PESAPAL_CONSUMER_KEY;
-delete process.env.PESAPAL_CONSUMER_SECRET;
-delete process.env.PESAPAL_ENVIRONMENT;
+delete process.env.AZAMPAY_APP_NAME;
+delete process.env.AZAMPAY_CLIENT_ID;
+delete process.env.AZAMPAY_CLIENT_SECRET;
+delete process.env.AZAMPAY_ENVIRONMENT;
 delete process.env.RESEND_API_KEY;
 delete process.env.SMTP_URL;
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'shelfy-http-'));
@@ -88,7 +89,7 @@ describe('HTTP API', () => {
     expect(res.json.status).toBe('ok');
     expect(res.json.jwt.configured).toBe(true);
     expect(res.json.jwt.ephemeral).toBe(false);
-    expect(res.json.pesapal.configured).toBe(false);
+    expect(res.json.azampay.configured).toBe(false);
   });
 
   it('logs in a demo vendor with access + refresh and strips the password hash', async () => {
@@ -224,13 +225,13 @@ describe('HTTP API', () => {
     expect(created.status).toBe(200);
   });
 
-  it('rejects sandbox-complete without signature and exposes runtime pesapal env in settings', async () => {
+  it('rejects sandbox-complete without signature and exposes runtime azam pay env in settings', async () => {
     const nosig = await api(origin, 'POST', '/api/payments/sandbox-complete', { body: { paymentId: 'pay_test' } });
     expect(nosig.status).toBe(403);
 
     const settings = await api(origin, 'GET', '/api/settings');
     expect(settings.status).toBe(200);
-    expect(settings.json.data.pesapalEnvironment).toBe('sandbox');
+    expect(settings.json.data.azamPayEnvironment).toBe('sandbox');
     expect(settings.json.data.autoApproveBookings).toBe(false);
   });
 });

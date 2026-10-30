@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * End-to-end payment rehearsal: register/book/approve/initiate PesaPal checkout.
+ * End-to-end payment rehearsal: register/book/approve/initiate Azam Pay MNO checkout.
  *
  * Production requires demo accounts OR temporarily set ALLOW_DEMO_LOGIN=true on Railway.
  *
  * Usage:
  *   node scripts/payment-rehearsal.mjs [baseUrl]
- *   ALLOW_DEMO_LOGIN=true node scripts/payment-rehearsal.mjs https://shelfy-production-d34d.up.railway.app
+ *   ALLOW_DEMO_LOGIN=true node scripts/payment-rehearsal.mjs https://your-app.up.railway.app
  */
 
-const base = (process.argv[2] || process.env.APP_URL || 'https://shelfy-production-d34d.up.railway.app').replace(/\/$/, '');
+const base = (process.argv[2] || process.env.APP_URL || 'http://127.0.0.1:3000').replace(/\/$/, '');
 
 async function api(method, path, { token, body } = {}) {
   const headers = { 'Content-Type': 'application/json' };
@@ -46,11 +46,12 @@ if (!vendorLogin.ok || !hostLogin.ok) {
   console.error('Demo accounts are not available (login blocked).');
   console.error(`  vendor: ${vendorLogin.message || vendorLogin.status}`);
   console.error(`  host: ${hostLogin.message || hostLogin.status}`);
-  console.error('\nTo run a live PesaPal rehearsal on production:');
+  console.error('\nTo run a live Azam Pay rehearsal on production:');
   console.error('  1. Railway → Variables → set ALLOW_DEMO_LOGIN=true');
-  console.error('  2. Redeploy, then re-run this script');
-  console.error('  3. Open the printed PesaPal redirect URL and pay a small TZS test amount');
-  console.error('  4. Remove ALLOW_DEMO_LOGIN after the test');
+  console.error('  2. Set AZAMPAY_APP_NAME, AZAMPAY_CLIENT_ID, AZAMPAY_CLIENT_SECRET, AZAMPAY_ENVIRONMENT');
+  console.error('  3. Redeploy, then re-run this script');
+  console.error('  4. Approve the USSD push on the test handset');
+  console.error('  5. Remove ALLOW_DEMO_LOGIN after the test');
   process.exit(1);
 }
 
@@ -80,7 +81,7 @@ if (booking.status === 'PENDING_APPROVAL') {
 
 const checkout = await api('POST', '/api/payments/initiate-session', {
   token: vendorLogin.token,
-  body: { bookingId: booking.id, phoneNumber: '0754123456' },
+  body: { bookingId: booking.id, phoneNumber: '0754123456', provider: 'Mpesa' },
 });
 if (checkout.status !== 200) {
   console.error('Payment initiate failed:', checkout.json.error?.message || checkout.status);
@@ -88,16 +89,19 @@ if (checkout.status !== 200) {
 }
 
 const pay = checkout.json.data;
-console.log('\n✓ PesaPal checkout session created');
+console.log('\n✓ Azam Pay checkout initiated');
 console.log(`  paymentId: ${pay.paymentId}`);
 console.log(`  mode: ${pay.mode}`);
+console.log(`  mnoProvider: ${pay.mnoProvider}`);
 console.log(`  amountTzs: ${pay.amountTzs}`);
-console.log(`  pesapalEnvironment: ${pay.pesapalEnvironment}`);
-if (pay.redirectUrl) {
-  console.log(`\n→ Open this URL to complete the live payment test:\n  ${pay.redirectUrl}`);
-} else {
-  console.error('\n✗ No redirectUrl returned — check PesaPal keys and APP_URL on Railway.');
+console.log(`  azamPayEnvironment: ${pay.azamPayEnvironment}`);
+console.log(`  message: ${pay.message}`);
+
+if (pay.mode !== 'AZAM_PAY') {
+  console.error('\n✗ Azam Pay is not configured on this server (mode PENDING_GATEWAY).');
+  console.error('  Set AZAMPAY_APP_NAME, AZAMPAY_CLIENT_ID, AZAMPAY_CLIENT_SECRET on the host.');
   process.exit(1);
 }
 
-console.log('\nAfter paying, verify booking status via GET /api/payments/by-booking/' + booking.id);
+console.log('\n→ Approve the payment on the handset linked to 0754123456');
+console.log('After paying, verify via GET /api/payments/by-booking/' + booking.id);

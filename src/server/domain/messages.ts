@@ -41,3 +41,28 @@ export function canMessageBookingCounterparties(input: {
   }
   return { ok: true };
 }
+
+/** Pre-booking questions: vendor (or any non-host user) ↔ shop host. */
+export function canMessageShopListing(input: {
+  senderId: string;
+  receiverId: string;
+  shop: { id: string; hostId: string; status?: string; deletedAt?: string | null };
+}): { ok: true } | { ok: false; message: string } {
+  if (input.shop.deletedAt) {
+    return { ok: false, message: 'This shop is not available for messages.' };
+  }
+  if (input.shop.status && input.shop.status !== 'ACTIVE') {
+    return { ok: false, message: 'This shop is not accepting messages right now.' };
+  }
+  const { hostId } = input.shop;
+  if (input.senderId === input.receiverId) {
+    return { ok: false, message: 'Cannot message yourself.' };
+  }
+  if (input.receiverId === hostId && input.senderId !== hostId) {
+    return { ok: true };
+  }
+  if (input.senderId === hostId && input.receiverId !== hostId) {
+    return { ok: true };
+  }
+  return { ok: false, message: 'You can only message the host of this shop listing.' };
+}

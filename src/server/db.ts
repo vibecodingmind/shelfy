@@ -48,7 +48,7 @@ const CATEGORY_ALIASES: Record<string, string> = {
 const DEFAULT_SETTINGS: PlatformSettings = {
   commissionPercentage: 10,
   autoApproveBookings: false,
-  pesapalEnvironment: 'sandbox',
+  azamPayEnvironment: 'sandbox',
   currency: 'TZS',
   maintenanceMode: false,
   shelfCategories: [
