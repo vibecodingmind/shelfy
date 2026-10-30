@@ -169,37 +169,25 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
       setEndDate('');
       onDateRangeChange(dateStr, '', 1, false);
     } else if (startDate && !endDate) {
-      if (dateStr < startDate) {
-        // User clicked an earlier date, make it the new start date
+      if (dateStr <= startDate) {
         setStartDate(dateStr);
         setEndDate('');
         onDateRangeChange(dateStr, '', 1, false);
-      } else if (dateStr === startDate) {
-        // Clicked same date: default 1 month from start
-        const d = new Date(startDate);
-        d.setMonth(d.getMonth() + 1);
-        const endStr = formatDateStr(d);
+      } else {
+        const startD = new Date(`${startDate}T00:00:00`);
+        const endD = new Date(`${dateStr}T00:00:00`);
+        let months = (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth());
+        if (endD.getDate() > startD.getDate()) months += 1;
+        months = Math.max(1, months);
+        const snapped = new Date(startD);
+        snapped.setMonth(snapped.getMonth() + months);
+        const endStr = formatDateStr(snapped);
         if (doesRangeOverlapBooked(startDate, endStr)) {
-          setErrorMessage('Selected 1-month range conflicts with an existing booking. Please pick another end date.');
+          setErrorMessage('That monthly plan overlaps a booking. Choose another start month.');
           return;
         }
         setEndDate(endStr);
-        onDateRangeChange(startDate, endStr, 1, true);
-      } else {
-        // Verify no overlapping bookings in between
-        if (doesRangeOverlapBooked(startDate, dateStr)) {
-          setErrorMessage('Double-booking prevented: Date range intersects an active booking! Please select non-overlapping dates.');
-          return;
-        }
-        setEndDate(dateStr);
-
-        // Approximate months count
-        const startD = new Date(startDate);
-        const endD = new Date(dateStr);
-        const diffDays = Math.round((endD.getTime() - startD.getTime()) / (1000 * 3600 * 24));
-        const monthsCount = Math.max(1, Math.round(diffDays / 30));
-
-        onDateRangeChange(startDate, dateStr, monthsCount, true);
+        onDateRangeChange(startDate, endStr, months, true);
       }
     }
   };
@@ -226,10 +214,10 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
   // Summary computations
   const durationMonths = useMemo(() => {
     if (!startDate || !endDate) return 1;
-    const s = new Date(startDate);
-    const e = new Date(endDate);
-    const diffDays = Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 3600 * 24)));
-    return Math.max(1, Math.round(diffDays / 30));
+    const startD = new Date(`${startDate}T00:00:00`);
+    const endD = new Date(`${endDate}T00:00:00`);
+    const months = (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth());
+    return Math.max(1, months);
   }, [startDate, endDate]);
 
   const estimatedTotal = durationMonths * monthlyPriceTzs;
@@ -245,7 +233,7 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
             <h3 className="text-base font-bold text-white">Interactive Availability Calendar</h3>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Select check-in & check-out dates. Verified against real-time shelf bookings.
+            Rentals run in whole months. The end date snaps to the same day, one or more months after check-in.
           </p>
         </div>
 

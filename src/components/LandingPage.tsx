@@ -12,19 +12,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Search,
   Store,
-  CheckCircle2,
   SlidersHorizontal,
   RotateCcw,
-  Grid,
-  List as ListIcon,
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
 import { Shelf, Shop, User } from '../types/index.js';
 import { AirbnbShelfCard } from './AirbnbShelfCard.js';
-import { AirbnbShelfListCard } from './AirbnbShelfListCard.js';
 import { AirbnbShelfDetail } from './AirbnbShelfDetail.js';
 import { shelfTypeNav } from './shelfTypeNav.js';
 
@@ -66,9 +61,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [selectedCity, setSelectedCity] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
   const [maxPrice, setMaxPrice] = useState<number>(200000);
   const [minPrice, setMinPrice] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
 
   // Active shelf for full Airbnb Detail View
@@ -110,6 +105,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     if (selectedCity && sh.shopCity?.toLowerCase() !== selectedCity.toLowerCase()) return false;
     if (selectedType && sh.shelfType !== selectedType) return false;
     if (selectedCategory && !sh.allowedCategories.some((c) => c.toLowerCase().includes(selectedCategory.toLowerCase()))) return false;
+    if (selectedSize === 'SMALL' && sh.widthCm >= 80) return false;
+    if (selectedSize === 'MEDIUM' && (sh.widthCm < 80 || sh.widthCm > 120)) return false;
+    if (selectedSize === 'LARGE' && sh.widthCm <= 120) return false;
+    if (sh.availabilityStatus !== 'AVAILABLE') return false;
     if (sh.monthlyPriceTzs > maxPrice) return false;
     if (sh.monthlyPriceTzs < minPrice) return false;
     if (searchQuery) {
@@ -125,11 +124,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     return true;
   });
 
+  const featuredShelves = filteredShelves.filter((shelf) => (shelf.avgRating || 0) >= 4.9);
+  const otherShelves = filteredShelves.filter((shelf) => (shelf.avgRating || 0) < 4.9);
+
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCity('');
     setSelectedCategory('');
     setSelectedType('');
+    setSelectedSize('');
     setMinPrice(0);
     setMaxPrice(200000);
   };
@@ -140,13 +143,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       categoryScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
-
-  const activeFiltersCount =
-    (selectedCity ? 1 : 0) +
-    (selectedType ? 1 : 0) +
-    (selectedCategory ? 1 : 0) +
-    (maxPrice < 200000 ? 1 : 0) +
-    (searchQuery ? 1 : 0);
 
   // If a shelf is selected, render the dedicated Airbnb Shelf Detail view
   if (activeDetailShelf) {
@@ -222,51 +218,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </button>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 sm:pl-2 sm:border-l sm:border-slate-800 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
-              <button
-                type="button"
-                onClick={() => setViewMode('GRID')}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                  viewMode === 'GRID' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-                title="Grid View"
-              >
-                <Grid className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setViewMode('LIST')}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                  viewMode === 'LIST' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-                title="List View"
-              >
-                <ListIcon className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowFilterDrawer(!showFilterDrawer)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
-                showFilterDrawer || activeFiltersCount > 0
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                  : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Filters</span>
-              {activeFiltersCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 text-[10px] font-black flex items-center justify-center">
-                  {activeFiltersCount}
-                </span>
-              )}
-            </button>
-
-          </div>
-
         </div>
       </section>
 
@@ -288,61 +239,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              
-              {/* Keyword Search */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Keywords / Store</label>
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Mikocheni, Kariakoo, Supermarket..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* City / Region */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">City / Region (Tanzania)</label>
-                <select
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="">All Regions ({shelves.length} listings)</option>
-                  <option value="Dar es Salaam">Dar es Salaam (Mikocheni, Masaki, Kariakoo, Posta)</option>
-                  <option value="Mwanza">Mwanza (Rock City Mall, Station Rd)</option>
-                  <option value="Arusha">Arusha (Clock Tower, Njiro Complex)</option>
-                  <option value="Zanzibar">Zanzibar (Stone Town, Paje Beach)</option>
-                  <option value="Dodoma">Dodoma (Capital Central)</option>
-                  <option value="Mbeya">Mbeya (Highland Plaza)</option>
-                </select>
-              </div>
-
-              {/* Shelf Type */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Display Placement</label>
-                <select
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="">All shelf types</option>
-                  {shelfTypeNav.map((type) => (
-                    <option key={type.id} value={type.id}>{type.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Price Range Slider */}
-              <div>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Price / month</label>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Max Monthly Rent</label>
-                  <span className="text-xs font-mono font-bold text-emerald-400">TZS {maxPrice.toLocaleString()}</span>
+                  <span className="text-xs font-mono font-bold text-emerald-400">Up to TZS {maxPrice.toLocaleString()}</span>
                 </div>
                 <input
                   type="range"
@@ -355,6 +256,67 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Category</label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">All categories</option>
+                  {(shelfCategories && shelfCategories.length > 0
+                    ? shelfCategories
+                    : ['Food & Beverages', 'Cosmetics', 'Organic Goods', 'Spices', 'Health & Beauty', 'Snacks & Confectionery']
+                  ).map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Shelf type</label>
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">All shelf types</option>
+                  {shelfTypeNav.map((type) => (
+                    <option key={type.id} value={type.id}>{type.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Size</label>
+                <select
+                  value={selectedSize}
+                  onChange={(e) => setSelectedSize(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">Any size</option>
+                  <option value="SMALL">Small, under 80 cm wide</option>
+                  <option value="MEDIUM">Medium, 80–120 cm wide</option>
+                  <option value="LARGE">Large, over 120 cm wide</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Location</label>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => setSelectedCity(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="">All locations</option>
+                  <option value="Dar es Salaam">Dar es Salaam</option>
+                  <option value="Mwanza">Mwanza</option>
+                  <option value="Arusha">Arusha</option>
+                  <option value="Zanzibar">Zanzibar</option>
+                  <option value="Dodoma">Dodoma</option>
+                  <option value="Mbeya">Mbeya</option>
+                </select>
+              </div>
             </div>
 
           </div>
@@ -362,27 +324,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       )}
 
       {/* 3. Main Marketplace Content (7-in-a-Row Airbnb Cards Grid or List) */}
-      <main className="w-full max-w-[2400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6 flex-1">
-        
-        {/* Results count & active filter banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400 pb-3">
-          <div>
-            Showing <span className="font-bold text-white font-mono">{filteredShelves.length}</span> verified shelf spaces in Tanzania
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-              <CheckCircle2 className="w-3 h-3" /> 100% Agent Verified
-            </span>
-          </div>
-        </div>
-
-        {/* Zero Results State */}
+      <main className="w-full max-w-[2400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6 flex-1 space-y-8">
         {filteredShelves.length === 0 ? (
           <div className="text-center py-20 bg-slate-900/60 border border-slate-800 rounded-3xl p-8 max-w-xl mx-auto my-8">
             <Store className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-white mb-1">No Shelves Match Your Exact Filters</h3>
+            <h3 className="text-base font-bold text-white mb-1">No available shelves match</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto mb-5">
-              Try adjusting your monthly rent slider, region selection, or keyword search.
+              Booked shelves stay hidden. Adjust price, category, type, size, or location.
             </p>
             <button
               type="button"
@@ -394,36 +342,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         ) : (
           <>
-            {/* VIEW MODE: LIST */}
-            {viewMode === 'LIST' && (
-              <div className="space-y-3">
-                {filteredShelves.map((shelf) => (
-                  <AirbnbShelfListCard
-                    key={shelf.id}
-                    shelf={shelf}
-                    onSelectShelf={openShelf}
-                    onBookDirect={(s) => onBookShelf(s)}
-                  />
-                ))}
-              </div>
+            {featuredShelves.length > 0 && (
+              <section>
+                <h2 className="text-lg font-black text-white mb-3">Featured shelves</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {featuredShelves.map((shelf) => (
+                    <AirbnbShelfCard key={shelf.id} shelf={shelf} onSelectShelf={openShelf} />
+                  ))}
+                </div>
+              </section>
             )}
-
-            {/* VIEW MODE: GRID (7-IN-A-ROW ON WIDE SCREENS) */}
-            {viewMode === 'GRID' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 min-[1680px]:grid-cols-7 gap-x-4 gap-y-6">
-                {filteredShelves.map((shelf) => (
-                  <AirbnbShelfCard
-                    key={shelf.id}
-                    shelf={shelf}
-                    onSelectShelf={openShelf}
-                    onBookDirect={(s) => onBookShelf(s)}
-                  />
-                ))}
-              </div>
+            {otherShelves.length > 0 && (
+              <section>
+                <h2 className="text-lg font-black text-white mb-3">Other shelves</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {otherShelves.map((shelf) => (
+                    <AirbnbShelfCard key={shelf.id} shelf={shelf} onSelectShelf={openShelf} />
+                  ))}
+                </div>
+              </section>
             )}
           </>
         )}
-
       </main>
 
       {/* 4. Footer */}

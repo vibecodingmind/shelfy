@@ -13,10 +13,9 @@ import {
   MapPin,
   Sparkles,
   CheckCircle2,
-  Eye,
 } from 'lucide-react';
 import { Shelf } from '../types/index.js';
-import { availabilityLabel, formatShelfType } from './shelfFacts.js';
+import { availabilityLabel } from './shelfFacts.js';
 
 interface AirbnbShelfCardProps {
   shelf: Shelf;
@@ -51,7 +50,6 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({
     setIsFavorite(!isFavorite);
   };
 
-  const dailyPriceTzs = Math.round(shelf.monthlyPriceTzs / 30);
   const available = shelf.availabilityStatus === 'AVAILABLE';
 
   return (
@@ -147,11 +145,6 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({
           <span className="truncate max-w-[110px]">{shelf.shopCity || 'Dar es Salaam'}</span>
         </div>
 
-        {/* Photos count pill at bottom right */}
-        <div className="absolute bottom-2.5 right-2.5 bg-slate-950/85 backdrop-blur text-slate-300 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md border border-slate-800 z-10">
-          {photoIndex + 1}/{photos.length}
-        </div>
-
       </div>
 
       {/* 2. Card Body Content */}
@@ -185,43 +178,11 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({
           <div className="text-[11px] text-slate-500 line-clamp-1">{shelf.locationInsideShop}</div>
         </div>
 
-        {/* Specs & Type Pill Row */}
-        <div className="flex flex-wrap items-center gap-1 text-[10px]">
-          <span className="bg-slate-950 text-slate-300 px-1.5 py-0.5 rounded border border-slate-800 font-mono font-medium">
-            {shelf.widthCm}×{shelf.heightCm}×{shelf.depthCm} cm
-          </span>
-          <span className="bg-slate-950 text-emerald-400 px-1.5 py-0.5 rounded border border-slate-800 font-medium truncate max-w-[130px]">
-            {formatShelfType(shelf.shelfType)}
-          </span>
-          {shelf.allowedCategories.slice(0, 1).map((category) => (
-            <span key={category} className="bg-slate-950 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800 font-medium truncate max-w-[120px]">
-              {category}
-            </span>
-          ))}
-        </div>
-
-        {/* Price & Action Row */}
-        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-          <div>
-            <div className="text-xs sm:text-sm font-black text-white font-mono">
-              TZS {shelf.monthlyPriceTzs.toLocaleString()}
-              <span className="text-[10px] text-slate-400 font-normal font-sans"> / mo</span>
-            </div>
-            <div className="text-[9px] text-slate-500 font-mono">
-              ~TZS {dailyPriceTzs.toLocaleString()} / day
-            </div>
+        <div className="pt-2 border-t border-slate-800/80">
+          <div className="text-sm font-black text-white font-mono">
+            TZS {shelf.monthlyPriceTzs.toLocaleString()}
+            <span className="text-[11px] text-slate-400 font-normal font-sans"> / month</span>
           </div>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectShelf(shelf);
-            }}
-            className="px-2.5 py-1 rounded-lg bg-slate-800 group-hover:bg-emerald-500 text-slate-200 group-hover:text-slate-950 font-bold text-[11px] transition-all shadow-sm flex items-center gap-1 shrink-0"
-          >
-            <Eye className="w-3 h-3" /> View
-          </button>
         </div>
 
       </div>

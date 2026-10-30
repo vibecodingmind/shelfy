@@ -12,7 +12,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Shelf } from '../types/index.js';
-import { availabilityLabel, formatShelfType } from './shelfFacts.js';
+import { availabilityLabel } from './shelfFacts.js';
 
 interface AirbnbShelfListCardProps {
   shelf: Shelf;
@@ -134,12 +134,6 @@ export const AirbnbShelfListCard: React.FC<AirbnbShelfListCardProps> = ({
 
           {/* Placement & Dimension Tags */}
           <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-semibold border border-slate-700">
-              {formatShelfType(shelf.shelfType)}
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-mono">
-              {shelf.widthCm}×{shelf.heightCm}×{shelf.depthCm} cm
-            </span>
             <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 font-medium truncate max-w-[16rem]">
               {shelf.locationInsideShop}
             </span>
@@ -152,12 +146,7 @@ export const AirbnbShelfListCard: React.FC<AirbnbShelfListCardProps> = ({
 
         {/* Categories preview */}
         <div className="flex items-center gap-1.5 text-[10px] text-slate-500 truncate">
-          <span className="text-slate-400 font-medium">Categories:</span>
-          {shelf.allowedCategories.slice(0, 3).map((c, i) => (
-            <span key={i} className="px-1.5 py-0.5 rounded bg-slate-950 text-slate-400">
-              {c}
-            </span>
-          ))}
+          <span className="truncate">{shelf.shopCity}</span>
         </div>
       </div>
 
@@ -167,9 +156,7 @@ export const AirbnbShelfListCard: React.FC<AirbnbShelfListCardProps> = ({
           <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Rent Rate</div>
           <div className="text-base sm:text-lg font-black text-white">
             TZS {shelf.monthlyPriceTzs.toLocaleString()}
-          </div>
-          <div className="text-[11px] text-emerald-400 font-medium">
-            ~TZS {Math.round(shelf.monthlyPriceTzs / 30).toLocaleString()} / day
+            <span className="text-xs font-normal text-slate-400"> / month</span>
           </div>
         </div>
 

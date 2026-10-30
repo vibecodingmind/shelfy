@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, LogOut, ChevronDown, UserRound, Store } from 'lucide-react';
+import { Search, Bell, LogOut, ChevronDown, UserRound, Store, SlidersHorizontal } from 'lucide-react';
 import { User, UserRole } from '../types/index.js';
 
 interface HeaderProps {
@@ -28,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLoginClick,
   onLogout,
   onSwitchView,
+  onOpenFilter,
   notificationsCount,
   onNotificationsClick,
 }) => {
@@ -68,57 +69,51 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md text-white border-b border-slate-800 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center gap-2 sm:gap-4">
+      <div className="w-full px-3 sm:px-5 h-16 sm:h-[4.5rem] flex items-center gap-2 sm:gap-4">
         <button
           type="button"
-          className="flex items-center gap-2 cursor-pointer select-none shrink-0 min-w-0"
+          className="flex items-center gap-2 cursor-pointer select-none shrink-0"
           onClick={() => onSwitchView?.('MARKETPLACE')}
           aria-label="Shelfy home"
         >
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 shrink-0">
             <Store className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.25} />
           </div>
-          <span className="font-black text-xl sm:text-2xl tracking-tighter bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
+          <span className="font-black text-lg sm:text-2xl tracking-tighter bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
             shelfy
           </span>
         </button>
 
-        <div className="flex md:hidden items-center flex-1 min-w-0">
-          <div className="w-full flex items-center gap-2 bg-slate-950/80 border border-slate-700 rounded-full pl-3 pr-3 py-2 min-w-0">
+        <div className="flex-1 min-w-0">
+          <div
+            className={`w-full flex items-center bg-slate-950/80 border ${
+              isSearchFocused ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-700/80'
+            } rounded-full h-11 pl-4 pr-1.5`}
+          >
             <Search className="w-4 h-4 text-slate-400 shrink-0" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               placeholder="Search shelves, shops..."
-              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none font-medium ml-2"
               aria-label="Search shelves"
             />
+            <button
+              type="button"
+              onClick={onOpenFilter}
+              className="ml-2 h-8 px-2.5 rounded-full bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700 flex items-center gap-1 text-[11px] font-bold shrink-0"
+              aria-label="Filters"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Filters</span>
+            </button>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center justify-center flex-1 max-w-xl mx-4">
-          <div
-            className={`w-full flex items-center bg-slate-950/80 border ${
-              isSearchFocused ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-700/80 hover:border-slate-600'
-            } rounded-full py-1.5 pl-5 pr-2 shadow-lg transition-all duration-200`}
-          >
-            <div className="flex-1 flex items-center text-xs min-w-0 pr-2">
-              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => onSearchChange?.(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                placeholder="Search shelves, shops, or neighbourhoods..."
-                className="w-full min-w-0 bg-transparent text-white placeholder-slate-400 text-xs focus:outline-none font-medium ml-2"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="hidden md:flex md:items-center md:gap-3 md:shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {!user ? (
             <div className="relative" ref={dropdownRef}>
               <button

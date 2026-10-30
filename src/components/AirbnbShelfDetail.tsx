@@ -413,20 +413,43 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
               <div className="border border-slate-700 rounded-2xl overflow-hidden bg-slate-950">
                 <div className="grid grid-cols-2 border-b border-slate-800">
                   <div className="p-3 border-r border-slate-800">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">CHECK-IN</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">START</span>
                     <input
                       type="date"
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setStartDate(next);
+                        if (!next) return;
+                        const end = new Date(`${next}T00:00:00`);
+                        end.setMonth(end.getMonth() + Math.max(1, durationMonths));
+                        const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+                        setEndDate(endStr);
+                        setDurationMonths(Math.max(1, durationMonths));
+                        setIsDateRangeValid(true);
+                      }}
                       className="bg-transparent text-xs font-semibold text-white w-full focus:outline-none"
                     />
                   </div>
                   <div className="p-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">CHECK-OUT</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">END</span>
                     <input
                       type="date"
                       value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
+                      onChange={(e) => {
+                        if (!startDate || !e.target.value) return;
+                        const startD = new Date(`${startDate}T00:00:00`);
+                        const endD = new Date(`${e.target.value}T00:00:00`);
+                        let months = (endD.getFullYear() - startD.getFullYear()) * 12 + (endD.getMonth() - startD.getMonth());
+                        if (endD.getDate() > startD.getDate()) months += 1;
+                        months = Math.max(1, months);
+                        const snapped = new Date(startD);
+                        snapped.setMonth(snapped.getMonth() + months);
+                        const endStr = `${snapped.getFullYear()}-${String(snapped.getMonth() + 1).padStart(2, '0')}-${String(snapped.getDate()).padStart(2, '0')}`;
+                        setEndDate(endStr);
+                        setDurationMonths(months);
+                        setIsDateRangeValid(true);
+                      }}
                       className="bg-transparent text-xs font-semibold text-white w-full focus:outline-none"
                     />
                   </div>
