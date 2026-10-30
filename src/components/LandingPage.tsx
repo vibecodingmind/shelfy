@@ -161,8 +161,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <div id="shelfy-marketplace" className="min-h-screen bg-slate-950 text-white flex flex-col font-sans pb-28 md:pb-16">
       
       {/* 1. Airbnb Category Strip Bar (Limited to ~7 items visible, swipeable, hidden scrollbars) */}
-      <section className="bg-slate-950/95 border-b border-slate-800/80 sticky top-16 sm:top-20 z-20 px-3 sm:px-6 py-3 backdrop-blur-md">
-        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5">
+      <section className="bg-slate-950/95 border-b border-slate-800/80 sticky top-16 sm:top-20 z-20 py-3 backdrop-blur-md">
+        <div className="flex flex-nowrap items-center gap-3 overflow-x-auto px-3 sm:px-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden xl:flex-wrap xl:justify-center xl:overflow-visible">
             {shelfTypeNav.map((pill) => {
               const isActive = selectedType === pill.id;
               const Icon = pill.Icon;

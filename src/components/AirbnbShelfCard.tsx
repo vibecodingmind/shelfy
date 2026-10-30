@@ -23,9 +23,8 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({ shelf, onSelec
       <div className="p-2.5 sm:p-3 space-y-0.5">
         <h3 className="font-bold text-white text-xs sm:text-sm leading-snug line-clamp-2">{shelf.name}</h3>
         <p className="text-[11px] text-slate-400 line-clamp-1">{shelf.shopCity}</p>
-        <p className="text-xs sm:text-sm font-black text-white font-mono pt-1">
-          TZS {shelf.monthlyPriceTzs.toLocaleString()}
-          <span className="text-[10px] text-slate-400 font-normal font-sans"> / month</span>
+        <p className="whitespace-nowrap text-[11px] sm:text-sm font-black text-white font-mono pt-1">
+          TZS {shelf.monthlyPriceTzs.toLocaleString()}/month
         </p>
       </div>
     </button>
