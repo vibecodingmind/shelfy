@@ -33,8 +33,11 @@ npm run build
 | `DATABASE_URL` | Postgres database named `shelfy` (dedicated role) |
 | `GEMINI_API_KEY` | Google AI Studio key |
 | `AZAMPAY_*` | Live/sandbox Azam Pay; callback `https://shelfy.co.tz/api/payments/azampay/callback` |
-| `RESEND_API_KEY` | Resend (domain `shelfy.co.tz` verified) |
-| `EMAIL_FROM` | `Shelfy <hello@shelfy.co.tz>` |
+| `SMTP_HOST` + `SMTP_PORT` + `SMTP_USER` + `SMTP_PASS` | Self-hosted Postfix on VPS (e.g. `127.0.0.1:587`) — **preferred**; see [EMAIL_SHELFY_DNS.md](./EMAIL_SHELFY_DNS.md) |
+| `SMTP_URL` | Alternative to discrete `SMTP_*` vars |
+| `EMAIL_FROM` | `Shelfy <noreply@shelfy.co.tz>` or `Shelfy <hello@shelfy.co.tz>` |
+| `EMAIL_REPLY_TO` | `hello@shelfy.co.tz` (default if unset) |
+| `RESEND_API_KEY` | Optional; only if not using VPS SMTP (Railway, etc.) |
 | `ALLOW_DEMO_LOGIN` | `false` in production |
 
 ## systemd

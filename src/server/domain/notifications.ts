@@ -14,7 +14,10 @@ export interface NotificationProviders {
 }
 
 export function notificationProviders(env: NodeJS.ProcessEnv = process.env): NotificationProviders {
-  const email = env.RESEND_API_KEY?.trim() ? 'resend' : env.SMTP_URL?.trim() ? 'smtp' : null;
+  const smtp =
+    Boolean(env.SMTP_URL?.trim()) ||
+    Boolean(env.SMTP_HOST?.trim());
+  const email = smtp ? 'smtp' : env.RESEND_API_KEY?.trim() ? 'resend' : null;
   const sms = env.AFRICASTALKING_API_KEY?.trim()
     ? 'africastalking'
     : env.TWILIO_AUTH_TOKEN?.trim()

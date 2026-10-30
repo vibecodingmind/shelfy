@@ -20,6 +20,7 @@ delete process.env.AZAMPAY_CLIENT_SECRET;
 delete process.env.AZAMPAY_ENVIRONMENT;
 delete process.env.RESEND_API_KEY;
 delete process.env.SMTP_URL;
+delete process.env.SMTP_HOST;
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'shelfy-http-'));
 
 const { app, prepareHttpApp } = await import('../../server.js');

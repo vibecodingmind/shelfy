@@ -13,6 +13,7 @@ import {
   type NotifyType,
 } from '../domain/notifications.js';
 import { renderEmailHtml } from './emailTemplates.js';
+import { defaultEmailFrom, defaultReplyTo, sendViaSmtp } from './smtp.js';
 
 export type { DeliveryStep, NotifyChannel, NotifyType } from '../domain/notifications.js';
 export { deliveryPlan, notificationProviders } from '../domain/notifications.js';
@@ -39,7 +40,7 @@ async function sendResendEmail(
   env: NodeJS.ProcessEnv,
   html?: string
 ) {
-  const from = env.EMAIL_FROM?.trim() || 'Shelfy <noreply@shelfy.co.tz>';
+  const from = defaultEmailFrom(env);
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -49,6 +50,7 @@ async function sendResendEmail(
     body: JSON.stringify({
       from,
       to,
+      reply_to: defaultReplyTo(env),
       subject: title,
       text: message,
       html: html || renderEmailHtml({ title, message }),
@@ -125,11 +127,14 @@ export async function dispatchExternalChannels(input: {
           step.reason = 'no_email';
           continue;
         }
-        if (notificationProviders(env).email === 'resend') {
+        const emailProvider = notificationProviders(env).email;
+        if (emailProvider === 'smtp') {
+          await sendViaSmtp(input.email, input.title, input.message, env, input.html);
+        } else if (emailProvider === 'resend') {
           await sendResendEmail(input.email, input.title, input.message, env, input.html);
         } else {
           step.action = 'SKIP';
-          step.reason = 'smtp_not_wired';
+          step.reason = 'email_not_configured';
         }
       }
       if (step.channel === 'SMS') {

@@ -16,4 +16,4 @@ curl -sI https://shelfy.co.tz/api/health
 
 Caddy on the VPS will obtain TLS automatically once DNS points here and the site block from [`scripts/vps/Caddyfile.shelfy.snippet`](../scripts/vps/Caddyfile.shelfy.snippet) is loaded.
 
-Email records (MX, SPF, DKIM for inbox + Resend): [EMAIL_SHELFY_DNS.md](./EMAIL_SHELFY_DNS.md).
+Email records (MX, SPF, DKIM for inbox + VPS Postfix/SMTP): [EMAIL_SHELFY_DNS.md](./EMAIL_SHELFY_DNS.md).

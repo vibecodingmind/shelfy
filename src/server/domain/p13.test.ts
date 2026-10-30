@@ -80,6 +80,10 @@ describe('notification delivery plan', () => {
     expect(plan.find((s) => s.channel === 'EMAIL')).toEqual({ channel: 'EMAIL', action: 'SEND' });
     expect(plan.find((s) => s.channel === 'SMS')).toEqual({ channel: 'SMS', action: 'SEND' });
     expect(notificationProviders({ SMTP_URL: 'smtp://localhost' }).email).toBe('smtp');
+    expect(notificationProviders({ SMTP_HOST: '127.0.0.1' }).email).toBe('smtp');
+    expect(
+      notificationProviders({ RESEND_API_KEY: 're_test', SMTP_HOST: '127.0.0.1' }).email
+    ).toBe('smtp');
     expect(notificationProviders({ TWILIO_AUTH_TOKEN: 'twilio' }).sms).toBe('twilio');
   });
 });

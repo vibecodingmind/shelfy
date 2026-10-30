@@ -30,7 +30,7 @@ We use this data to operate the marketplace, prevent fraud, reconcile Azam Pay p
 
 Payment card and mobile-money details are processed by Azam Pay; Shelfy stores transaction references and amounts, not full payment instrument numbers.
 
-Email and SMS are sent only when you configure a provider (for example Resend) or when in-app notifications are generated. If no email provider is configured at registration, Shelfy may auto-verify email so you can use the product — see /api/health onboarding flags.
+Email and SMS are sent only when you configure a provider (for example SMTP on your server or Resend) or when in-app notifications are generated. If no email provider is configured at registration, Shelfy may auto-verify email so you can use the product — see /api/health onboarding flags.
 
 We retain records needed for accounting, disputes, and audit. You may request access or correction by contacting hello@shelfy.co.tz. We do not sell personal data to third-party advertisers.`,
   },
