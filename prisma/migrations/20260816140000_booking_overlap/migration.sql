@@ -3,11 +3,20 @@
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
+CREATE OR REPLACE FUNCTION shelfy_booking_daterange(start_ts timestamptz, end_ts timestamptz)
+RETURNS daterange
+LANGUAGE sql
+IMMUTABLE
+STRICT
+AS $$
+  SELECT daterange(start_ts::date, end_ts::date, '[)');
+$$;
+
 ALTER TABLE "Booking"
 ADD CONSTRAINT "Booking_shelfId_dates_no_overlap"
 EXCLUDE USING gist (
   "shelfId" WITH =,
-  daterange("startDate"::date, "endDate"::date, '[)') WITH &&
+  shelfy_booking_daterange("startDate", "endDate") WITH &&
 )
 WHERE (
   "status" IN (
