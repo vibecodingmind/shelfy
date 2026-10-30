@@ -72,6 +72,8 @@ export function App() {
   const [globalSearchQuery, setGlobalSearchQuery] = useState<string>('');
   const [filterOpenSignal, setFilterOpenSignal] = useState(0);
   const [homeSignal, setHomeSignal] = useState(0);
+  const [filtersActive, setFiltersActive] = useState(false);
+  const [clearFiltersSignal, setClearFiltersSignal] = useState(0);
   const [activePesapalBooking, setActivePesapalBooking] = useState<Booking | null>(null);
   const [activePesapalShelf, setActivePesapalShelf] = useState<Shelf | null>(null);
   const [showPesapalModal, setShowPesapalModal] = useState<boolean>(false);
@@ -266,6 +268,8 @@ export function App() {
           setActiveRoleView('MARKETPLACE');
           setFilterOpenSignal((n) => n + 1);
         }}
+        filtersActive={filtersActive}
+        onClearFilters={() => setClearFiltersSignal((n) => n + 1)}
       />
 
       {/* Main View Router */}
@@ -284,6 +288,8 @@ export function App() {
             initialShelfSlug={shelfSlugMatch?.[1]}
             openFilterSignal={filterOpenSignal}
             homeSignal={homeSignal}
+            clearFiltersSignal={clearFiltersSignal}
+            onFiltersActiveChange={setFiltersActive}
           />
         )}
 

@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, LogOut, ChevronDown, UserRound, Store, SlidersHorizontal } from 'lucide-react';
+import { Search, Bell, LogOut, ChevronDown, UserRound, Store, SlidersHorizontal, X } from 'lucide-react';
 import { User, UserRole } from '../types/index.js';
 
 interface HeaderProps {
@@ -16,6 +16,8 @@ interface HeaderProps {
   onLogout: () => void;
   onSwitchView?: (roleView: string) => void;
   onOpenFilter?: () => void;
+  filtersActive?: boolean;
+  onClearFilters?: () => void;
   notificationsCount: number;
   onNotificationsClick?: () => void;
 }
@@ -29,6 +31,8 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onSwitchView,
   onOpenFilter,
+  filtersActive = false,
+  onClearFilters,
   notificationsCount,
   onNotificationsClick,
 }) => {
@@ -84,11 +88,11 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </button>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex justify-center">
           <div
-            className={`w-full flex items-center bg-slate-950/80 border ${
+            className={`w-full md:max-w-sm lg:max-w-md flex items-center bg-slate-950/80 border ${
               isSearchFocused ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-700/80'
-            } rounded-full h-11 pl-4 pr-1.5`}
+            } rounded-full h-10 pl-3 pr-1`}
           >
             <Search className="w-4 h-4 text-slate-400 shrink-0" />
             <input
@@ -104,12 +108,24 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenFilter}
-              className="ml-2 h-8 px-2.5 rounded-full bg-slate-800 text-slate-200 hover:text-white hover:bg-slate-700 flex items-center gap-1 text-[11px] font-bold shrink-0"
+              className={`ml-2 h-7 px-2 rounded-full flex items-center gap-1 text-[11px] font-bold shrink-0 ${
+                filtersActive ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-200 hover:text-white'
+              }`}
               aria-label="Filters"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Filters</span>
             </button>
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="ml-1 h-7 w-7 rounded-full bg-slate-800 text-slate-200 hover:text-white flex items-center justify-center shrink-0"
+                aria-label="Clear filters"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
