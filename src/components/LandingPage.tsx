@@ -157,7 +157,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <div id="shelfy-marketplace" className="min-h-screen bg-slate-950 text-white flex flex-col font-sans pb-28 md:pb-16">
       
       {/* 1. Airbnb Category Strip Bar (Limited to ~7 items visible, swipeable, hidden scrollbars) */}
-      <section className="bg-slate-950/95 border-b border-slate-800/80 sticky top-[7.25rem] sm:top-20 z-20 px-2 sm:px-6 lg:px-8 py-2 sm:py-3 backdrop-blur-md">
+      <section className="bg-slate-950/95 border-b border-slate-800/80 sticky top-16 sm:top-20 z-20 px-2 sm:px-6 lg:px-8 py-2 sm:py-3 backdrop-blur-md">
         <div className="w-full max-w-[2400px] mx-auto flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1 min-w-0 flex-1">
           <button

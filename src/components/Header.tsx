@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, LogOut, ChevronDown, UserRound } from 'lucide-react';
+import { Search, Bell, LogOut, ChevronDown, UserRound, Store } from 'lucide-react';
 import { User, UserRole } from '../types/index.js';
 
 interface HeaderProps {
@@ -68,15 +68,15 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md text-white border-b border-slate-800 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center gap-2 sm:gap-4">
         <div
           className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none shrink-0 min-w-0"
           onClick={() => onSwitchView?.('MARKETPLACE')}
         >
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-teal-400 flex items-center justify-center font-bold text-slate-950 text-lg sm:text-xl shadow-lg shadow-emerald-500/20 shrink-0">
-            🇹🇿
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 shrink-0" aria-label="Shelfy">
+            <Store className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.25} />
           </div>
-          <div className="min-w-0">
+          <div className="hidden md:block min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="font-black text-xl sm:text-2xl tracking-tighter bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
                 shelfy
@@ -85,9 +85,23 @@ export const Header: React.FC<HeaderProps> = ({
                 TZ
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 -mt-0.5 hidden sm:block font-medium truncate">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 -mt-0.5 font-medium truncate">
               Retail Shelf Marketplace
             </p>
+          </div>
+        </div>
+
+        <div className="flex md:hidden items-center flex-1 min-w-0">
+          <div className="w-full flex items-center gap-2 bg-slate-950/80 border border-slate-700 rounded-full pl-3 pr-3 py-2 min-w-0">
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              placeholder="Search shelves, shops..."
+              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+              aria-label="Search shelves"
+            />
           </div>
         </div>
 
@@ -245,22 +259,6 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Mobile search row */}
-      <div className="md:hidden border-t border-slate-800/80 px-4 py-2.5 bg-slate-950/60">
-        <div className="flex items-center gap-2 max-w-7xl mx-auto">
-          <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full pl-3 pr-3 py-1.5 min-w-0">
-            <Search className="w-4 h-4 text-slate-400 shrink-0" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Search shelves, shops, or neighbourhoods..."
-              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
-            />
-          </div>
         </div>
       </div>
     </header>

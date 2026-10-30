@@ -138,11 +138,18 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <button
           type="button"
           onClick={() => setAccountOpen((open) => !open)}
-          className={`flex flex-col items-center gap-1 py-2 text-[10px] font-bold ${accountOpen ? 'text-emerald-400' : 'text-slate-400'}`}
+          className="flex flex-col items-center gap-1 py-1.5 text-[10px] font-bold text-slate-300"
           aria-expanded={accountOpen}
+          aria-label={user ? 'Account' : 'Log in or register'}
         >
-          <UserRound className="h-5 w-5" />
-          Account
+          {user?.avatarUrl ? (
+            <img src={user.avatarUrl} alt="" className="h-8 w-8 rounded-full border border-emerald-500/50 object-cover" />
+          ) : (
+            <span className={`flex h-8 w-8 items-center justify-center rounded-full border ${accountOpen ? 'border-emerald-400 bg-emerald-500/15 text-emerald-300' : 'border-slate-600 bg-slate-800 text-slate-200'}`}>
+              <UserRound className="h-4 w-4" />
+            </span>
+          )}
+          {user ? user.name.split(' ')[0] : 'Account'}
         </button>
       </div>
     </nav>
