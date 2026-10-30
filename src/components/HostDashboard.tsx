@@ -18,6 +18,7 @@ import {
   Building,
 } from 'lucide-react';
 import { User, HostProfile, Shop, Shelf, Booking, Payout } from '../types/index.js';
+import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 import { api } from '../lib/api.js';
 import { ListingWizard } from './ListingWizard.js';
 import { HostAnalyticsPanel } from './HostAnalyticsPanel.js';
@@ -81,14 +82,9 @@ export const HostDashboard: React.FC<HostDashboardProps> = ({
     'Household Goods',
   ];
 
-  const defaultShelfTypesList = shelfTypes || [
-    { id: 'EYE_LEVEL', name: 'Eye-Level Display Shelf' },
-    { id: 'COUNTER_DISPLAY', name: 'Counter Checkout Impulse Box' },
-    { id: 'ENTRANCE_DISPLAY', name: 'Lobby Entrance Glass Stand' },
-    { id: 'REFRIGERATED', name: 'Chilled Cooler / Refrigerator' },
-    { id: 'TOP_SHELF', name: 'Top Display Rack' },
-    { id: 'BOTTOM_SHELF', name: 'Bottom Bulk Shelf' },
-  ];
+  const defaultShelfTypesList = shelfTypes && shelfTypes.length > 0
+    ? shelfTypes
+    : SHELF_TYPE_CATALOG.map((type) => ({ id: type.id, name: type.name }));
 
   const toggleCategory = (cat: string) => {
     if (selectedAllowedCategories.includes(cat)) {

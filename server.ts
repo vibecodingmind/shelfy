@@ -13,6 +13,7 @@ import { dbEngine } from './src/server/db.js';
 import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRequest, optionalAuth, ACCESS_TOKEN_TTL_SECONDS } from './src/server/auth.js';
 import { analyzeShelfPhoto, recommendShelves, generateVendorInsights } from './src/server/ai.js';
 import { BookingStatus, User, UserRole } from './src/types/index.js';
+import { SHELF_TYPE_CATALOG } from './src/lib/shelfTypes.js';
 import { validatePassword, demoLoginAllowed, isDemoEmail } from './src/server/domain/passwords.js';
 import { publicUser, publicUsers } from './src/server/domain/publicUser.js';
 import { addMonthsIsoDate, BLOCKING_BOOKING_STATUSES, calculateBookingQuote, datesOverlap } from './src/server/domain/pricing.js';
@@ -1597,16 +1598,7 @@ app.get('/api/settings', (req: Request, res: Response) => {
     ];
   }
   if (!dbEngine.db.settings.shelfTypes || !Array.isArray(dbEngine.db.settings.shelfTypes)) {
-    dbEngine.db.settings.shelfTypes = [
-      { id: 'EYE_LEVEL', name: 'Eye-Level Display', description: 'Optimal line of sight (120–160cm) with maximum shopper gaze capture.', icon: '👁️' },
-      { id: 'COUNTER_DISPLAY', name: 'Counter Checkout Box', description: 'High-impulse point-of-sale positioning directly at cashier desk.', icon: '🛒' },
-      { id: 'ENTRANCE_DISPLAY', name: 'Entrance Lobby Showcase', description: 'Front-facing glass vitrine seen by 100% of store foot traffic.', icon: '✨' },
-      { id: 'REFRIGERATED', name: 'Chilled / Cooler Showcase', description: 'Temperature controlled 2°C–6°C glass case for drinks & dairy.', icon: '❄️' },
-      { id: 'TOP_SHELF', name: 'Top Display Rack', description: 'Elevated brand marquee shelf for premium visibility across aisles.', icon: '🔝' },
-      { id: 'BOTTOM_SHELF', name: 'Bottom Bulk Shelf', description: 'Deep, heavy-load floor shelf ideal for bulk and family packs.', icon: '📦' },
-      { id: 'END_CAP', name: 'Aisle End-Cap Feature', description: 'Prime corner position commanding cross-traffic attention.', icon: '🎯' },
-      { id: 'WINDOW_DISPLAY', name: 'Street Window Showcase', description: 'Exterior street-facing glass showcase attracting passersby.', icon: '🪟' },
-    ];
+    dbEngine.db.settings.shelfTypes = SHELF_TYPE_CATALOG.map((type) => ({ ...type }));
   }
   res.json({ success: true, data: publicPlatformSettings(dbEngine.db.settings) });
 });

@@ -73,7 +73,19 @@ export interface Shop {
   updatedAt: string;
 }
 
-export type ShelfType = 'EYE_LEVEL' | 'TOP_SHELF' | 'BOTTOM_SHELF' | 'COUNTER_DISPLAY' | 'ENTRANCE_DISPLAY' | 'REFRIGERATED';
+export type ShelfType =
+  | 'FRONT_SHELF'
+  | 'BACK_SHELF'
+  | 'COUNTER_DISPLAY'
+  | 'EYE_LEVEL'
+  | 'ENTRANCE_DISPLAY'
+  | 'WINDOW_DISPLAY'
+  | 'END_CAP'
+  | 'TOP_SHELF'
+  | 'BOTTOM_SHELF'
+  | 'REFRIGERATED'
+  | 'WALL_SHELF'
+  | 'ISLAND_DISPLAY';
 
 export type ShelfAvailability = 'AVAILABLE' | 'BOOKED' | 'MAINTENANCE';
 

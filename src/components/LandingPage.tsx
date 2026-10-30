@@ -26,7 +26,7 @@ import { Shelf, Shop, User } from '../types/index.js';
 import { AirbnbShelfCard } from './AirbnbShelfCard.js';
 import { AirbnbShelfListCard } from './AirbnbShelfListCard.js';
 import { AirbnbShelfDetail } from './AirbnbShelfDetail.js';
-import { categoryNav } from './shelfFacts.js';
+import { shelfTypeNav } from './shelfTypeNav.js';
 
 interface LandingPageProps {
   shelves: Shelf[];
@@ -116,20 +116,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     return true;
   });
 
-  const handlePillClick = (pill: any) => {
-    if (!pill.id || pill.type === 'all') {
-      setSelectedCity('');
-      setSelectedType('');
-      setSelectedCategory('');
-    } else if (pill.type === 'city') {
-      setSelectedCity(selectedCity === pill.id ? '' : pill.id);
-    } else if (pill.type === 'shelfType') {
-      setSelectedType(selectedType === pill.id ? '' : pill.id);
-    } else if (pill.type === 'category') {
-      setSelectedCategory(selectedCategory === pill.id ? '' : pill.id);
-    }
-  };
-
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCity('');
@@ -168,7 +154,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   }
 
   return (
-    <div id="shelfy-marketplace" className="min-h-screen bg-slate-950 text-white flex flex-col font-sans pb-16">
+    <div id="shelfy-marketplace" className="min-h-screen bg-slate-950 text-white flex flex-col font-sans pb-28 md:pb-16">
       
       {/* 1. Airbnb Category Strip Bar (Limited to ~7 items visible, swipeable, hidden scrollbars) */}
       <section className="bg-slate-950/95 border-b border-slate-800/80 sticky top-[7.25rem] sm:top-20 z-20 px-2 sm:px-6 lg:px-8 py-2 sm:py-3 backdrop-blur-md">
@@ -187,19 +173,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ref={categoryScrollRef}
             className="flex items-center gap-4 sm:gap-6 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1 flex-1 scroll-smooth snap-x min-w-0"
           >
-            {categoryNav.map((pill) => {
-              const isActive =
-                (pill.type === 'all' && !selectedCity && !selectedType && !selectedCategory) ||
-                (pill.type === 'shelfType' && selectedType === pill.id) ||
-                (pill.type === 'category' && selectedCategory === pill.id);
+            {shelfTypeNav.map((pill) => {
+              const isActive = selectedType === pill.id;
               const Icon = pill.Icon;
 
               return (
                 <button
-                  key={pill.label}
+                  key={pill.id}
                   type="button"
-                  onClick={() => handlePillClick(pill)}
-                  className={`group flex flex-col items-center gap-1.5 shrink-0 px-2 py-1 min-w-[4.5rem] transition-all border-b-2 cursor-pointer snap-start ${
+                  onClick={() => setSelectedType(selectedType === pill.id ? '' : pill.id)}
+                  className={`group flex flex-col items-center gap-1.5 shrink-0 px-2 py-1 min-w-[4.75rem] transition-all border-b-2 cursor-pointer snap-start ${
                     isActive
                       ? 'border-emerald-400 text-white font-bold'
                       : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600 font-medium'
@@ -339,13 +322,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onChange={(e) => setSelectedType(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="">All Placement Types</option>
-                  <option value="EYE_LEVEL">Eye-Level Display Shelf</option>
-                  <option value="COUNTER_DISPLAY">Counter Checkout Impulse Box</option>
-                  <option value="ENTRANCE_DISPLAY">Lobby & Entrance Glass Stand</option>
-                  <option value="REFRIGERATED">Chilled / Refrigerated Cooler</option>
-                  <option value="TOP_SHELF">Top Display Rack</option>
-                  <option value="BOTTOM_SHELF">Bottom Bulk Shelf</option>
+                  <option value="">All shelf types</option>
+                  {shelfTypeNav.map((type) => (
+                    <option key={type.id} value={type.id}>{type.label}</option>
+                  ))}
                 </select>
               </div>
 

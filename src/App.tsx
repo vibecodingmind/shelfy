@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header.js';
+import { MobileBottomNav } from './components/MobileBottomNav.js';
 import { LandingPage } from './components/LandingPage.js';
 import { AdminDashboard } from './components/AdminDashboard.js';
 import { VendorDashboard } from './components/VendorDashboard.js';
@@ -341,6 +342,19 @@ export function App() {
           />
         )}
       </div>
+
+      <MobileBottomNav
+        user={user}
+        activeRole={activeRoleView}
+        notificationsCount={notifications.filter((n) => !n.readAt).length}
+        onSwitchView={(view) => setActiveRoleView(view)}
+        onNotificationsClick={() => {
+          if (!user) return;
+          setShowNotificationInbox(true);
+        }}
+        onLoginClick={(mode) => handleOpenAuthModal(mode || 'LOGIN', 'VENDOR')}
+        onLogout={handleLogout}
+      />
 
       {/* Notification inbox */}
       {user && (

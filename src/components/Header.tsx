@@ -112,7 +112,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <div className="hidden md:flex md:items-center md:gap-3 md:shrink-0">
           {!user ? (
             <div className="relative" ref={dropdownRef}>
               <button

@@ -123,7 +123,7 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
   };
 
   return (
-    <div id="airbnb-shelf-detail" className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-28 lg:pb-20">
+    <div id="airbnb-shelf-detail" className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-40 md:pb-28 lg:pb-20">
       
       {/* Top Floating Navigation Bar */}
       <div className="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 py-3.5 flex items-center justify-between">
@@ -497,7 +497,7 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
       </div>
 
       {/* Mobile sticky booking bar */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-4 py-3 safe-bottom">
+      <div className="lg:hidden fixed bottom-[4.75rem] md:bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] text-slate-400 uppercase tracking-wide">From</div>

@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { DatabaseSchema } from './seedData.js';
 import { User } from '../types/index.js';
+import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 
 function asDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -980,15 +981,6 @@ function mapUserWrite(user: User) {
 }
 
 function coerceShelfType(type: string): any {
-  const allowed = [
-    'EYE_LEVEL',
-    'TOP_SHELF',
-    'BOTTOM_SHELF',
-    'COUNTER_DISPLAY',
-    'ENTRANCE_DISPLAY',
-    'REFRIGERATED',
-    'END_CAP',
-    'WINDOW_DISPLAY',
-  ];
-  return allowed.includes(type) ? type : 'EYE_LEVEL';
+  const allowed = SHELF_TYPE_CATALOG.map((entry) => entry.id);
+  return allowed.includes(type as (typeof allowed)[number]) ? type : 'EYE_LEVEL';
 }
