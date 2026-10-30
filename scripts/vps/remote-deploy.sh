@@ -85,9 +85,8 @@ set_env SMTP_HOST "127.0.0.1"
 set_env SMTP_PORT "25"
 set_env SMTP_SECURE "false"
 
-mkdir -p "$APP_DIR/uploads"
-chown -R www-data:www-data "$APP_DIR/uploads" || true
-chown -R www-data:www-data "$APP_DIR/dist" "$APP_DIR/node_modules" "$APP_DIR/.env" 2>/dev/null || true
+mkdir -p "$APP_DIR/uploads" "$APP_DIR/data/uploads"
+chown -R www-data:www-data "$APP_DIR" || true
 
 cp scripts/vps/shelfy.service /etc/systemd/system/shelfy.service
 systemctl daemon-reload
@@ -99,7 +98,7 @@ echo ""
 
 echo "==> Caddy (Christian Radios docker)"
 COMPOSE_DIR=""
-for d in /root/christian-radios /root/christianradios /var/www/christian-radios /opt/christian-radios; do
+for d in /opt/christian-radios /root/christian-radios /root/christianradios /var/www/christian-radios; do
   if [[ -f "$d/docker-compose.yml" || -f "$d/compose.yml" ]]; then COMPOSE_DIR=$d; break; fi
 done
 if [[ -z "$COMPOSE_DIR" ]]; then
@@ -115,15 +114,24 @@ if [[ -n "$COMPOSE_DIR" && -f "$SNIPPET" ]]; then
   fi
   if [[ -f "$CADDYFILE" ]] && ! grep -q 'shelfy.co.tz' "$CADDYFILE"; then
     echo "" >> "$CADDYFILE"
-    # Caddy runs in Docker; Shelfy listens on the host.
     sed 's/127.0.0.1:3002/host.docker.internal:3002/' "$SNIPPET" >> "$CADDYFILE"
     echo "Appended Shelfy block to $CADDYFILE (host.docker.internal:3002)"
-    if [[ -f "$COMPOSE_DIR/docker-compose.yml" ]] && ! grep -q 'host.docker.internal' "$COMPOSE_DIR/docker-compose.yml"; then
-      echo "NOTE: add extra_hosts host.docker.internal:host-gateway to caddy service if proxy fails"
-    fi
   fi
-  (cd "$COMPOSE_DIR" && docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile 2>/dev/null || docker compose restart caddy)
-  (cd "$COMPOSE_DIR" && docker compose restart caddy)
+  if [[ -f "$COMPOSE_DIR/docker-compose.yml" ]] && ! grep -q 'host.docker.internal' "$COMPOSE_DIR/docker-compose.yml"; then
+    python3 <<'PY'
+from pathlib import Path
+p = Path("/opt/christian-radios/docker-compose.yml")
+text = p.read_text()
+if "host.docker.internal" not in text:
+    text = text.replace(
+        "    depends_on:\n      - app\n",
+        "    extra_hosts:\n      - \"host.docker.internal:host-gateway\"\n    depends_on:\n      - app\n",
+        1,
+    )
+    p.write_text(text)
+PY
+  fi
+  (cd "$COMPOSE_DIR" && docker compose up -d --force-recreate caddy)
 fi
 
 if [[ -f "$APP_DIR/scripts/vps/setup-shelfy-mail.sh" ]]; then

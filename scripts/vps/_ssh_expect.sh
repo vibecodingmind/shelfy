@@ -8,12 +8,16 @@ fi
 CMD="${1:?command required}"
 HOST="${VPS_HOST:-root@74.208.197.99}"
 export CMD HOST VPS_PASS
-expect <<'EXPECT'
-set timeout 600
+expect <<EXPECT
+set timeout 1800
 log_user 1
-eval spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no [list $env(HOST) bash -lc $env(CMD)]
+spawn ssh -o StrictHostKeyChecking=no -o PubkeyAuthentication=no \$env(HOST)
 expect {
-  "password:" { send "$env(VPS_PASS)\r"; exp_continue }
-  eof
+  "password:" { send "\$env(VPS_PASS)\r" }
 }
+expect -re {[#$] }
+send "\$env(CMD)\r"
+expect -re {[#$] }
+send "exit\r"
+expect eof
 EXPECT
