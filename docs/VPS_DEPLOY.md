@@ -26,7 +26,7 @@ Related: [RUNBOOK.md](./RUNBOOK.md) · [DEPLOYMENT.md](../DEPLOYMENT.md)
 
    ```bash
    cp config/vps.env.example .env.vps
-   # Edit: APP_URL, POSTGRES_PASSWORD, JWT_SECRET, PesaPal, email, S3
+   # Edit: APP_URL, POSTGRES_PASSWORD, DATABASE_URL (include password in URL), JWT_SECRET, PesaPal, email, S3
    ```
 
 4. Deploy:

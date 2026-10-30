@@ -1,22 +1,22 @@
 # Production-style stack for a VPS (Docker + Postgres).
 # Usage:
-#   cp config/vps.env.example .env.vps   # edit secrets
+#   cp config/vps.env.example .env.vps   # edit secrets (never commit .env.vps)
 #   docker compose --env-file .env.vps up -d --build
 #
 # Put TLS in front with nginx/caddy (see deploy/nginx/shelfy.conf.example).
+#
+# Secrets (POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL, etc.) live only in .env.vps.
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-shelfy}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.vps}
-      POSTGRES_DB: ${POSTGRES_DB:-shelfy}
+    env_file:
+      - ${SHELFY_ENV_FILE:-.env.vps}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-shelfy} -d ${POSTGRES_DB:-shelfy}']
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -28,27 +28,11 @@ services:
     restart: unless-stopped
     ports:
       - '${SHELFY_HOST_PORT:-3000}:3000'
+    env_file:
+      - ${SHELFY_ENV_FILE:-.env.vps}
     environment:
       NODE_ENV: production
       PORT: 3000
-      APP_URL: ${APP_URL:?Set APP_URL to your public https origin}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET (32+ random chars)}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-shelfy}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-shelfy}?schema=public
-      PESAPAL_CONSUMER_KEY: ${PESAPAL_CONSUMER_KEY:-}
-      PESAPAL_CONSUMER_SECRET: ${PESAPAL_CONSUMER_SECRET:-}
-      PESAPAL_ENVIRONMENT: ${PESAPAL_ENVIRONMENT:-sandbox}
-      PESAPAL_IPN_ID: ${PESAPAL_IPN_ID:-}
-      PESAPAL_SANDBOX_KEY: ${PESAPAL_SANDBOX_KEY:-}
-      ALLOW_DEMO_LOGIN: ${ALLOW_DEMO_LOGIN:-false}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      EMAIL_FROM: ${EMAIL_FROM:-Shelfy <noreply@shelfy.co.tz>}
-      S3_BUCKET: ${S3_BUCKET:-}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
-      S3_ENDPOINT: ${S3_ENDPOINT:-}
-      S3_REGION: ${S3_REGION:-us-east-1}
-      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
       - shelfy_data:/app/data
     depends_on:
