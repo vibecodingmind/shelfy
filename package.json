@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:3007": "PORT=3007 APP_URL=http://localhost:3007 ALLOW_DEMO_LOGIN=true NODE_ENV=development JWT_SECRET=local_dev_jwt_secret_min_32_chars_for_shelfy tsx server.ts",
     "build": "prisma generate && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",

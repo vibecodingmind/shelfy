@@ -1,6 +1,10 @@
 # 🚀 Shelfy 🇹🇿 Deployment & Environment Variables Guide
 
-This guide walks you through deploying **Shelfy 🇹🇿** directly on **Railway** (or Google Cloud Run, Render, VPS).
+This guide walks you through deploying **Shelfy 🇹🇿** directly on **Railway** (or Google Cloud Run, Render).
+
+**VPS (Docker + Postgres + nginx):** see [docs/VPS_DEPLOY.md](./docs/VPS_DEPLOY.md).
+
+**Local preview on port 3007:** `npm ci && npm run dev:3007` → http://localhost:3007
 
 ---
 

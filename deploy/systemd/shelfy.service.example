@@ -1,0 +1,23 @@
+# Optional: run Shelfy without Docker (Node build on the VPS).
+#   sudo cp deploy/systemd/shelfy.service.example /etc/systemd/system/shelfy.service
+#   sudo systemctl daemon-reload && sudo systemctl enable --now shelfy
+#
+# Requires: Node 20+, Postgres, env file at /etc/shelfy/env
+
+[Unit]
+Description=Shelfy Tanzania marketplace
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=shelfy
+Group=shelfy
+WorkingDirectory=/opt/shelfy
+EnvironmentFile=/etc/shelfy/env
+ExecStart=/usr/bin/node /opt/shelfy/dist/server.cjs
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

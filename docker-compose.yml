@@ -1,0 +1,44 @@
+# Production-style stack for a VPS (Docker + Postgres).
+# Usage:
+#   cp config/vps.env.example .env.vps   # edit secrets (never commit .env.vps)
+#   docker compose --env-file .env.vps up -d --build
+#
+# Put TLS in front with nginx/caddy (see deploy/nginx/shelfy.conf.example).
+#
+# Secrets (POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL, etc.) live only in .env.vps.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - ${SHELFY_ENV_FILE:-.env.vps}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  shelfy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '${SHELFY_HOST_PORT:-3000}:3000'
+    env_file:
+      - ${SHELFY_ENV_FILE:-.env.vps}
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    volumes:
+      - shelfy_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  shelfy_data:
