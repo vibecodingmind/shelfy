@@ -40,6 +40,7 @@ interface LandingPageProps {
   onLoginClick: () => void;
   initialShelfSlug?: string;
   openFilterSignal?: number;
+  homeSignal?: number;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -53,6 +54,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onLoginClick,
   initialShelfSlug,
   openFilterSignal,
+  homeSignal,
 }) => {
   // State for search and filters
   const [localSearchQuery, setLocalSearchQuery] = useState('');
@@ -81,6 +83,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   useEffect(() => {
     if (openFilterSignal) setShowFilterDrawer(true);
   }, [openFilterSignal]);
+
+  useEffect(() => {
+    if (!homeSignal) return;
+    setActiveDetailShelf(null);
+    if (window.location.pathname !== '/') window.history.pushState({}, '', '/');
+    window.scrollTo({ top: 0 });
+  }, [homeSignal]);
 
   const openShelf = (shelf: Shelf) => {
     setActiveDetailShelf(shelf);

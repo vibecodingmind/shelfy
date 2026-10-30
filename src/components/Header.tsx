@@ -69,27 +69,19 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md text-white border-b border-slate-800 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center gap-2 sm:gap-4">
-        <div
-          className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none shrink-0 min-w-0"
+        <button
+          type="button"
+          className="flex items-center gap-2 cursor-pointer select-none shrink-0 min-w-0"
           onClick={() => onSwitchView?.('MARKETPLACE')}
+          aria-label="Shelfy home"
         >
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 shrink-0" aria-label="Shelfy">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 shrink-0">
             <Store className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.25} />
           </div>
-          <div className="hidden md:block min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="font-black text-xl sm:text-2xl tracking-tighter bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                shelfy
-              </span>
-              <span className="text-[9px] sm:text-[10px] uppercase font-extrabold tracking-wider px-1 sm:px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
-                TZ
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 -mt-0.5 font-medium truncate">
-              Retail Shelf Marketplace
-            </p>
-          </div>
-        </div>
+          <span className="font-black text-xl sm:text-2xl tracking-tighter bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
+            shelfy
+          </span>
+        </button>
 
         <div className="flex md:hidden items-center flex-1 min-w-0">
           <div className="w-full flex items-center gap-2 bg-slate-950/80 border border-slate-700 rounded-full pl-3 pr-3 py-2 min-w-0">

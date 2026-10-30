@@ -71,6 +71,7 @@ export function App() {
   const [authModalRole, setAuthModalRole] = useState<UserRole>('VENDOR');
   const [globalSearchQuery, setGlobalSearchQuery] = useState<string>('');
   const [filterOpenSignal, setFilterOpenSignal] = useState(0);
+  const [homeSignal, setHomeSignal] = useState(0);
   const [activePesapalBooking, setActivePesapalBooking] = useState<Booking | null>(null);
   const [activePesapalShelf, setActivePesapalShelf] = useState<Shelf | null>(null);
   const [showPesapalModal, setShowPesapalModal] = useState<boolean>(false);
@@ -252,7 +253,10 @@ export function App() {
         onLoginClick={(mode, role) => handleOpenAuthModal(mode || 'LOGIN', role || 'VENDOR')}
         onDemoLogin={handleDemoLogin}
         onLogout={handleLogout}
-        onSwitchView={(view) => setActiveRoleView(view)}
+        onSwitchView={(view) => {
+          setActiveRoleView(view);
+          if (view === 'MARKETPLACE') setHomeSignal((n) => n + 1);
+        }}
         notificationsCount={notifications.filter((n) => !n.readAt).length}
         onNotificationsClick={() => {
           if (!user) return;
@@ -279,6 +283,7 @@ export function App() {
             onLoginClick={() => handleOpenAuthModal('LOGIN')}
             initialShelfSlug={shelfSlugMatch?.[1]}
             openFilterSignal={filterOpenSignal}
+            homeSignal={homeSignal}
           />
         )}
 
@@ -347,7 +352,10 @@ export function App() {
         user={user}
         activeRole={activeRoleView}
         notificationsCount={notifications.filter((n) => !n.readAt).length}
-        onSwitchView={(view) => setActiveRoleView(view)}
+        onSwitchView={(view) => {
+          setActiveRoleView(view);
+          if (view === 'MARKETPLACE') setHomeSignal((n) => n + 1);
+        }}
         onNotificationsClick={() => {
           if (!user) return;
           setShowNotificationInbox(true);
