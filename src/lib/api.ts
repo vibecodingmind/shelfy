@@ -156,6 +156,12 @@ export const api = {
   createBatchBookings: (items: Array<{ shelfId: string; durationMonths: number; startDate?: string }>) =>
     apiFetch<{ bookings: Booking[]; errors: string[] }>('/api/bookings/batch', { method: 'POST', body: JSON.stringify({ items }) }),
   getPayouts: () => apiFetch<Payout[]>('/api/payouts'),
+  initiateAzamPaySession: (bookingId: string, phoneNumber: string, provider?: string) =>
+    apiFetch<any>('/api/payments/initiate-session', {
+      method: 'POST',
+      body: JSON.stringify({ bookingId, phoneNumber, provider }),
+    }),
+  /** @deprecated use initiateAzamPaySession */
   initiatePesapalSession: (bookingId: string, phoneNumber: string) =>
     apiFetch<any>('/api/payments/initiate-session', { method: 'POST', body: JSON.stringify({ bookingId, phoneNumber }) }),
   syncPayment: (paymentId: string) => apiFetch<any>(`/api/payments/${paymentId}/sync`, { method: 'POST' }),
@@ -203,6 +209,8 @@ export const api = {
     apiFetch<NotificationPreference>('/api/notification-preferences', { method: 'PUT', body: JSON.stringify(prefs) }),
   getMessages: () => apiFetch<Message[]>('/api/messages'),
   sendMessage: (msgData: any) => apiFetch<Message>('/api/messages', { method: 'POST', body: JSON.stringify(msgData) }),
+  markMessagesRead: (body: { shopId?: string; bookingId?: string; peerId?: string }) =>
+    apiFetch<{ marked: number }>('/api/messages/mark-read', { method: 'POST', body: JSON.stringify(body) }),
   getSavedSearches: () => apiFetch<SavedSearch[]>('/api/saved-searches'),
   createSavedSearch: (data: Partial<SavedSearch>) => apiFetch<SavedSearch>('/api/saved-searches', { method: 'POST', body: JSON.stringify(data) }),
   deleteSavedSearch: (id: string) => apiFetch<{ deleted: boolean }>(`/api/saved-searches/${id}`, { method: 'DELETE' }),
@@ -222,6 +230,17 @@ export const api = {
   updateUserStatus: (userId: string, status: string) => apiFetch<User>(`/api/admin/users/${userId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   getAuditLogs: () => apiFetch<AuditLog[]>('/api/admin/audit-logs'),
   updateSettings: (settings: Partial<PlatformSettings>) => apiFetch<PlatformSettings>('/api/admin/settings', { method: 'PUT', body: JSON.stringify(settings) }),
+  getAdminIntegrations: () => apiFetch<any>('/api/admin/integrations'),
+  getAdminPaymentsOverview: () => apiFetch<{ payments: any[]; attempts: any[] }>('/api/admin/payments/overview'),
+  runPaymentReconcileJob: () => apiFetch<any>('/api/jobs/payment-reconcile', { method: 'POST' }),
+  inviteFieldAgent: (body: { name: string; email: string; phone?: string; password?: string }) =>
+    apiFetch<any>('/api/admin/agents', { method: 'POST', body: JSON.stringify(body) }),
+  updateMe: (body: Record<string, unknown>) => apiFetch<any>('/api/users/me', { method: 'PUT', body: JSON.stringify(body) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    apiFetch<any>('/api/users/me/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
 
   // AI
   analyzeShelfPhoto: (photoUrl: string) => apiFetch<any>('/api/ai/analyze-shelf', { method: 'POST', body: JSON.stringify({ photoUrl }) }),

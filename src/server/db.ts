@@ -13,6 +13,7 @@ import { uniqueSlug } from './domain/slugs.js';
 import { getPrisma } from './prisma.js';
 import { importSchemaToPrisma, loadSchemaFromPrisma, persistSchemaToPrisma, relationalUserCount } from './relational.js';
 import { ensurePrismaMigrationHistory, runPrismaMigrateDeploy } from './services/prismaBoot.js';
+import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 
 export const SEED_SCHEMA_VERSION = 7;
 
@@ -47,7 +48,7 @@ const CATEGORY_ALIASES: Record<string, string> = {
 const DEFAULT_SETTINGS: PlatformSettings = {
   commissionPercentage: 10,
   autoApproveBookings: false,
-  pesapalEnvironment: 'sandbox',
+  azamPayEnvironment: 'sandbox',
   currency: 'TZS',
   maintenanceMode: false,
   shelfCategories: [
@@ -68,16 +69,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   bookingGraceHours: 24,
   cancellationFeePercent: 10,
   freeCancelDays: 7,
-  shelfTypes: [
-    { id: 'EYE_LEVEL', name: 'Eye-Level Display', description: 'Optimal line of sight (120–160cm) with maximum shopper gaze capture.', icon: '👁️' },
-    { id: 'COUNTER_DISPLAY', name: 'Counter Checkout Box', description: 'High-impulse point-of-sale positioning directly at cashier desk.', icon: '🛒' },
-    { id: 'ENTRANCE_DISPLAY', name: 'Entrance Lobby Showcase', description: 'Front-facing glass vitrine seen by 100% of store foot traffic.', icon: '✨' },
-    { id: 'REFRIGERATED', name: 'Chilled / Cooler Showcase', description: 'Temperature controlled 2°C–6°C glass case for drinks & dairy.', icon: '❄️' },
-    { id: 'TOP_SHELF', name: 'Top Display Rack', description: 'Elevated brand marquee shelf for premium visibility across aisles.', icon: '🔝' },
-    { id: 'BOTTOM_SHELF', name: 'Bottom Bulk Shelf', description: 'Deep, heavy-load floor shelf ideal for bulk and family packs.', icon: '📦' },
-    { id: 'END_CAP', name: 'Aisle End-Cap Feature', description: 'Prime corner position commanding cross-traffic attention.', icon: '🎯' },
-    { id: 'WINDOW_DISPLAY', name: 'Street Window Showcase', description: 'Exterior street-facing glass showcase attracting passersby.', icon: '🪟' },
-  ],
+  shelfTypes: SHELF_TYPE_CATALOG.map((type) => ({ ...type })),
 };
 
 const EMPTY_COLLECTIONS: Array<keyof DatabaseSchema> = [
@@ -130,9 +122,12 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
     settings.shelfCategories = [...DEFAULT_SETTINGS.shelfCategories];
     changed = true;
   }
-  if (!Array.isArray(settings.shelfTypes) || settings.shelfTypes.length === 0) {
-    settings.shelfTypes = [...DEFAULT_SETTINGS.shelfTypes];
-    changed = true;
+  if (!Array.isArray(settings.shelfTypes)) settings.shelfTypes = [];
+  for (const type of SHELF_TYPE_CATALOG) {
+    if (!settings.shelfTypes.some((existing) => existing.id === type.id)) {
+      settings.shelfTypes.push({ ...type });
+      changed = true;
+    }
   }
   if (settings.autoApproveBookings !== false) {
     settings.autoApproveBookings = false;

@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { DatabaseSchema } from './seedData.js';
 import { User } from '../types/index.js';
+import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 
 function asDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -170,6 +171,7 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
       monthlyPriceTzs: s.monthlyPriceTzs,
       availabilityStatus: s.availabilityStatus,
       allowedCategories: (s.allowedCategories as string[]) || [],
+      shelfRules: (s.shelfRules as string[]) || [],
       photos: (s.photos as string[]) || [],
       status: s.status,
       verificationStatus: s.verificationStatus as any,
@@ -531,6 +533,7 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           monthlyPriceTzs: shelf.monthlyPriceTzs,
           availabilityStatus: shelf.availabilityStatus,
           allowedCategories: jsonValue(shelf.allowedCategories),
+          shelfRules: jsonValue(shelf.shelfRules ?? []),
           photos: jsonValue(shelf.photos),
           status: shelf.status,
           verificationStatus: (shelf.verificationStatus || 'PENDING') as any,
@@ -551,6 +554,7 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           slug: shelf.slug,
           deletedAt: asDate(shelf.deletedAt),
           monthlyPriceTzs: shelf.monthlyPriceTzs,
+          shelfRules: jsonValue(shelf.shelfRules ?? []),
           photos: jsonValue(shelf.photos),
           updatedAt: mustDate(shelf.updatedAt),
         },
@@ -980,15 +984,6 @@ function mapUserWrite(user: User) {
 }
 
 function coerceShelfType(type: string): any {
-  const allowed = [
-    'EYE_LEVEL',
-    'TOP_SHELF',
-    'BOTTOM_SHELF',
-    'COUNTER_DISPLAY',
-    'ENTRANCE_DISPLAY',
-    'REFRIGERATED',
-    'END_CAP',
-    'WINDOW_DISPLAY',
-  ];
-  return allowed.includes(type) ? type : 'EYE_LEVEL';
+  const allowed = SHELF_TYPE_CATALOG.map((entry) => entry.id);
+  return allowed.includes(type as (typeof allowed)[number]) ? type : 'EYE_LEVEL';
 }

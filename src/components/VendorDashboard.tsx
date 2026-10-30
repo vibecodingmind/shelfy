@@ -2,7 +2,7 @@
  * Shelfy 🇹🇿 — Vendor Workspace & Retail Expansion Dashboard
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ShoppingBag,
   Store,
@@ -22,12 +22,13 @@ import {
   Layers,
   ChevronRight,
 } from 'lucide-react';
-import { User, Booking, Product, ShelfInventory, Shelf, Message, VendorProfile } from '../types/index.js';
+import { User, Booking, Product, ShelfInventory, Shelf, Message, Shop, VendorProfile } from '../types/index.js';
 import { api } from '../lib/api.js';
-import { PesapalPaymentModal } from './PesapalPaymentModal.js';
+import { AzamPayPaymentModal } from './AzamPayPaymentModal.js';
 import { AirbnbShelfCard } from './AirbnbShelfCard.js';
 import { VendorAnalyticsPanel } from './VendorAnalyticsPanel.js';
-import { MessagingPanel } from './MessagingPanel.js';
+import { MessagesWorkspace } from './MessagesWorkspace.js';
+import { buildMessageThreads } from '../lib/messageThreads.js';
 import { BookingTimeline } from './BookingTimeline.js';
 import { ReceiptView } from './ReceiptView.js';
 import { SavedSearchPanel } from './SavedSearchPanel.js';
@@ -40,7 +41,12 @@ interface VendorDashboardProps {
   products: Product[];
   inventory: ShelfInventory[];
   shelves: Shelf[];
+  shops: Shop[];
   messages: Message[];
+  openMessagesSignal?: number;
+  initialMessageThreadId?: string | null;
+  onInitialMessageThreadConsumed?: () => void;
+  onMessagesTabActiveChange?: (active: boolean) => void;
   onBookShelf: (shelf: Shelf) => void;
   onRefreshData: () => void;
 }
@@ -52,13 +58,31 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
   products,
   inventory,
   shelves,
+  shops,
   messages,
+  openMessagesSignal = 0,
+  initialMessageThreadId,
+  onInitialMessageThreadConsumed,
+  onMessagesTabActiveChange,
   onBookShelf,
   onRefreshData,
 }) => {
   const [activeTab, setActiveTab] = useState<
     'OVERVIEW' | 'FIND_SHELVES' | 'BOOKINGS' | 'PRODUCTS' | 'INVENTORY' | 'AI_INSIGHTS' | 'MESSAGES'
   >('OVERVIEW');
+
+  const messageUnread = useMemo(
+    () => buildMessageThreads(user, messages, shops, bookings).reduce((n, t) => n + t.unread, 0),
+    [user, messages, shops, bookings]
+  );
+
+  useEffect(() => {
+    if (openMessagesSignal > 0) setActiveTab('MESSAGES');
+  }, [openMessagesSignal]);
+
+  useEffect(() => {
+    onMessagesTabActiveChange?.(activeTab === 'MESSAGES');
+  }, [activeTab, onMessagesTabActiveChange]);
 
   // AI ShelfMatch modal
   const [showMatchModal, setShowMatchModal] = useState(false);
@@ -80,7 +104,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
   const [prodSku, setProdSku] = useState('');
   const [prodStock, setProdStock] = useState(100);
 
-  // PesaPal Checkout
+  // Azam Pay checkout
   const [checkoutBooking, setCheckoutBooking] = useState<Booking | null>(null);
   const [receiptBookingId, setReceiptBookingId] = useState<string | null>(null);
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
@@ -170,7 +194,12 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  {item.label}
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.id === 'MESSAGES' && messageUnread > 0 && (
+                    <span className="min-w-[1.25rem] h-5 px-1 rounded-full bg-sky-500 text-slate-950 text-[10px] font-black flex items-center justify-center">
+                      {messageUnread > 9 ? '9+' : messageUnread}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -233,7 +262,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                 <div className="text-2xl font-black text-emerald-400">
                   TZS {bookings.reduce((sum, b) => sum + b.monthlyPriceTzs, 0).toLocaleString()}
                 </div>
-                <div className="text-[11px] text-emerald-400 mt-1">Paid via PesaPal</div>
+                <div className="text-[11px] text-emerald-400 mt-1">Paid via Azam Pay</div>
               </div>
 
               <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
@@ -519,9 +548,23 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
         )}
 
         {activeTab === 'MESSAGES' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h2 className="text-lg font-bold text-white mb-4">Host Messages</h2>
-            <MessagingPanel user={user} bookings={bookings} messages={messages} onSent={onRefreshData} />
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-bold text-white">Messages</h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Shop inquiries and booking chats with hosts. Replies notify the other party in real time.
+              </p>
+            </div>
+            <MessagesWorkspace
+              user={user}
+              messages={messages}
+              shops={shops}
+              bookings={bookings}
+              onSent={onRefreshData}
+              variant="portal"
+              initialThreadId={initialMessageThreadId}
+              onInitialThreadConsumed={onInitialMessageThreadConsumed}
+            />
           </div>
         )}
 
@@ -735,10 +778,9 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
       )}
 
       {checkoutBooking && (
-        <PesapalPaymentModal
+        <AzamPayPaymentModal
           isOpen={!!checkoutBooking}
           booking={checkoutBooking}
-          shelf={shelves.find((s) => s.id === checkoutBooking.shelfId)}
           onClose={() => setCheckoutBooking(null)}
           onPaymentSuccess={() => {
             setCheckoutBooking(null);

@@ -3,9 +3,9 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Store, Search, Bell, LogOut, SlidersHorizontal, ChevronDown } from 'lucide-react';
-import { LanguageSwitcher } from './LanguageSwitcher.js';
+import { Search, Bell, LogOut, ChevronDown, UserRound, Store, SlidersHorizontal, X, Sun, Moon, MessageSquare } from 'lucide-react';
 import { User, UserRole } from '../types/index.js';
+import { useTheme } from '../theme/ThemeContext.js';
 
 interface HeaderProps {
   user: User | null;
@@ -17,8 +17,17 @@ interface HeaderProps {
   onLogout: () => void;
   onSwitchView?: (roleView: string) => void;
   onOpenFilter?: () => void;
+  filtersActive?: boolean;
+  onClearFilters?: () => void;
   notificationsCount: number;
+  messagesUnreadCount?: number;
   onNotificationsClick?: () => void;
+  onMessagesClick?: () => void;
+  onOpenSettings?: () => void;
+  /** True when user is in vendor/host messages or standalone messages page */
+  messagesNavActive?: boolean;
+  /** Logo / brand — e.g. close shelf detail and return to marketplace browse */
+  onHomeClick?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,12 +39,20 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onSwitchView,
   onOpenFilter,
+  filtersActive = false,
+  onClearFilters,
   notificationsCount,
+  messagesUnreadCount = 0,
   onNotificationsClick,
+  onMessagesClick,
+  onOpenSettings,
+  messagesNavActive = false,
+  onHomeClick,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     if (!showUserDropdown) return;
@@ -69,97 +86,126 @@ export const Header: React.FC<HeaderProps> = ({
       : 'Market';
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md text-white border-b border-slate-800 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
-        <div
-          className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none shrink-0 min-w-0"
-          onClick={() => onSwitchView?.('MARKETPLACE')}
+    <header
+      className="sticky top-0 z-40 bg-[var(--shelfy-bg)] text-[var(--shelfy-fg)] border-b border-[var(--shelfy-border)] backdrop-blur-md"
+      style={{ boxShadow: 'var(--shelfy-header-shadow)' }}
+    >
+      <div className="w-full px-3 sm:px-5 h-16 sm:h-[4.5rem] flex items-center gap-2 sm:gap-4">
+        <button
+          type="button"
+          className="flex items-center gap-2 cursor-pointer select-none shrink-0"
+          onClick={() => {
+            onHomeClick?.();
+            onSwitchView?.('MARKETPLACE');
+          }}
+          aria-label="Shelfy home"
         >
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-teal-400 flex items-center justify-center font-bold text-slate-950 text-lg sm:text-xl shadow-lg shadow-emerald-500/20 shrink-0">
-            🇹🇿
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 shrink-0">
+            <Store className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.25} />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="font-black text-xl sm:text-2xl tracking-tighter bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                shelfy
-              </span>
-              <span className="text-[9px] sm:text-[10px] uppercase font-extrabold tracking-wider px-1 sm:px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
-                TZ
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 -mt-0.5 hidden sm:block font-medium truncate">
-              Retail Shelf Marketplace
-            </p>
-          </div>
-        </div>
+          <span className="font-black text-lg sm:text-2xl tracking-tighter bg-gradient-to-r from-amber-400 via-emerald-400 to-teal-300 bg-clip-text text-transparent">
+            shelfy
+          </span>
+        </button>
 
-        <div className="hidden md:flex items-center justify-center flex-1 max-w-xl mx-4">
+        <div className="flex-1 min-w-0 flex justify-center">
           <div
-            className={`w-full flex items-center bg-slate-950/80 border ${
-              isSearchFocused ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-700/80 hover:border-slate-600'
-            } rounded-full py-1.5 pl-5 pr-2 shadow-lg transition-all duration-200`}
+            className={`w-full md:max-w-sm lg:max-w-md flex items-center bg-[var(--shelfy-input-bg)] border ${
+              isSearchFocused ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-[var(--shelfy-border)]'
+            } rounded-full h-10 pl-3 pr-1`}
           >
-            <div className="flex-1 flex items-center divide-x divide-slate-800 text-xs">
-              <div className="pr-3 flex-1 flex items-center gap-2 min-w-0">
-                <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setIsSearchFocused(false)}
-                  placeholder="Dar es Salaam, Masaki, Kariakoo..."
-                  className="w-full min-w-0 bg-transparent text-white placeholder-slate-400 text-xs focus:outline-none font-medium"
-                />
-              </div>
-              <div className="pl-3 pr-2 hidden sm:block">
-                <button
-                  type="button"
-                  onClick={onOpenFilter}
-                  className="text-slate-400 hover:text-emerald-400 flex items-center gap-1 font-semibold text-xs transition-colors touch-target"
-                >
-                  <SlidersHorizontal className="w-3 h-3" /> Filters
-                </button>
-              </div>
-            </div>
+            <Search className="w-4 h-4 text-[var(--shelfy-muted)] shrink-0" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              placeholder="Search shelves, shops..."
+              className="flex-1 min-w-0 bg-transparent text-sm text-[var(--shelfy-fg)] placeholder-[var(--shelfy-muted)] focus:outline-none font-medium ml-2"
+              aria-label="Search shelves"
+            />
             <button
               type="button"
               onClick={onOpenFilter}
-              className="w-9 h-9 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-95 cursor-pointer ml-2 touch-target"
-              title="Search Shelves"
+              className={`ml-2 h-7 px-2 rounded-full flex items-center gap-1 text-[11px] font-bold shrink-0 ${
+                filtersActive ? 'bg-emerald-500 text-slate-950' : 'bg-[var(--shelfy-elevated)] text-[var(--shelfy-fg)] hover:opacity-90'
+              }`}
+              aria-label="Filters"
             >
-              <Search className="w-4 h-4 text-slate-950 font-bold" />
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Filters</span>
             </button>
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="ml-1 h-7 w-7 rounded-full bg-[var(--shelfy-elevated)] text-[var(--shelfy-fg)] flex items-center justify-center shrink-0"
+                aria-label="Clear filters"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          <LanguageSwitcher compact />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex items-center justify-center w-10 h-10 rounded-full border border-[var(--shelfy-border)] bg-[var(--shelfy-elevated)] text-[var(--shelfy-fg)] hover:opacity-90 transition-opacity touch-target"
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          >
+            {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
+          </button>
+
           {!user ? (
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <>
               <button
                 type="button"
-                onClick={() => onLoginClick('REGISTER', 'HOST')}
-                className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
+                onClick={onMessagesClick}
+                className="relative p-2 text-slate-300 hover:text-white cursor-pointer rounded-full hover:bg-slate-800 transition-colors touch-target"
+                title="Messages"
               >
-                <Store className="w-4 h-4 text-blue-400" />
-                <span>Shelfy your store</span>
+                <MessageSquare className="w-5 h-5" />
               </button>
+            <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
-                onClick={() => onLoginClick('LOGIN')}
-                className="px-3 sm:px-4 py-2 text-xs font-bold text-slate-200 hover:text-white rounded-full hover:bg-slate-800 border border-slate-700/80 transition-colors touch-target"
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-[var(--shelfy-elevated)] border border-[var(--shelfy-border)] hover:opacity-90 transition-all touch-target"
+                aria-expanded={showUserDropdown}
+                aria-label="Account"
               >
-                Sign In
+                <UserRound className="w-5 h-5 text-[var(--shelfy-fg)]" />
               </button>
-              <button
-                type="button"
-                onClick={() => onLoginClick('REGISTER', 'VENDOR')}
-                className="px-3 sm:px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 rounded-full transition-all shadow-md shadow-emerald-500/20 touch-target"
-              >
-                Sign Up
-              </button>
+              {showUserDropdown && (
+                <div className="absolute right-0 mt-2 w-44 bg-[var(--shelfy-card-bg)] border border-[var(--shelfy-border)] rounded-2xl shadow-2xl p-2 z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      onLoginClick('LOGIN');
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-xs text-slate-200 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-semibold touch-target"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      onLoginClick('REGISTER', 'VENDOR');
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-xs text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors font-semibold touch-target"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              )}
             </div>
+            </>
           ) : (
             <div className="flex items-center gap-1.5 sm:gap-3">
               <button
@@ -181,6 +227,25 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 type="button"
+                onClick={onMessagesClick}
+                className={`relative p-2 cursor-pointer rounded-full transition-colors touch-target ${
+                  messagesNavActive
+                    ? 'text-emerald-400 bg-emerald-500/15'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                }`}
+                title="Messages"
+                aria-current={messagesNavActive ? 'page' : undefined}
+              >
+                <MessageSquare className="w-5 h-5" />
+                {messagesUnreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-sky-500 text-slate-950 text-[10px] font-extrabold rounded-full flex items-center justify-center">
+                    {messagesUnreadCount > 9 ? '9+' : messagesUnreadCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={onNotificationsClick}
                 className="relative p-2 text-slate-300 hover:text-white cursor-pointer rounded-full hover:bg-slate-800 transition-colors touch-target"
                 title="Notifications"
@@ -188,7 +253,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <Bell className="w-5 h-5" />
                 {notificationsCount > 0 && (
                   <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-emerald-500 text-slate-950 text-[10px] font-extrabold rounded-full flex items-center justify-center">
-                    {notificationsCount}
+                    {notificationsCount > 9 ? '9+' : notificationsCount}
                   </span>
                 )}
               </button>
@@ -240,6 +305,16 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       My {user.role.replace('_', ' ')} Workspace
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        onOpenSettings?.();
+                      }}
+                      className="w-full text-left px-3 py-2.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-medium touch-target"
+                    >
+                      Account settings
+                    </button>
                     <div className="border-t border-slate-800 my-1" />
                     <button
                       type="button"
@@ -256,30 +331,6 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Mobile search row */}
-      <div className="md:hidden border-t border-slate-800/80 px-4 py-2.5 bg-slate-950/60">
-        <div className="flex items-center gap-2 max-w-7xl mx-auto">
-          <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full pl-3 pr-2 py-1.5 min-w-0">
-            <Search className="w-4 h-4 text-slate-400 shrink-0" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Search shelves, cities, shops..."
-              className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={onOpenFilter}
-            className="p-2.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 touch-target shrink-0"
-            aria-label="Open filters"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </header>

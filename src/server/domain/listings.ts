@@ -1,4 +1,16 @@
 import { Shop, Shelf, User } from '../../types/index.js';
+import {
+  isValidInStoreLabel,
+  MIN_IN_STORE_LABEL_LENGTH,
+  normalizeInStoreLabel,
+} from '../../lib/shelfInStoreLabel.js';
+
+export const MIN_LISTING_PHOTOS = 8;
+
+export function hasMinimumListingPhotos(photos: string[] | undefined | null): boolean {
+  if (!Array.isArray(photos)) return false;
+  return photos.filter((url) => typeof url === 'string' && url.trim().length > 0).length >= MIN_LISTING_PHOTOS;
+}
 
 export type ListingStatus = 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'PUBLISHED' | 'REJECTED' | 'SUSPENDED';
 
@@ -72,20 +84,79 @@ export function shopReadyToSubmit(shop: Pick<Shop, 'name' | 'description' | 'add
   if (!shop.address || shop.address.trim().length < 5) missing.push('street address');
   if (!shop.city) missing.push('city');
   if (!Number.isFinite(shop.latitude) || !Number.isFinite(shop.longitude)) missing.push('map coordinates');
-  if (!shop.photos?.length) missing.push('shop photo');
+  if (!hasMinimumListingPhotos(shop.photos as string[])) {
+    missing.push(`at least ${MIN_LISTING_PHOTOS} shop photos`);
+  }
   if (!shop.shopType) missing.push('shop type');
   return missing.length ? { ok: false, missing } : { ok: true };
 }
 
-export function shelfReadyToSubmit(shelf: Pick<Shelf, 'name' | 'widthCm' | 'heightCm' | 'depthCm' | 'shelfType' | 'monthlyPriceTzs' | 'allowedCategories' | 'photos'>):
-  | { ok: true }
-  | { ok: false; missing: string[] } {
+export function shelfReadyToSubmit(
+  shelf: Pick<
+    Shelf,
+    | 'name'
+    | 'widthCm'
+    | 'heightCm'
+    | 'depthCm'
+    | 'shelfType'
+    | 'monthlyPriceTzs'
+    | 'allowedCategories'
+    | 'photos'
+    | 'locationInsideShop'
+  >
+): { ok: true } | { ok: false; missing: string[] } {
   const missing: string[] = [];
   if (!shelf.name || shelf.name.trim().length < 3) missing.push('shelf name');
+  if (!isValidInStoreLabel(shelf.locationInsideShop)) missing.push('in-store shelf label');
   if (!(shelf.widthCm > 0 && shelf.heightCm > 0 && shelf.depthCm > 0)) missing.push('shelf dimensions');
   if (!shelf.shelfType) missing.push('shelf type');
   if (!(shelf.monthlyPriceTzs > 0)) missing.push('monthly rent');
   if (!shelf.allowedCategories?.length) missing.push('allowed categories');
-  if (!shelf.photos?.length) missing.push('shelf photo');
+  if (!hasMinimumListingPhotos(shelf.photos as string[])) {
+    missing.push(`at least ${MIN_LISTING_PHOTOS} shelf photos`);
+  }
   return missing.length ? { ok: false, missing } : { ok: true };
+}
+
+export function inStoreLabelKey(label: string): string {
+  return normalizeInStoreLabel(label).toLowerCase();
+}
+
+export function findDuplicateInStoreLabel(
+  shelves: Shelf[],
+  shopId: string,
+  label: string,
+  excludeShelfId?: string
+): Shelf | undefined {
+  const key = inStoreLabelKey(label);
+  if (!key || key.length < MIN_IN_STORE_LABEL_LENGTH) return undefined;
+  return shelves.find((s) => {
+    if (s.shopId !== shopId) return false;
+    if (excludeShelfId && s.id === excludeShelfId) return false;
+    if (s.deletedAt) return false;
+    return inStoreLabelKey(s.locationInsideShop) === key;
+  });
+}
+
+export function assertUniqueInStoreLabel(
+  shelves: Shelf[],
+  shopId: string,
+  label: string,
+  excludeShelfId?: string
+): { ok: true; normalized: string } | { ok: false; message: string } {
+  const normalized = normalizeInStoreLabel(label);
+  if (!isValidInStoreLabel(normalized)) {
+    return {
+      ok: false,
+      message: `In-store shelf label must be at least ${MIN_IN_STORE_LABEL_LENGTH} characters.`,
+    };
+  }
+  const duplicate = findDuplicateInStoreLabel(shelves, shopId, normalized, excludeShelfId);
+  if (duplicate) {
+    return {
+      ok: false,
+      message: `Another shelf in this shop already uses the label "${duplicate.locationInsideShop}". Choose a unique position label.`,
+    };
+  }
+  return { ok: true, normalized };
 }

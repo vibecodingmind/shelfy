@@ -39,12 +39,16 @@ const health = await get('/api/health');
 ok('health 200', health.status === 200);
 ok('jwt configured', health.json.jwt?.configured === true);
 ok('jwt not ephemeral', health.json.jwt?.ephemeral === false);
-ok('pesapal configured', health.json.pesapal?.configured === true);
+ok('azampay configured', health.json.azampay?.configured === true);
 ok('prisma driver', health.json.db?.driver === 'prisma');
 
 const settings = await get('/api/settings');
 ok('settings 200', settings.status === 200);
-ok('pesapal env live', settings.json.data?.pesapalEnvironment === 'live', `got ${settings.json.data?.pesapalEnvironment}`);
+ok(
+  'azam pay env live',
+  settings.json.data?.azamPayEnvironment === 'live',
+  `got ${settings.json.data?.azamPayEnvironment}`
+);
 
 const shelves = await get('/api/shelves');
 ok('public shelves', shelves.status === 200 && Array.isArray(shelves.json.data) && shelves.json.data.length > 0);

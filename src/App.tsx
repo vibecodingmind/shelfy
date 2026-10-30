@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header.js';
+import { MobileBottomNav } from './components/MobileBottomNav.js';
 import { LandingPage } from './components/LandingPage.js';
 import { AdminDashboard } from './components/AdminDashboard.js';
 import { VendorDashboard } from './components/VendorDashboard.js';
@@ -11,8 +12,11 @@ import { HostDashboard } from './components/HostDashboard.js';
 import { AgentDashboard } from './components/AgentDashboard.js';
 import { AuthModal } from './components/AuthModal.js';
 import { LegalPage, LEGAL_SLUGS } from './components/LegalPage.js';
-import { PesapalPaymentModal } from './components/PesapalPaymentModal.js';
+import { AzamPayPaymentModal } from './components/AzamPayPaymentModal.js';
 import { NotificationInbox } from './components/NotificationInbox.js';
+import { MessagesPage } from './components/MessagesPage.js';
+import { UserSettingsPage } from './components/UserSettingsPage.js';
+import { InboxThread, shopThreadId } from './lib/messageThreads.js';
 import { CheckoutCartWithRegister } from './components/CheckoutCart.js';
 import { api, getStoredToken, setStoredToken, clearStoredToken } from './lib/api.js';
 import {
@@ -57,7 +61,7 @@ export function App() {
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
     commissionPercentage: 10,
     autoApproveBookings: false,
-    pesapalEnvironment: 'sandbox',
+    azamPayEnvironment: 'sandbox',
     currency: 'TZS',
     maintenanceMode: false,
     shelfCategories: [],
@@ -70,10 +74,18 @@ export function App() {
   const [authModalRole, setAuthModalRole] = useState<UserRole>('VENDOR');
   const [globalSearchQuery, setGlobalSearchQuery] = useState<string>('');
   const [filterOpenSignal, setFilterOpenSignal] = useState(0);
-  const [activePesapalBooking, setActivePesapalBooking] = useState<Booking | null>(null);
-  const [activePesapalShelf, setActivePesapalShelf] = useState<Shelf | null>(null);
-  const [showPesapalModal, setShowPesapalModal] = useState<boolean>(false);
+  const [homeSignal, setHomeSignal] = useState(0);
+  const [filtersActive, setFiltersActive] = useState(false);
+  const [clearFiltersSignal, setClearFiltersSignal] = useState(0);
+  const [activePayBooking, setActivePayBooking] = useState<Booking | null>(null);
+  const [showPayModal, setShowPayModal] = useState<boolean>(false);
   const [showNotificationInbox, setShowNotificationInbox] = useState(false);
+  const [openWorkspaceMessagesSignal, setOpenWorkspaceMessagesSignal] = useState(0);
+  const [pendingMessageThreadId, setPendingMessageThreadId] = useState<string | null>(null);
+  const [messagesNavActive, setMessagesNavActive] = useState(false);
+  const [settingsReturnView, setSettingsReturnView] = useState<string>('MARKETPLACE');
+
+  const messagesUnreadCount = messages.filter((m) => m.receiverId === user?.id && !m.readAt).length;
 
   const loadPublicData = async () => {
     const shopsRes = await api.getShops();
@@ -148,6 +160,14 @@ export function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    const timer = window.setInterval(() => {
+      void loadUserData();
+    }, 45000);
+    return () => window.clearInterval(timer);
+  }, [user?.id]);
+
   // Demo Login Handler
   const handleDemoLogin = async (email: string) => {
     const res = await api.login({ email, password: 'Password123!' });
@@ -189,7 +209,50 @@ export function App() {
     setShowAuthModal(true);
   };
 
-  // Create Booking & Open Secure PesaPal Payment Modal
+  const openAccountSettings = () => {
+    if (!user) {
+      handleOpenAuthModal('LOGIN');
+      return;
+    }
+    setSettingsReturnView(activeRoleView === 'SETTINGS' ? user.role : activeRoleView);
+    setActiveRoleView('SETTINGS');
+  };
+
+  const goToMessages = (threadId?: string | null) => {
+    if (!user) {
+      handleOpenAuthModal('LOGIN', 'VENDOR');
+      return;
+    }
+    if (threadId) setPendingMessageThreadId(threadId);
+    setMessagesNavActive(true);
+    setOpenWorkspaceMessagesSignal((n) => n + 1);
+    if (user.role === 'VENDOR') {
+      setActiveRoleView('VENDOR');
+      return;
+    }
+    if (user.role === 'HOST') {
+      setActiveRoleView('HOST');
+      return;
+    }
+    setActiveRoleView('MESSAGES');
+  };
+
+  const openShopChat = (shopId: string, _shelfId?: string, _shelfName?: string) => {
+    if (!user) {
+      handleOpenAuthModal('LOGIN', 'VENDOR');
+      return;
+    }
+    const shop = shops.find((s) => s.id === shopId);
+    if (!shop) return;
+    if (user.id === shop.hostId) return;
+    goToMessages(shopThreadId(shopId, shop.hostId));
+  };
+
+  const openInboxThread = (thread: InboxThread) => {
+    goToMessages(thread.id);
+  };
+
+  // Create Booking & Open Azam Pay checkout
   const handleBookShelfAction = async (
     shelf: Shelf,
     startDate?: string,
@@ -212,10 +275,17 @@ export function App() {
     const res = await api.createBooking(payload);
 
     if (res.success && res.data) {
-      setActivePesapalBooking(res.data);
-      setActivePesapalShelf(shelf);
-      setShowPesapalModal(true);
       loadUserData();
+      if (res.data.status === 'PENDING_APPROVAL') {
+        window.alert(
+          'Booking request sent to the shop host. You will get a notification when you can pay with Azam Pay.'
+        );
+        return;
+      }
+      if (['PAYMENT_PENDING', 'PAYMENT_FAILED', 'APPROVED'].includes(res.data.status)) {
+        setActivePayBooking(res.data);
+        setShowPayModal(true);
+      }
     } else {
       alert(res.error?.message || 'Failed to initialize shelf reservation. Please try again.');
     }
@@ -237,7 +307,7 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans text-white flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-[var(--shelfy-bg)] font-sans text-[var(--shelfy-fg)] flex flex-col overflow-x-clip">
       
       {/* Global Airbnb-Style Header */}
       <Header
@@ -251,16 +321,27 @@ export function App() {
         onLoginClick={(mode, role) => handleOpenAuthModal(mode || 'LOGIN', role || 'VENDOR')}
         onDemoLogin={handleDemoLogin}
         onLogout={handleLogout}
-        onSwitchView={(view) => setActiveRoleView(view)}
+        onSwitchView={(view) => {
+          setActiveRoleView(view);
+          if (view !== 'VENDOR' && view !== 'HOST' && view !== 'MESSAGES') setMessagesNavActive(false);
+          if (view === 'MARKETPLACE') setHomeSignal((n) => n + 1);
+        }}
+        messagesNavActive={messagesNavActive || activeRoleView === 'MESSAGES'}
         notificationsCount={notifications.filter((n) => !n.readAt).length}
+        messagesUnreadCount={messagesUnreadCount}
         onNotificationsClick={() => {
           if (!user) return;
           setShowNotificationInbox(true);
         }}
+        onMessagesClick={() => goToMessages(null)}
+        onOpenSettings={openAccountSettings}
         onOpenFilter={() => {
           setActiveRoleView('MARKETPLACE');
           setFilterOpenSignal((n) => n + 1);
         }}
+        filtersActive={filtersActive}
+        onClearFilters={() => setClearFiltersSignal((n) => n + 1)}
+        onHomeClick={() => setHomeSignal((n) => n + 1)}
       />
 
       {/* Main View Router */}
@@ -276,8 +357,12 @@ export function App() {
             shelfTypes={platformSettings?.shelfTypes}
             onBookShelf={handleBookShelfAction}
             onLoginClick={() => handleOpenAuthModal('LOGIN')}
+            onOpenHostChat={openShopChat}
             initialShelfSlug={shelfSlugMatch?.[1]}
             openFilterSignal={filterOpenSignal}
+            homeSignal={homeSignal}
+            clearFiltersSignal={clearFiltersSignal}
+            onFiltersActiveChange={setFiltersActive}
           />
         )}
 
@@ -309,7 +394,12 @@ export function App() {
             products={products}
             inventory={inventory}
             shelves={shelves}
+            shops={shops}
             messages={messages}
+            openMessagesSignal={openWorkspaceMessagesSignal}
+            initialMessageThreadId={pendingMessageThreadId}
+            onInitialMessageThreadConsumed={() => setPendingMessageThreadId(null)}
+            onMessagesTabActiveChange={setMessagesNavActive}
             onBookShelf={handleBookShelfAction}
             onRefreshData={loadUserData}
           />
@@ -323,12 +413,46 @@ export function App() {
             shelves={shelves}
             bookings={bookings}
             payouts={payouts}
+            messages={messages}
+            openMessagesSignal={openWorkspaceMessagesSignal}
+            initialMessageThreadId={pendingMessageThreadId}
+            onInitialMessageThreadConsumed={() => setPendingMessageThreadId(null)}
+            onMessagesTabActiveChange={setMessagesNavActive}
             shelfCategories={platformSettings?.shelfCategories}
             shelfTypes={platformSettings?.shelfTypes}
             onRefreshData={() => {
               loadPublicData();
               loadUserData();
             }}
+          />
+        )}
+
+        {activeRoleView === 'SETTINGS' && user && (
+          <UserSettingsPage
+            user={user}
+            vendorProfile={vendorProfile}
+            hostProfile={hostProfile}
+            onUpdated={loadUserData}
+            onBack={() => {
+              const back = settingsReturnView && settingsReturnView !== 'SETTINGS' ? settingsReturnView : 'MARKETPLACE';
+              setActiveRoleView(back);
+            }}
+          />
+        )}
+
+        {activeRoleView === 'MESSAGES' && user && (
+          <MessagesPage
+            user={user}
+            messages={messages}
+            shops={shops}
+            bookings={bookings}
+            onRefresh={loadUserData}
+            onBackToMarket={() => {
+              setMessagesNavActive(false);
+              setActiveRoleView('MARKETPLACE');
+            }}
+            initialThreadId={pendingMessageThreadId}
+            onInitialThreadConsumed={() => setPendingMessageThreadId(null)}
           />
         )}
 
@@ -341,6 +465,22 @@ export function App() {
           />
         )}
       </div>
+
+      <MobileBottomNav
+        user={user}
+        activeRole={activeRoleView}
+        notificationsCount={notifications.filter((n) => !n.readAt).length}
+        onSwitchView={(view) => {
+          setActiveRoleView(view);
+          if (view === 'MARKETPLACE') setHomeSignal((n) => n + 1);
+        }}
+        onNotificationsClick={() => {
+          if (!user) return;
+          setShowNotificationInbox(true);
+        }}
+        onLoginClick={(mode) => handleOpenAuthModal(mode || 'LOGIN', 'VENDOR')}
+        onLogout={handleLogout}
+      />
 
       {/* Notification inbox */}
       {user && (
@@ -365,18 +505,15 @@ export function App() {
         />
       )}
 
-      {/* Secure PesaPal Payment Modal */}
-      {showPesapalModal && activePesapalBooking && (
-        <PesapalPaymentModal
-          isOpen={showPesapalModal}
-          booking={activePesapalBooking}
-          shelf={activePesapalShelf}
+      {showPayModal && activePayBooking && (
+        <AzamPayPaymentModal
+          isOpen={showPayModal}
+          booking={activePayBooking}
           onClose={() => {
-            setShowPesapalModal(false);
-            setActivePesapalBooking(null);
-            setActivePesapalShelf(null);
+            setShowPayModal(false);
+            setActivePayBooking(null);
           }}
-          onPaymentSuccess={(verifiedData) => {
+          onPaymentSuccess={() => {
             loadUserData();
             loadPublicData();
             if (user?.role === 'VENDOR') {

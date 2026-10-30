@@ -107,14 +107,15 @@ describe('refresh tokens', () => {
 describe('ops health snapshot', () => {
   it('marks JWT as ephemeral when JWT_SECRET is unset and never implies a hard fail', () => {
     const snap = opsHealthSnapshot({
-      PESAPAL_CONSUMER_KEY: 'k',
-      PESAPAL_CONSUMER_SECRET: 's',
-      PESAPAL_ENVIRONMENT: 'sandbox',
+      AZAMPAY_APP_NAME: 'Shelfy',
+      AZAMPAY_CLIENT_ID: 'k',
+      AZAMPAY_CLIENT_SECRET: 's',
+      AZAMPAY_ENVIRONMENT: 'sandbox',
     });
     expect(jwtRuntimeStatus({}).ephemeral).toBe(true);
     expect(snap.jwt.configured).toBe(false);
     expect(snap.jwt.ephemeral).toBe(true);
-    expect(snap.pesapal).toEqual({ configured: true, environment: 'sandbox' });
+    expect(snap.azampay).toEqual({ configured: true, environment: 'sandbox' });
     expect(snap.storage.driver).toBe('local');
     expect(snap.email.configured).toBe(false);
     expect(snap.sms.configured).toBe(false);

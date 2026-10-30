@@ -10,11 +10,11 @@ export const LEGAL_PAGES: Record<string, { title: string; body: string }> = {
 
 Shelfy Tanzania Ltd ("Shelfy", "we", "us") operates an online marketplace that connects retail hosts with product vendors who rent physical shelf space. By creating an account or using shelfy.co.tz you agree to these Terms.
 
-Shelfy provides software to list shelf space, request bookings, collect payments through PesaPal, and record settlements in an append-only ledger. Shelfy is not the seller of vendor products and does not take title to goods placed on a host shelf.
+Shelfy provides software to list shelf space, request bookings, collect payments through Azam Pay, and record settlements in an append-only ledger. Shelfy is not the seller of vendor products and does not take title to goods placed on a host shelf.
 
 You must provide accurate registration information, keep credentials confidential, and use the platform only for lawful shelf-rental activity in Tanzania. We may suspend accounts that violate these Terms, attempt fraud, or abuse other users.
 
-Bookings follow the approve-then-pay flow unless platform settings say otherwise: a host may approve a vendor request before payment is initiated. Payment confirmation comes only from PesaPal server verification or an administrator — never from a browser-only "I paid" button.
+Bookings follow the approve-then-pay flow unless platform settings say otherwise: a host may approve a vendor request before payment is initiated. Payment confirmation comes only from Azam Pay server verification or an administrator — never from a browser-only "I paid" button.
 
 Fees, commissions, and payout timing are shown at checkout and in your dashboard. Disputes are handled through the in-app dispute workflow; Shelfy may adjust ledger entries after review but does not guarantee a particular outcome.
 
@@ -26,13 +26,13 @@ We may update these Terms. Material changes will be posted on this page. Continu
 
 Shelfy collects account data (name, email, phone, business details), booking and payment records, uploaded photos, GPS check-in coordinates for field visits, and technical logs (IP address, user agent, request timestamps).
 
-We use this data to operate the marketplace, prevent fraud, reconcile PesaPal payments, send notifications you request, and comply with lawful requests from authorities.
+We use this data to operate the marketplace, prevent fraud, reconcile Azam Pay payments, send notifications you request, and comply with lawful requests from authorities.
 
-Payment card and mobile-money details are processed by PesaPal; Shelfy stores transaction references and amounts, not full payment instrument numbers.
+Payment card and mobile-money details are processed by Azam Pay; Shelfy stores transaction references and amounts, not full payment instrument numbers.
 
 Email and SMS are sent only when you configure a provider (for example Resend) or when in-app notifications are generated. If no email provider is configured at registration, Shelfy may auto-verify email so you can use the product — see /api/health onboarding flags.
 
-We retain records needed for accounting, disputes, and audit. You may request access or correction by contacting support@shelfy.co.tz. We do not sell personal data to third-party advertisers.`,
+We retain records needed for accounting, disputes, and audit. You may request access or correction by contacting hello@shelfy.co.tz. We do not sell personal data to third-party advertisers.`,
   },
   'vendor-agreement': {
     title: 'Vendor Agreement',
@@ -90,7 +90,7 @@ Cancellation quotes shown in the app are authoritative for the platform fee and 
 
 Refunds are issued only after a valid cancellation, dispute resolution, or administrator decision. All money movement is recorded as balanced ledger entries — Shelfy does not edit balances informally.
 
-Failed or reversed PesaPal transactions map to payment failed or refunded statuses; bookings do not activate until payment is verified COMPLETED through PesaPal GetTransactionStatus or IPN.
+Failed or reversed Azam Pay transactions map to payment failed or refunded statuses; bookings do not activate until Azam Pay sends a verified success callback to Shelfy.
 
 Partial refunds may apply when a cancellation fee is configured. Currency is Tanzanian Shillings (TZS) unless explicitly stated otherwise.`,
   },

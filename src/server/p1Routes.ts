@@ -5,7 +5,15 @@ import { newId } from './domain/ids.js';
 import { notify } from './services/notify.js';
 import { putUpload } from './services/storage.js';
 import { quoteCancellation } from './domain/cancellation.js';
-import { listingStatusOf, shopReadyToSubmit, shelfReadyToSubmit } from './domain/listings.js';
+import {
+  listingStatusOf,
+  shopReadyToSubmit,
+  shelfReadyToSubmit,
+  hasMinimumListingPhotos,
+  MIN_LISTING_PHOTOS,
+  assertUniqueInStoreLabel,
+} from './domain/listings.js';
+import { normalizeShelfRules } from '../lib/shelfRules.js';
 import { canOpenDispute, canReviewBooking, validRating } from './domain/reviews.js';
 import { gpsWithinRadius } from './domain/gps.js';
 import { quoteWithdrawal } from './domain/withdrawals.js';
@@ -118,9 +126,33 @@ export function registerP1Routes(app: Express) {
     if (req.user!.role !== 'ADMIN' && shop?.hostId !== req.user!.id) {
       return res.status(403).json({ success: false, error: { message: 'You do not own this shelf.' } });
     }
-    const allowed = ['name', 'description', 'widthCm', 'heightCm', 'depthCm', 'shelfType', 'locationInsideShop', 'monthlyPriceTzs', 'allowedCategories', 'photos'];
+    const allowed = ['name', 'description', 'widthCm', 'heightCm', 'depthCm', 'shelfType', 'locationInsideShop', 'monthlyPriceTzs', 'allowedCategories', 'shelfRules', 'photos'];
+    if (req.body.locationInsideShop !== undefined) {
+      const labelCheck = assertUniqueInStoreLabel(
+        dbEngine.db.shelves,
+        shelf.shopId,
+        String(req.body.locationInsideShop),
+        shelf.id
+      );
+      if (labelCheck.ok === false) {
+        return res.status(400).json({ success: false, error: { message: labelCheck.message } });
+      }
+      shelf.locationInsideShop = labelCheck.normalized;
+    }
     for (const key of allowed) {
-      if (req.body[key] !== undefined) (shelf as any)[key] = req.body[key];
+      if (key === 'locationInsideShop') continue;
+      if (req.body[key] === undefined) continue;
+      if (key === 'shelfRules') {
+        (shelf as any).shelfRules = normalizeShelfRules(req.body.shelfRules);
+        continue;
+      }
+      (shelf as any)[key] = req.body[key];
+    }
+    if (req.body.photos !== undefined && !hasMinimumListingPhotos(req.body.photos)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: `Shelf listings require at least ${MIN_LISTING_PHOTOS} photos.` },
+      });
     }
     shelf.updatedAt = new Date().toISOString();
     if (listingStatusOf(shelf) === 'PUBLISHED') {

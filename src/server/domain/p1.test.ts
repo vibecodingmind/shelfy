@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { quoteCancellation } from './cancellation.js';
 import { haversineMeters, gpsWithinRadius } from './gps.js';
-import { isPublishedShop, isPublishedShelf, listingStatusOf, publicShelves, shopReadyToSubmit, shelfReadyToSubmit, canEditListing } from './listings.js';
+import {
+  isPublishedShop,
+  isPublishedShelf,
+  listingStatusOf,
+  publicShelves,
+  shopReadyToSubmit,
+  shelfReadyToSubmit,
+  canEditListing,
+  assertUniqueInStoreLabel,
+} from './listings.js';
 import { quoteWithdrawal } from './withdrawals.js';
 import { isDataUrlImage, tickBookingStatuses } from './operations.js';
 import { refundCapturedPostings } from './ledger.js';
@@ -200,14 +209,40 @@ describe('refund postings', () => {
   });
 });
 
+const eightPhotos = Array.from({ length: 8 }, (_, i) => `https://img/${i}.jpg`);
+
 describe('listing completeness', () => {
   it('rejects incomplete shops and shelves and blocks foreign hosts', () => {
     expect(shopReadyToSubmit({ name: 'A', description: '', address: '', city: '', latitude: NaN, longitude: NaN, photos: [], shopType: 'SUPERMARKET' }).ok).toBe(false);
-    expect(shopReadyToSubmit(shop({ description: 'A verified downtown supermarket', photos: ['https://img'] })).ok).toBe(true);
+    expect(shopReadyToSubmit(shop({ description: 'A verified downtown supermarket', photos: ['https://img'] })).ok).toBe(false);
+    expect(shopReadyToSubmit(shop({ description: 'A verified downtown supermarket', photos: eightPhotos })).ok).toBe(true);
     expect(shelfReadyToSubmit(shelf({ photos: [] })).ok).toBe(false);
-    expect(shelfReadyToSubmit(shelf({ photos: ['https://img'], allowedCategories: ['Food & Beverages'] })).ok).toBe(true);
+    expect(shelfReadyToSubmit(shelf({ photos: ['https://img'], allowedCategories: ['Food & Beverages'] })).ok).toBe(false);
+    expect(shelfReadyToSubmit(shelf({ photos: eightPhotos, allowedCategories: ['Food & Beverages'] })).ok).toBe(true);
+    expect(shelfReadyToSubmit(shelf({ locationInsideShop: '  ', photos: eightPhotos, allowedCategories: ['Food & Beverages'] })).ok).toBe(false);
     expect(canEditListing({ id: 'other', role: 'HOST' } as any, 'h1')).toBe(false);
     expect(canEditListing({ id: 'h1', role: 'HOST' } as any, 'h1')).toBe(true);
+  });
+});
+
+describe('in-store shelf labels', () => {
+  it('normalizes and rejects duplicate labels within the same shop', () => {
+    const shelves = [
+      shelf({ id: 's1', shopId: 'shop_1', locationInsideShop: 'Aisle 2 – Slot B' }),
+      shelf({ id: 's2', shopId: 'shop_1', locationInsideShop: 'Cashier 1' }),
+      shelf({ id: 's3', shopId: 'shop_2', locationInsideShop: 'Aisle 2 – Slot B' }),
+    ];
+    const sameShelfEdit = assertUniqueInStoreLabel(shelves, 'shop_1', '  aisle   2 – slot b  ', 's1');
+    expect(sameShelfEdit.ok).toBe(true);
+    if (sameShelfEdit.ok) expect(sameShelfEdit.normalized).toBe('aisle 2 – slot b');
+    const dupCase = assertUniqueInStoreLabel(shelves, 'shop_1', '  aisle   2 – slot b  ');
+    expect(dupCase.ok).toBe(false);
+    const dup = assertUniqueInStoreLabel(shelves, 'shop_1', 'Cashier 1');
+    expect(dup.ok).toBe(false);
+    const keepOwn = assertUniqueInStoreLabel(shelves, 'shop_1', 'Cashier 1', 's2');
+    expect(keepOwn.ok).toBe(true);
+    const otherShop = assertUniqueInStoreLabel(shelves, 'shop_2', 'Cashier 1');
+    expect(otherShop.ok).toBe(true);
   });
 });
 

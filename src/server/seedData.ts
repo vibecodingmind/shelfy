@@ -28,6 +28,7 @@ import {
 } from '../types/index.js';
 import { LedgerAccount, LedgerEntry, accountKey, paymentCapturedPostings } from './domain/ledger.js';
 import { Withdrawal } from './domain/withdrawals.js';
+import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 
 export interface DatabaseSchema {
   schemaVersion?: number;
@@ -599,6 +600,11 @@ export function buildCompleteSeedData(): DatabaseSchema {
       monthlyPriceTzs: 75000,
       availabilityStatus: 'BOOKED',
       allowedCategories: ['Food & Beverages', 'Health & Beauty', 'Snacks & Confectionery', 'Organic Goods'],
+      shelfRules: [
+        'Keep products front-facing and within the marked shelf width.',
+        'Restock or remove sold-out facings within 48 hours.',
+        'No glass bottles on upper shelves without host approval.',
+      ],
       photos: getPhotos(0),
       status: 'ACTIVE',
       avgRating: 4.96,
@@ -1750,7 +1756,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
   const settings: PlatformSettings = {
     commissionPercentage: 10,
     autoApproveBookings: false,
-    pesapalEnvironment: 'sandbox',
+    azamPayEnvironment: 'sandbox',
     currency: 'TZS',
     maintenanceMode: false,
     shelfCategories: [
@@ -1767,16 +1773,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
       'Baked Goods',
       'Supplements & Herbal',
     ],
-    shelfTypes: [
-      { id: 'EYE_LEVEL', name: 'Eye-Level Display', description: 'Optimal line of sight (120–160cm) with maximum shopper gaze capture.', icon: '👁️' },
-      { id: 'COUNTER_DISPLAY', name: 'Counter Checkout Box', description: 'High-impulse point-of-sale positioning directly at cashier desk.', icon: '🛒' },
-      { id: 'ENTRANCE_DISPLAY', name: 'Entrance Lobby Showcase', description: 'Front-facing glass vitrine seen by 100% of store foot traffic.', icon: '✨' },
-      { id: 'REFRIGERATED', name: 'Chilled / Cooler Showcase', description: 'Temperature controlled 2°C–6°C glass case for drinks & dairy.', icon: '❄️' },
-      { id: 'TOP_SHELF', name: 'Top Display Rack', description: 'Elevated brand marquee shelf for premium visibility across aisles.', icon: '🔝' },
-      { id: 'BOTTOM_SHELF', name: 'Bottom Bulk Shelf', description: 'Deep, heavy-load floor shelf ideal for bulk and family packs.', icon: '📦' },
-      { id: 'END_CAP', name: 'Aisle End-Cap Feature', description: 'Prime corner position commanding cross-traffic attention.', icon: '🎯' },
-      { id: 'WINDOW_DISPLAY', name: 'Street Window Showcase', description: 'Exterior street-facing glass showcase attracting passersby.', icon: '🪟' },
-    ],
+    shelfTypes: SHELF_TYPE_CATALOG.map((type) => ({ ...type })),
     minWithdrawalTzs: 20000,
     bookingGraceHours: 24,
     cancellationFeePercent: 10,

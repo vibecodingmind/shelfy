@@ -17,7 +17,7 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 | Layer | Today | Target |
 | --- | --- | --- |
 | Persistence | One JSON document (`shelfy.json` or `shelfy_store` JSONB) | PostgreSQL + Prisma, FKs, enums, transactions |
-| Payments | Frontend countdown then “I paid” | PesaPal v3 + GetTransactionStatus + IPN |
+| Payments | Frontend countdown then “I paid” | **Azam Pay** server checkout + callback; reconcile job |
 | Money | Implied payout rows / no ledger | Append-only ledger, computed balances |
 | Auth | JWT + bcrypt, weak rules, hashes leak on admin API | Verify, reset, lockout, rate limit, publicUser() |
 | RBAC | Role check; ADMIN bypass; message IDOR | Ownership + relationship checks + tests |
@@ -138,11 +138,11 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 
 **Objective:** Money in is verified server-side.
 
-**Features:** Payment + attempts, PesaPal Auth/IPN/SubmitOrder/GetTransactionStatus, idempotency, sandbox HMAC, admin reconcile.
+**Features:** Payment + attempts, **Azam Pay** session + callback, idempotency, sandbox HMAC (dev), admin reconcile + overview UI.
 
 **Database:** `Payment`, `PaymentAttempt`.
 
-**API:** `POST /payments/initiate-session`, `GET|POST /payments/pesapal/ipn`, `GET /payments/pesapal/callback`, `POST /payments/:id/sync`, `POST /payments/sandbox-complete` (signed).
+**API:** `POST /api/payments/azampay/initiate`, `POST /api/payments/azampay/callback`, payment sync/reconcile admin routes; legacy PesaPal paths deprecated for new checkout.
 
 **Frontend:** Modal initiates and **polls**; never posts “paid”.
 
@@ -253,9 +253,9 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 
 ## Phase 13 — Production Deployment
 
-**Objective:** Secrets, backups, logs, monitoring, `JWT_SECRET`, PesaPal keys, `APP_URL`, migrate-on-release.
+**Objective:** Secrets, backups, logs, monitoring, `JWT_SECRET`, **Azam Pay** keys, `APP_URL`, migrate-on-release.
 
-**Status:** Partial in this branch — storage driver, notification dispatcher, health flags, JSON request logs, refresh tokens, [RUNBOOK.md](./RUNBOOK.md). Live PesaPal keys and a stable `JWT_SECRET` remain Railway ops. Do not claim launch-ready.
+**Status:** Partial in this branch — storage driver, notification dispatcher, health flags, JSON request logs, refresh tokens, admin **Integrations** status UI, [RUNBOOK.md](./RUNBOOK.md). Live Azam Pay keys and a stable `JWT_SECRET` remain Railway ops. Do not claim launch-ready.
 
 ---
 
@@ -263,7 +263,7 @@ Related: [BUSINESS_RULES.md](./BUSINESS_RULES.md) · [CHECKLIST.md](./CHECKLIST.
 
 Re-run the quality gate: business E2E, security, money, finance reconcile, trust, ops, UX, data, tests, production hygiene.
 
-**Status:** Audit recorded in [LAUNCH_AUDIT.md](./LAUNCH_AUDIT.md). Security hardening and money-journey tests landed in this branch. **Not launch-ready** — live PesaPal keys and a stable `JWT_SECRET` remain Railway ops.
+**Status:** Audit recorded in [LAUNCH_AUDIT.md](./LAUNCH_AUDIT.md). Security hardening and money-journey tests landed in this branch. **Not launch-ready** — live Azam Pay keys and a stable `JWT_SECRET` remain Railway ops.
 
 ---
 
@@ -279,7 +279,7 @@ Verification, shop/shelf management, uploads, cancel/complete, withdrawals/payou
 
 Shipped in this branch: published-only catalogue, verification queue, cancellation/refund ledger, expiration job, withdrawals/payouts, GPS check-in, image upload constraints, legal placeholders, listing wizard, payment reconcile job, reviews/disputes, SEO slugs, occupancy analytics, PWA shell, shop/shelf archive, S3-capable uploads, notification dispatcher, health/ops flags, request logs, refresh tokens, backup runbook.
 
-Still open: live PesaPal keys + stable `JWT_SECRET` (Railway ops). Not launch-ready. HTTP API tests now hit Express (login, refresh, 410 client-confirm, booking IDOR).
+Still open: live Azam Pay keys + stable `JWT_SECRET` (Railway ops). Not launch-ready. HTTP API tests now hit Express (login, refresh, 410 client-confirm, booking IDOR). Admin **Settings** exposes business rules, integrations status, payments ops, and field-agent invite.
 
 ### P2 (this branch)
 
