@@ -80,6 +80,10 @@ set_env JWT_SECRET "$JWT"
 set_env DATABASE_URL "$DATABASE_URL"
 set_env ALLOW_DEMO_LOGIN false
 set_env EMAIL_FROM "Shelfy <hello@shelfy.co.tz>"
+set_env EMAIL_REPLY_TO "hello@shelfy.co.tz"
+set_env SMTP_HOST "127.0.0.1"
+set_env SMTP_PORT "25"
+set_env SMTP_SECURE "false"
 
 mkdir -p "$APP_DIR/uploads"
 chown -R www-data:www-data "$APP_DIR/uploads" || true
@@ -122,4 +126,9 @@ if [[ -n "$COMPOSE_DIR" && -f "$SNIPPET" ]]; then
   (cd "$COMPOSE_DIR" && docker compose restart caddy)
 fi
 
+if [[ -f "$APP_DIR/scripts/vps/setup-shelfy-mail.sh" ]]; then
+  bash "$APP_DIR/scripts/vps/setup-shelfy-mail.sh" || echo "Mail setup skipped or partial — configure Postfix manually"
+fi
+
 echo "DONE deploy script"
+echo "Nameserver DNS: see docs/NAMESERVER_RECORDS.md on GitHub"
