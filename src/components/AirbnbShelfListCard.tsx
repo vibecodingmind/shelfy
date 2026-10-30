@@ -10,12 +10,9 @@ import {
   Star,
   MapPin,
   CheckCircle2,
-  TrendingUp,
-  Eye,
-  Store,
-  Sparkles,
 } from 'lucide-react';
 import { Shelf } from '../types/index.js';
+import { availabilityLabel, formatShelfType } from './shelfFacts.js';
 
 interface AirbnbShelfListCardProps {
   shelf: Shelf;
@@ -50,18 +47,6 @@ export const AirbnbShelfListCard: React.FC<AirbnbShelfListCardProps> = ({
     setIsFavorite(!isFavorite);
   };
 
-  const formatShelfType = (type: string) => {
-    switch (type) {
-      case 'EYE_LEVEL': return 'Eye-Level Display';
-      case 'COUNTER_DISPLAY': return 'Checkout Counter Stand';
-      case 'ENTRANCE_DISPLAY': return 'Lobby Entrance Stand';
-      case 'TOP_SHELF': return 'Top Shelf Rack';
-      case 'BOTTOM_SHELF': return 'Bottom Shelf';
-      case 'REFRIGERATED': return 'Chilled Cooler';
-      default: return type.replace('_', ' ');
-    }
-  };
-
   return (
     <div
       id={`shelf-list-card-${shelf.id}`}
@@ -79,8 +64,8 @@ export const AirbnbShelfListCard: React.FC<AirbnbShelfListCardProps> = ({
 
         {/* Top Badges */}
         <div className="absolute top-2 left-2 flex items-center gap-1">
-          <span className="px-2 py-0.5 rounded-full bg-slate-950/80 backdrop-blur text-emerald-400 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
-            <CheckCircle2 className="w-2.5 h-2.5" /> Verified
+          <span className="px-2 py-0.5 rounded-full bg-slate-950/80 backdrop-blur text-[10px] font-bold border border-slate-700 flex items-center gap-1 text-white">
+            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> {availabilityLabel(shelf.availabilityStatus)}
           </span>
         </div>
 
@@ -130,9 +115,15 @@ export const AirbnbShelfListCard: React.FC<AirbnbShelfListCardProps> = ({
               <span className="text-slate-600">•</span>
               <span className="truncate">{shelf.shopName}</span>
             </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-amber-400 shrink-0">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              <span>4.9</span>
+            <div className="flex items-center gap-1 text-xs font-bold shrink-0">
+              {shelf.avgRating ? (
+                <span className="text-amber-400 flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  {shelf.avgRating.toFixed(2)}
+                </span>
+              ) : (
+                <span className="text-slate-500 font-medium">No reviews</span>
+              )}
             </div>
           </div>
 
@@ -149,8 +140,8 @@ export const AirbnbShelfListCard: React.FC<AirbnbShelfListCardProps> = ({
             <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-mono">
               {shelf.widthCm}×{shelf.heightCm}×{shelf.depthCm} cm
             </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium flex items-center gap-1">
-              <TrendingUp className="w-2.5 h-2.5" /> High Foot Traffic
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 font-medium truncate max-w-[16rem]">
+              {shelf.locationInsideShop}
             </span>
           </div>
 

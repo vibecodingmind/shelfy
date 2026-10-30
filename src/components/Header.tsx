@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, LogOut, SlidersHorizontal, ChevronDown, UserRound } from 'lucide-react';
+import { Search, Bell, LogOut, ChevronDown, UserRound } from 'lucide-react';
 import { User, UserRole } from '../types/index.js';
 
 interface HeaderProps {
@@ -28,7 +28,6 @@ export const Header: React.FC<HeaderProps> = ({
   onLoginClick,
   onLogout,
   onSwitchView,
-  onOpenFilter,
   notificationsCount,
   onNotificationsClick,
 }) => {
@@ -98,37 +97,18 @@ export const Header: React.FC<HeaderProps> = ({
               isSearchFocused ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-700/80 hover:border-slate-600'
             } rounded-full py-1.5 pl-5 pr-2 shadow-lg transition-all duration-200`}
           >
-            <div className="flex-1 flex items-center divide-x divide-slate-800 text-xs">
-              <div className="pr-3 flex-1 flex items-center gap-2 min-w-0">
-                <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setIsSearchFocused(false)}
-                  placeholder="Dar es Salaam, Masaki, Kariakoo..."
-                  className="w-full min-w-0 bg-transparent text-white placeholder-slate-400 text-xs focus:outline-none font-medium"
-                />
-              </div>
-              <div className="pl-3 pr-2 hidden sm:block">
-                <button
-                  type="button"
-                  onClick={onOpenFilter}
-                  className="text-slate-400 hover:text-emerald-400 flex items-center gap-1 font-semibold text-xs transition-colors touch-target"
-                >
-                  <SlidersHorizontal className="w-3 h-3" /> Filters
-                </button>
-              </div>
+            <div className="flex-1 flex items-center text-xs min-w-0 pr-2">
+              <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                placeholder="Search shelves, shops, or neighbourhoods..."
+                className="w-full min-w-0 bg-transparent text-white placeholder-slate-400 text-xs focus:outline-none font-medium ml-2"
+              />
             </div>
-            <button
-              type="button"
-              onClick={onOpenFilter}
-              className="w-9 h-9 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 flex items-center justify-center shrink-0 shadow-md transition-transform active:scale-95 cursor-pointer ml-2 touch-target"
-              title="Search Shelves"
-            >
-              <Search className="w-4 h-4 text-slate-950 font-bold" />
-            </button>
           </div>
         </div>
 
@@ -271,24 +251,16 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Mobile search row */}
       <div className="md:hidden border-t border-slate-800/80 px-4 py-2.5 bg-slate-950/60">
         <div className="flex items-center gap-2 max-w-7xl mx-auto">
-          <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full pl-3 pr-2 py-1.5 min-w-0">
+          <div className="flex-1 flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-full pl-3 pr-3 py-1.5 min-w-0">
             <Search className="w-4 h-4 text-slate-400 shrink-0" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Search shelves, cities, shops..."
+              placeholder="Search shelves, shops, or neighbourhoods..."
               className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
             />
           </div>
-          <button
-            type="button"
-            onClick={onOpenFilter}
-            className="p-2.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 touch-target shrink-0"
-            aria-label="Open filters"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </header>

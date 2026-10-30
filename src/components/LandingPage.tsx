@@ -26,6 +26,7 @@ import { Shelf, Shop, User } from '../types/index.js';
 import { AirbnbShelfCard } from './AirbnbShelfCard.js';
 import { AirbnbShelfListCard } from './AirbnbShelfListCard.js';
 import { AirbnbShelfDetail } from './AirbnbShelfDetail.js';
+import { categoryNav } from './shelfFacts.js';
 
 interface LandingPageProps {
   shelves: Shelf[];
@@ -94,27 +95,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // Category scroll reference
   const categoryScrollRef = useRef<HTMLDivElement>(null);
-
-  // Airbnb style categories list with icons
-  const defaultCategoryPills = [
-    { id: '', label: 'All Shelves', icon: '🏪', type: 'all' },
-    { id: 'EYE_LEVEL', type: 'shelfType', label: 'Eye-Level', icon: '👁️' },
-    { id: 'COUNTER_DISPLAY', type: 'shelfType', label: 'Checkout Counter', icon: '🛒' },
-    { id: 'ENTRANCE_DISPLAY', type: 'shelfType', label: 'Entrance Stand', icon: '✨' },
-    { id: 'REFRIGERATED', type: 'shelfType', label: 'Chilled Cooler', icon: '❄️' },
-    { id: 'TOP_SHELF', type: 'shelfType', label: 'Top Rack', icon: '🔝' },
-    { id: 'BOTTOM_SHELF', type: 'shelfType', label: 'Bottom Bulk', icon: '📦' },
-    { id: 'Dar es Salaam', type: 'city', label: 'Dar es Salaam', icon: '🌴' },
-    { id: 'Mwanza', type: 'city', label: 'Mwanza', icon: '🌊' },
-    { id: 'Arusha', type: 'city', label: 'Arusha', icon: '🏔️' },
-    { id: 'Zanzibar', type: 'city', label: 'Zanzibar', icon: '🏖️' },
-    { id: 'Dodoma', type: 'city', label: 'Dodoma', icon: '🏛️' },
-    { id: 'Mbeya', type: 'city', label: 'Mbeya', icon: '⛰️' },
-    { id: 'Food & Beverages', type: 'category', label: 'Food & Drinks', icon: '🧃' },
-    { id: 'Organic Goods', type: 'category', label: 'Organic & Honey', icon: '🍯' },
-    { id: 'Cosmetics', type: 'category', label: 'Beauty & Skincare', icon: '💄' },
-    { id: 'Spices', type: 'category', label: 'Zanzibar Spices', icon: '🌿' },
-  ];
 
   // Filtering Logic
   const filteredShelves = shelves.filter((sh) => {
@@ -207,26 +187,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ref={categoryScrollRef}
             className="flex items-center gap-4 sm:gap-6 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-1 flex-1 scroll-smooth snap-x min-w-0"
           >
-            {defaultCategoryPills.map((pill, idx) => {
+            {categoryNav.map((pill) => {
               const isActive =
                 (pill.type === 'all' && !selectedCity && !selectedType && !selectedCategory) ||
-                (pill.type === 'city' && selectedCity === pill.id) ||
                 (pill.type === 'shelfType' && selectedType === pill.id) ||
                 (pill.type === 'category' && selectedCategory === pill.id);
+              const Icon = pill.Icon;
 
               return (
                 <button
-                  key={idx}
+                  key={pill.label}
                   type="button"
                   onClick={() => handlePillClick(pill)}
-                  className={`flex flex-col items-center gap-1.5 shrink-0 px-3 py-1 transition-all border-b-2 group cursor-pointer snap-start ${
+                  className={`group flex flex-col items-center gap-1.5 shrink-0 px-2 py-1 min-w-[4.5rem] transition-all border-b-2 cursor-pointer snap-start ${
                     isActive
-                      ? 'border-emerald-400 text-white opacity-100 font-bold'
-                      : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600 opacity-75 hover:opacity-100 font-medium'
+                      ? 'border-emerald-400 text-white font-bold'
+                      : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600 font-medium'
                   }`}
                 >
-                  <span className="text-xl group-hover:scale-110 transition-transform">{pill.icon}</span>
-                  <span className="text-xs whitespace-nowrap">{pill.label}</span>
+                  <span
+                    className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition-colors ${
+                      isActive
+                        ? 'bg-emerald-500/15 border-emerald-400 text-emerald-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 group-hover:border-slate-600'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" strokeWidth={1.75} />
+                  </span>
+                  <span className="text-[11px] whitespace-nowrap">{pill.label}</span>
                 </button>
               );
             })}

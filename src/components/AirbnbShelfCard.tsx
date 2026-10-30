@@ -12,12 +12,11 @@ import {
   Star,
   MapPin,
   Sparkles,
-  ShieldCheck,
   CheckCircle2,
-  TrendingUp,
   Eye,
 } from 'lucide-react';
 import { Shelf } from '../types/index.js';
+import { availabilityLabel, formatShelfType } from './shelfFacts.js';
 
 interface AirbnbShelfCardProps {
   shelf: Shelf;
@@ -52,19 +51,8 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({
     setIsFavorite(!isFavorite);
   };
 
-  const formatShelfType = (type: string) => {
-    switch (type) {
-      case 'EYE_LEVEL': return 'Eye-Level Placement';
-      case 'COUNTER_DISPLAY': return 'Counter Checkout';
-      case 'ENTRANCE_DISPLAY': return 'Lobby Entrance Stand';
-      case 'TOP_SHELF': return 'Top Shelf Rack';
-      case 'BOTTOM_SHELF': return 'Bottom Shelf';
-      case 'REFRIGERATED': return 'Chilled Cooler';
-      default: return type.replace('_', ' ');
-    }
-  };
-
   const dailyPriceTzs = Math.round(shelf.monthlyPriceTzs / 30);
+  const available = shelf.availabilityStatus === 'AVAILABLE';
 
   return (
     <div
@@ -124,9 +112,13 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({
 
         {/* Top Badges */}
         <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1 items-center z-10">
-          <span className="bg-slate-950/85 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700/80 flex items-center gap-1 shadow-md">
-            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
-            Verified
+          <span className={`backdrop-blur-md text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 shadow-md ${
+            available
+              ? 'bg-emerald-500/90 text-slate-950 border-emerald-300'
+              : 'bg-slate-950/85 text-white border-slate-700/80'
+          }`}>
+            <CheckCircle2 className="w-2.5 h-2.5" />
+            {availabilityLabel(shelf.availabilityStatus)}
           </span>
           {shelf.avgRating && shelf.avgRating >= 4.95 && (
             <span className="bg-amber-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-0.5">
@@ -174,26 +166,38 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({
             
             {/* Airbnb Rating Star */}
             <div className="flex items-center gap-0.5 shrink-0 font-bold text-xs text-white">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <span>{shelf.avgRating ? shelf.avgRating.toFixed(2) : '4.95'}</span>
-              <span className="text-slate-400 font-normal text-[10px]">({shelf.reviewCount || 24})</span>
+              {shelf.avgRating ? (
+                <>
+                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                  <span>{shelf.avgRating.toFixed(2)}</span>
+                  {shelf.reviewCount ? <span className="text-slate-400 font-normal text-[10px]">({shelf.reviewCount})</span> : null}
+                </>
+              ) : (
+                <span className="text-slate-500 font-medium text-[10px]">No reviews</span>
+              )}
             </div>
           </div>
 
           {/* Shop Name & Sub-location */}
           <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-            {shelf.shopName} • {shelf.locationInsideShop}
+            {shelf.shopName}{shelf.shopAddress ? ` • ${shelf.shopAddress}` : ''}
           </div>
+          <div className="text-[11px] text-slate-500 line-clamp-1">{shelf.locationInsideShop}</div>
         </div>
 
         {/* Specs & Type Pill Row */}
         <div className="flex flex-wrap items-center gap-1 text-[10px]">
           <span className="bg-slate-950 text-slate-300 px-1.5 py-0.5 rounded border border-slate-800 font-mono font-medium">
-            {shelf.widthCm}×{shelf.heightCm} cm
+            {shelf.widthCm}×{shelf.heightCm}×{shelf.depthCm} cm
           </span>
           <span className="bg-slate-950 text-emerald-400 px-1.5 py-0.5 rounded border border-slate-800 font-medium truncate max-w-[130px]">
             {formatShelfType(shelf.shelfType)}
           </span>
+          {shelf.allowedCategories.slice(0, 1).map((category) => (
+            <span key={category} className="bg-slate-950 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800 font-medium truncate max-w-[120px]">
+              {category}
+            </span>
+          ))}
         </div>
 
         {/* Price & Action Row */}

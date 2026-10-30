@@ -11,27 +11,19 @@ import {
   Heart,
   Star,
   MapPin,
-  ShieldCheck,
-  Sparkles,
-  Layers,
-  Calendar as CalendarIcon,
   CheckCircle2,
-  Lock,
   Clock,
-  ChevronRight,
-  TrendingUp,
   Store,
-  Eye,
   Info,
   Maximize2,
   X,
   CreditCard,
-  Building,
 } from 'lucide-react';
-import { Shelf, Shop, User } from '../types/index.js';
+import { Shelf, Shop, User, Review } from '../types/index.js';
 import { AvailabilityCalendar, BookedRange } from './AvailabilityCalendar.js';
 import { api } from '../lib/api.js';
 import { TrustBadges } from './TrustBadges.js';
+import { availabilityLabel, formatShelfType, formatShopType, shelfVolumeLitres } from './shelfFacts.js';
 
 interface AirbnbShelfDetailProps {
   shelf: Shelf;
@@ -62,6 +54,8 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
     shelf.allowedCategories?.[0] || 'Food & Beverages'
   );
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(true);
+  const [shopDetail, setShopDetail] = useState<Shop | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   // Fetch real-time availability from backend
   useEffect(() => {
@@ -76,6 +70,18 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
     };
 
     loadAvailability();
+    return () => {
+      isMounted = false;
+    };
+  }, [shelf.id]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getShelfById(shelf.id).then((res) => {
+      if (!isMounted || !res.success || !res.data) return;
+      setShopDetail(res.data.shop || null);
+      setReviews(Array.isArray(res.data.reviews) ? res.data.reviews : []);
+    });
     return () => {
       isMounted = false;
     };
@@ -169,18 +175,24 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-slate-300 mt-2">
             <div className="flex items-center gap-1 font-bold text-white shrink-0">
-              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-              <span>{shelf.avgRating ? shelf.avgRating.toFixed(2) : '4.95'}</span>
-              <span className="text-slate-400 underline font-medium">({shelf.reviewCount || 24} vendor reviews)</span>
+              {shelf.avgRating ? (
+                <>
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  <span>{shelf.avgRating.toFixed(2)}</span>
+                  <span className="text-slate-400 font-medium">({shelf.reviewCount || reviews.length} vendor reviews)</span>
+                </>
+              ) : (
+                <span className="text-slate-400 font-medium">No vendor reviews yet</span>
+              )}
             </div>
             <span className="hidden sm:inline">•</span>
-            <span className="flex items-center gap-1 text-emerald-400 font-semibold shrink-0">
-              <ShieldCheck className="w-4 h-4" /> Verified
+            <span className={`font-semibold shrink-0 ${shelf.availabilityStatus === 'AVAILABLE' ? 'text-emerald-400' : 'text-amber-300'}`}>
+              {availabilityLabel(shelf.availabilityStatus)}
             </span>
             <span className="hidden md:inline">•</span>
             <span className="flex items-center gap-1 text-slate-300 min-w-0">
               <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="truncate">{shelf.shopCity}</span>
+              <span className="truncate">{shelf.shopAddress || shelf.shopCity}</span>
             </span>
           </div>
           <TrustBadges shelfId={shelf.id} />
@@ -244,7 +256,10 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
                   Retail Display Space in {shelf.shopName}
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                  Hosted by <span className="text-white font-semibold">{shelf.shopName?.split('—')[0] || 'Retail Partner'}</span> • Verified Host • 100% Response Rate
+                  {shelf.shopAddress || shopDetail?.address}
+                  {shopDetail?.shopType ? ` • ${formatShopType(shopDetail.shopType)}` : ''}
+                  {shopDetail?.footTrafficScore ? ` • Foot traffic ${shopDetail.footTrafficScore}/10` : ''}
+                  {shelf.hostVerificationStatus === 'VERIFIED' ? ' • Verified host' : ''}
                 </p>
               </div>
 
@@ -254,41 +269,21 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
             </div>
 
             {/* Airbnb Highlights List */}
-            <div className="space-y-4 border-b border-slate-800 pb-6">
-              <div className="flex items-start gap-4">
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-emerald-400 shrink-0">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">High Foot-Traffic Aisle</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Positioned directly in high dwell-time aisle near the cashier & main entrance, generating 1,200+ daily customer impressions.
-                  </p>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-b border-slate-800 pb-6">
+              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                <span className="text-[10px] uppercase font-semibold text-slate-400 block">Placement</span>
+                <span className="text-sm font-bold text-white">{formatShelfType(shelf.shelfType)}</span>
+                <span className="text-xs text-slate-400 block mt-1">{shelf.locationInsideShop}</span>
               </div>
-
-              <div className="flex items-start gap-4">
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-emerald-400 shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Shelfy Escrow Protection</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Your rental payment is held safely in escrow and disbursed to the host only after Field Agent physical stock verification.
-                  </p>
-                </div>
+              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                <span className="text-[10px] uppercase font-semibold text-slate-400 block">Size</span>
+                <span className="text-sm font-mono font-bold text-white">{shelf.widthCm} × {shelf.heightCm} × {shelf.depthCm} cm</span>
+                <span className="text-xs text-slate-400 block mt-1">{shelfVolumeLitres(shelf)} of display volume</span>
               </div>
-
-              <div className="flex items-start gap-4">
-                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 shrink-0">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Instant PesaPal Activation</h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Book instantly with Tanzanian mobile money (M-Pesa, Tigo, Airtel) or Visa/Mastercard without host pre-approval delays.
-                  </p>
-                </div>
+              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                <span className="text-[10px] uppercase font-semibold text-slate-400 block">Booking</span>
+                <span className="text-sm font-bold text-emerald-400">{availabilityLabel(shelf.availabilityStatus)}</span>
+                <span className="text-xs text-slate-400 block mt-1">TZS {shelf.monthlyPriceTzs.toLocaleString()} / month</span>
               </div>
             </div>
 
@@ -302,7 +297,7 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
                 </div>
                 <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800">
                   <span className="text-[10px] uppercase font-semibold text-slate-400 block">Shelf Tier</span>
-                  <span className="text-sm font-bold text-emerald-400">{shelf.shelfType?.replace('_', ' ')}</span>
+                  <span className="text-sm font-bold text-emerald-400">{formatShelfType(shelf.shelfType)}</span>
                 </div>
                 <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800">
                   <span className="text-[10px] uppercase font-semibold text-slate-400 block">Internal Location</span>
@@ -331,8 +326,7 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
             <div className="border-b border-slate-800 pb-6 space-y-2">
               <h3 className="text-base font-bold text-white">About this Retail Space</h3>
               <p className="text-sm text-slate-300 leading-relaxed">
-                {shelf.description ||
-                  'This shelf listing offers unmatched visibility in one of the most frequented supermarkets in Tanzania. Complete with clean lighting, eye-level placement, and verified foot-traffic counts tracked by Shelfy field agents.'}
+                {shelf.description || 'The host has not added a description for this shelf yet.'}
               </p>
             </div>
 
@@ -363,67 +357,28 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
             </div>
 
             {/* 5. Verified Vendor Reviews & Rating Breakdown */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 text-2xl font-black text-white">
-                  <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
-                  <span>{shelf.avgRating ? shelf.avgRating.toFixed(2) : '4.95'}</span>
-                </div>
-                <span className="text-lg font-bold text-slate-300">
-                  • {shelf.reviewCount || 24} Verified Vendor Reviews
-                </span>
-              </div>
-
-              {/* Sub-ratings grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900 p-4 rounded-2xl border border-slate-800 text-xs">
-                <div>
-                  <span className="text-slate-400 block">Foot Traffic</span>
-                  <span className="font-bold text-white text-sm">4.9 / 5.0</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Host Communication</span>
-                  <span className="font-bold text-white text-sm">5.0 / 5.0</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Shelf Cleanliness</span>
-                  <span className="font-bold text-white text-sm">4.9 / 5.0</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block">Value for Money</span>
-                  <span className="font-bold text-white text-sm">4.8 / 5.0</span>
-                </div>
-              </div>
-
-              {/* Individual Reviews */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  {
-                    author: 'Amina S. (Kilimanjaro Organics)',
-                    date: '2 weeks ago',
-                    rating: 5,
-                    comment: 'Our juice sales tripled in the first 30 days! Outstanding shelf placement right next to cold drinks.',
-                  },
-                  {
-                    author: 'Neema J. (Serengeti Teas)',
-                    date: '1 month ago',
-                    rating: 5,
-                    comment: 'Host is very cooperative during weekly restocks. The field agent audit gave us total peace of mind.',
-                  },
-                ].map((rev, idx) => (
-                  <div key={idx} className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-white">{rev.author}</span>
-                      <span className="text-[11px] text-slate-500">{rev.date}</span>
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-white">Vendor reviews</h3>
+              {reviews.length === 0 ? (
+                <p className="text-sm text-slate-400">No reviews have been left for this shelf yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-xs text-white">{review.reviewerName}</span>
+                        <span className="text-[11px] text-slate-500">{new Date(review.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: review.rating }).map((_, i) => (
+                          <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        ))}
+                      </div>
+                      <p className="text-xs text-slate-300 leading-normal">{review.comment}</p>
                     </div>
-                    <div className="flex items-center gap-0.5">
-                      {[...Array(rev.rating)].map((_, i) => (
-                        <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
-                    <p className="text-xs text-slate-300 leading-normal">{rev.comment}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
@@ -442,9 +397,15 @@ export const AirbnbShelfDetail: React.FC<AirbnbShelfDetailProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1 text-xs font-bold text-white">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span>{shelf.avgRating ? shelf.avgRating.toFixed(2) : '4.95'}</span>
-                  <span className="text-slate-400">({shelf.reviewCount || 24})</span>
+                  {shelf.avgRating ? (
+                    <>
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      <span>{shelf.avgRating.toFixed(2)}</span>
+                      <span className="text-slate-400">({shelf.reviewCount || reviews.length})</span>
+                    </>
+                  ) : (
+                    <span className="text-slate-400 font-medium">{availabilityLabel(shelf.availabilityStatus)}</span>
+                  )}
                 </div>
               </div>
 
