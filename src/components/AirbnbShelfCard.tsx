@@ -20,10 +20,10 @@ export const AirbnbShelfCard: React.FC<AirbnbShelfCardProps> = ({ shelf, onSelec
       <div className="aspect-[4/3] w-full overflow-hidden bg-slate-950">
         <img src={photo} alt={shelf.name} loading="lazy" className="w-full h-full object-cover" />
       </div>
-      <div className="p-2.5 sm:p-3 space-y-0.5">
+      <div className="px-1.5 sm:px-3 py-2 space-y-0.5">
         <h3 className="font-bold text-white text-xs sm:text-sm leading-snug line-clamp-2">{shelf.name}</h3>
         <p className="text-[11px] text-slate-400 line-clamp-1">{shelf.shopCity}</p>
-        <p className="whitespace-nowrap text-[11px] sm:text-sm font-black text-white font-mono pt-1">
+        <p className="whitespace-nowrap tracking-tight text-[10px] sm:text-sm sm:tracking-normal font-black text-white font-mono pt-1">
           TZS {shelf.monthlyPriceTzs.toLocaleString()}/month
         </p>
       </div>
