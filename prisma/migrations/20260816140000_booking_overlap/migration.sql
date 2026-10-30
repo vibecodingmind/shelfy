@@ -3,7 +3,7 @@
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-CREATE OR REPLACE FUNCTION shelfy_booking_daterange(start_ts timestamptz, end_ts timestamptz)
+CREATE OR REPLACE FUNCTION shelfy_booking_daterange(start_ts text, end_ts text)
 RETURNS daterange
 LANGUAGE sql
 IMMUTABLE
