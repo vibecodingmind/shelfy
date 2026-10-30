@@ -1,0 +1,12 @@
+# Append as a new site block in your Caddy config (e.g. /etc/caddy/Caddyfile).
+# Christian Radios keeps its existing blocks unchanged.
+# Shelfy Node listens on 127.0.0.1:3002 only.
+
+shelfy.co.tz, www.shelfy.co.tz {
+	encode gzip zstd
+	reverse_proxy 127.0.0.1:3002
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}

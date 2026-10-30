@@ -1,0 +1,16 @@
+[Unit]
+Description=Shelfy marketplace (shelfy.co.tz)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/shelfy
+EnvironmentFile=/var/www/shelfy/.env
+ExecStart=/usr/bin/node dist/server.cjs
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

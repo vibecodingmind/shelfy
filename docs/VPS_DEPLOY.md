@@ -64,9 +64,11 @@ sudo systemctl enable --now shelfy
 curl -s http://127.0.0.1:3002/api/health | jq .
 ```
 
-## Nginx
+## Reverse proxy (Caddy or Nginx)
 
-Separate `server_name shelfy.co.tz www.shelfy.co.tz` block proxying to `http://127.0.0.1:3002`. TLS via Certbot. Do not reuse another site’s `root` or upstream.
+Christian Radios on the shared VPS uses **Caddy** (`via: Caddy` on HTTPS responses). Add a **new** site block for `shelfy.co.tz` → `127.0.0.1:3002` only — see [`scripts/vps/Caddyfile.shelfy.snippet`](../scripts/vps/Caddyfile.shelfy.snippet). If you use Nginx instead, equivalent `server_name` + `proxy_pass` is fine. Do not reuse another site’s `root` or upstream.
+
+Automated first install (on the server): `bash scripts/vps/install-shelfy.sh` after clone.
 
 ## Updates
 
