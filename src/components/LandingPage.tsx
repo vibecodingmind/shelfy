@@ -4,7 +4,7 @@
  * Features:
  * - Signature Airbnb-style floating Search Bar
  * - Category navigation bar: 7 visible categories at a time, swipeable for remaining, hidden scrollbars
- * - View mode switcher: Grid (7 cards in a row on wide displays), List, Map
+ * - View mode switcher: Grid (7 cards in a row on wide displays), List
  * - 30 verified shelf listings across Tanzania with up to 8 photos each
  * - Filter drawer with price range slider, category & placement filters
  * - Clean role-based navigation (AI Match & List Shelf moved to authenticated Host/Vendor dashboards)
@@ -13,29 +13,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
-  Filter,
-  MapPin,
   Store,
   CheckCircle2,
   SlidersHorizontal,
-  X,
   RotateCcw,
-  ShoppingBag,
   Grid,
   List as ListIcon,
-  Map as MapIcon,
   ChevronRight,
   ChevronLeft,
-  Star,
-  Eye,
-  TrendingUp,
 } from 'lucide-react';
 import { Shelf, Shop, User } from '../types/index.js';
-import { InteractiveMap } from './InteractiveMap.js';
 import { AirbnbShelfCard } from './AirbnbShelfCard.js';
 import { AirbnbShelfListCard } from './AirbnbShelfListCard.js';
 import { AirbnbShelfDetail } from './AirbnbShelfDetail.js';
-import { AirbnbMapSplitView } from './AirbnbMapSplitView.js';
 
 interface LandingPageProps {
   shelves: Shelf[];
@@ -53,7 +43,6 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   shelves,
-  shops,
   user,
   searchQuery: externalSearchQuery,
   onSearchChange,
@@ -76,7 +65,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [selectedType, setSelectedType] = useState('');
   const [maxPrice, setMaxPrice] = useState<number>(200000);
   const [minPrice, setMinPrice] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<'GRID' | 'LIST' | 'MAP'>('GRID');
+  const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
 
   // Active shelf for full Airbnb Detail View
@@ -276,17 +265,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               >
                 <ListIcon className="w-3.5 h-3.5" />
               </button>
-
-              <button
-                type="button"
-                onClick={() => setViewMode('MAP')}
-                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                  viewMode === 'MAP' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-                title="Map View"
-              >
-                <MapIcon className="w-3.5 h-3.5" />
-              </button>
             </div>
 
             <button
@@ -406,22 +384,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </section>
       )}
 
-      {/* 3. Main Marketplace Content (7-in-a-Row Airbnb Cards Grid, List, or Interactive Map) */}
+      {/* 3. Main Marketplace Content (7-in-a-Row Airbnb Cards Grid or List) */}
       <main className="w-full max-w-[2400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-6 flex-1">
         
         {/* Results count & active filter banner */}
-        {viewMode !== 'MAP' && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400 pb-3">
-            <div>
-              Showing <span className="font-bold text-white font-mono">{filteredShelves.length}</span> verified shelf spaces in Tanzania
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                <CheckCircle2 className="w-3 h-3" /> 100% Agent Verified
-              </span>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-400 pb-3">
+          <div>
+            Showing <span className="font-bold text-white font-mono">{filteredShelves.length}</span> verified shelf spaces in Tanzania
           </div>
-        )}
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+              <CheckCircle2 className="w-3 h-3" /> 100% Agent Verified
+            </span>
+          </div>
+        </div>
 
         {/* Zero Results State */}
         {filteredShelves.length === 0 ? (
@@ -441,16 +417,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         ) : (
           <>
-            {/* VIEW MODE: MAP (AIRBNB SPLIT VIEW: LIST AT LEFT, STICKY MAP AT RIGHT) */}
-            {viewMode === 'MAP' && (
-              <AirbnbMapSplitView
-                shelves={filteredShelves}
-                shops={shops}
-                onSelectShelf={openShelf}
-                onBookShelf={(shelf) => onBookShelf(shelf)}
-              />
-            )}
-
             {/* VIEW MODE: LIST */}
             {viewMode === 'LIST' && (
               <div className="space-y-3">
@@ -483,31 +449,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       </main>
 
-      {/* 4. Floating Bottom "Show Map" / "Show List" Pill Button (Airbnb Signature) */}
-      <div className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-30 shadow-2xl safe-bottom">
-        <button
-          type="button"
-          onClick={() => {
-            if (viewMode === 'MAP') setViewMode('GRID');
-            else setViewMode('MAP');
-          }}
-          className="px-5 py-3 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-2 border border-slate-700 shadow-2xl hover:scale-105 transition-all cursor-pointer"
-        >
-          {viewMode === 'MAP' ? (
-            <>
-              <span>Show grid</span>
-              <Grid className="w-3.5 h-3.5 text-emerald-400" />
-            </>
-          ) : (
-            <>
-              <span>Show map</span>
-              <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* 5. Footer */}
+      {/* 4. Footer */}
       <footer className="bg-slate-950 border-t border-slate-800/80 py-8 px-4 text-xs text-slate-400 mt-12">
         <div className="w-full max-w-[2400px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 font-bold text-white">

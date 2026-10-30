@@ -3,8 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Store, Search, Bell, LogOut, SlidersHorizontal, ChevronDown } from 'lucide-react';
-import { LanguageSwitcher } from './LanguageSwitcher.js';
+import { Search, Bell, LogOut, SlidersHorizontal, ChevronDown, UserRound } from 'lucide-react';
 import { User, UserRole } from '../types/index.js';
 
 interface HeaderProps {
@@ -134,31 +133,41 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          <LanguageSwitcher compact />
           {!user ? (
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
-                onClick={() => onLoginClick('REGISTER', 'HOST')}
-                className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 hover:border-slate-500 transition-all touch-target"
+                aria-expanded={showUserDropdown}
+                aria-label="Account"
               >
-                <Store className="w-4 h-4 text-blue-400" />
-                <span>Shelfy your store</span>
+                <UserRound className="w-5 h-5 text-slate-200" />
               </button>
-              <button
-                type="button"
-                onClick={() => onLoginClick('LOGIN')}
-                className="px-3 sm:px-4 py-2 text-xs font-bold text-slate-200 hover:text-white rounded-full hover:bg-slate-800 border border-slate-700/80 transition-colors touch-target"
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => onLoginClick('REGISTER', 'VENDOR')}
-                className="px-3 sm:px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 rounded-full transition-all shadow-md shadow-emerald-500/20 touch-target"
-              >
-                Sign Up
-              </button>
+              {showUserDropdown && (
+                <div className="absolute right-0 mt-2 w-44 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      onLoginClick('LOGIN');
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-xs text-slate-200 hover:text-white hover:bg-slate-800 rounded-xl transition-colors font-semibold touch-target"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      onLoginClick('REGISTER', 'VENDOR');
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-xs text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors font-semibold touch-target"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-1.5 sm:gap-3">
