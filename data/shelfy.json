@@ -27,7 +27,7 @@
       "createdAt": "2026-08-16T05:54:14.571Z",
       "updatedAt": "2026-08-16T05:54:14.571Z",
       "failedLoginCount": 0,
-      "lastLoginAt": "2026-10-30T15:06:18.427Z"
+      "lastLoginAt": "2026-10-30T15:45:51.736Z"
     },
     {
       "id": "usr_host_1",
@@ -535,7 +535,7 @@
       "shelfType": "EYE_LEVEL",
       "locationInsideShop": "Aisle 1 - Main Entrance Section",
       "monthlyPriceTzs": 75000,
-      "availabilityStatus": "BOOKED",
+      "availabilityStatus": "AVAILABLE",
       "allowedCategories": [
         "Food & Beverages",
         "Health & Beauty",
@@ -920,7 +920,7 @@
       "shelfType": "TOP_SHELF",
       "locationInsideShop": "Artisan Food Corner",
       "monthlyPriceTzs": 135000,
-      "availabilityStatus": "AVAILABLE",
+      "availabilityStatus": "BOOKED",
       "allowedCategories": [
         "Spices",
         "Organic Goods",
@@ -2316,7 +2316,7 @@
   "settings": {
     "commissionPercentage": 5,
     "autoApproveBookings": false,
-    "pesapalEnvironment": "sandbox",
+    "azamPayEnvironment": "sandbox",
     "currency": "TZS",
     "maintenanceMode": false,
     "shelfCategories": [
@@ -2385,8 +2385,33 @@
         "name": "Street Window Showcase",
         "description": "Exterior street-facing glass showcase attracting passersby.",
         "icon": "🪟"
+      },
+      {
+        "id": "FRONT_SHELF",
+        "name": "Front shelf",
+        "description": "The first bay facing shoppers as they enter the aisle.",
+        "icon": "🚪"
+      },
+      {
+        "id": "BACK_SHELF",
+        "name": "Back shelves",
+        "description": "Rear-wall and back-of-aisle racks for larger packs.",
+        "icon": "📚"
+      },
+      {
+        "id": "WALL_SHELF",
+        "name": "Wall shelf",
+        "description": "Side-wall run along the shop perimeter.",
+        "icon": "🧱"
+      },
+      {
+        "id": "ISLAND_DISPLAY",
+        "name": "Island shelf",
+        "description": "Freestanding mid-floor unit shoppers walk around.",
+        "icon": "🏝️"
       }
-    ]
+    ],
+    "pesapalEnvironment": "sandbox"
   },
   "bookingStatusHistory": [
     {
@@ -2483,6 +2508,15 @@
       "expiresAt": "2026-11-06T15:33:23.424Z",
       "createdAt": "2026-10-30T15:33:23.424Z",
       "usedAt": "2026-10-30T15:35:02.510Z"
+    },
+    {
+      "id": "tok_mvv59f94_bbbb723e",
+      "userId": "usr_vendor_1",
+      "type": "REFRESH",
+      "tokenHash": "3e160d45cc75d875cac745c50027e51ed289ac72b4dafe9e8ab12faad0d2a82b",
+      "expiresAt": "2026-11-06T15:45:51.736Z",
+      "createdAt": "2026-10-30T15:45:51.736Z",
+      "usedAt": "2026-10-30T15:46:23.923Z"
     }
   ],
   "ledgerAccounts": [
