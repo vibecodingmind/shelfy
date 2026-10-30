@@ -2,7 +2,23 @@
 
 **VPS IP:** `74.208.197.99`
 
-Add these at whichever DNS panel your nameservers use (Route Africa, Cloudflare, etc.). **Do not change christianradios.online** unless that domain uses the same panel—edit only the **shelfy.co.tz** zone.
+**Registrar:** `shelfy.co.tz` is registered with **Route Africa** (`REG-ROUTEAFRICA`). Nameservers and DNS records must match: records go in the panel that **hosts the zone** for the nameservers you set at Route Africa.
+
+### Common mistake (broken DNS)
+
+If nameservers are `dns1.registrar-servers.com` / `dns2.registrar-servers.com` (Namecheap-style DNS) but **shelfy.co.tz is not added in that provider’s DNS hosting**, the world sees **REFUSED** / **SERVFAIL** and no A record — even if you added records somewhere else (e.g. Route Africa).
+
+**Fix (recommended for Route Africa domains):**
+
+1. At **Route Africa** → **shelfy.co.tz** → set nameservers to Route Africa DNS (e.g. `ns1.radns.net`, `ns2.radns.net` — use exactly what your Route Africa panel shows).
+2. In the **same Route Africa DNS / zone editor** for **shelfy.co.tz**, add the records in the table below.
+3. Wait 5–60 minutes, then run `dig +short shelfy.co.tz A` — it must print `74.208.197.99`.
+
+**Alternative:** Use **Cloudflare** (free): create a zone for `shelfy.co.tz`, add the records below, then set Cloudflare’s two nameservers at Route Africa.
+
+Do **not** point **shelfy.co.tz** at Namecheap DNS unless the domain is actually hosted there with a live zone. **christianradios.online** may use Namecheap DNS; **shelfy.co.tz** is a separate zone.
+
+Add these at whichever DNS panel your **current** nameservers use. **Do not change christianradios.online** unless that domain uses the same panel—edit only the **shelfy.co.tz** zone.
 
 | Type | Name / Host | Value | Notes |
 | --- | --- | --- | --- |
