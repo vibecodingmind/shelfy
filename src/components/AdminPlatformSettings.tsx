@@ -8,11 +8,13 @@ import {
   XCircle,
   Loader2,
   RefreshCw,
+  Settings2,
 } from 'lucide-react';
+import { AdminPlatformConfigPanel } from './admin/AdminPlatformConfigPanel.js';
 import { PlatformSettings } from '../types/index.js';
 import { api } from '../lib/api.js';
 
-type SettingsSection = 'business' | 'integrations' | 'payments' | 'team';
+type SettingsSection = 'platform' | 'business' | 'integrations' | 'payments' | 'team';
 
 interface AdminPlatformSettingsProps {
   settings: PlatformSettings;
@@ -25,7 +27,7 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
   onUpdateSettings,
   onSaved,
 }) => {
-  const [section, setSection] = useState<SettingsSection>('business');
+  const [section, setSection] = useState<SettingsSection>('platform');
   const [commissionInput, setCommissionInput] = useState(settings.commissionPercentage);
   const [autoApprove, setAutoApprove] = useState(settings.autoApproveBookings);
   const [maintenanceMode, setMaintenanceMode] = useState(settings.maintenanceMode ?? false);
@@ -89,8 +91,9 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
   );
 
   const tabs: { id: SettingsSection; label: string; icon: React.ElementType }[] = [
+    { id: 'platform', label: 'Platform config', icon: Settings2 },
     { id: 'business', label: 'Business rules', icon: Sliders },
-    { id: 'integrations', label: 'Integrations', icon: Plug },
+    { id: 'integrations', label: 'Status', icon: Plug },
     { id: 'payments', label: 'Payments ops', icon: CreditCard },
     { id: 'team', label: 'Invite agent', icon: UserPlus },
   ];
@@ -117,6 +120,8 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
           );
         })}
       </div>
+
+      {section === 'platform' && <AdminPlatformConfigPanel onSaved={onSaved} />}
 
       {section === 'business' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl space-y-5">

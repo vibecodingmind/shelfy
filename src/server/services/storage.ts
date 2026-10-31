@@ -6,6 +6,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { runtimeEnv } from './platformConfig.js';
 
 export type StorageDriver = 'local' | 's3';
 
@@ -165,7 +166,7 @@ export async function putUpload(input: {
   contentType: string;
   env?: NodeJS.ProcessEnv;
 }): Promise<StoredObject> {
-  const env = input.env || process.env;
+  const env = input.env || runtimeEnv();
   const filename = safeUploadFilename(input.filename);
   const objectKey = `uploads/${filename}`;
   if (s3Ready(env)) {

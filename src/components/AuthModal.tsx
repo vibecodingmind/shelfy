@@ -11,6 +11,7 @@ interface AuthModalProps {
   isOpen: boolean;
   initialMode?: 'LOGIN' | 'REGISTER';
   initialRole?: UserRole;
+  googleLoginEnabled?: boolean;
   onClose: () => void;
   onSuccess: (data: { user: any; token: string; refreshToken?: string; vendorProfile?: any; hostProfile?: any }) => void;
 }
@@ -21,6 +22,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialRole = 'VENDOR',
   onClose,
   onSuccess,
+  googleLoginEnabled = false,
 }) => {
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER'>(initialMode);
   
@@ -174,6 +176,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             >
               {loading ? 'Authenticating...' : 'Sign In'}
             </button>
+            {googleLoginEnabled && (
+              <>
+                <div className="flex items-center gap-3 py-2">
+                  <div className="h-px flex-1 bg-slate-800" />
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wide">or</span>
+                  <div className="h-px flex-1 bg-slate-800" />
+                </div>
+                <a
+                  href="/api/auth/google"
+                  className="w-full py-3 flex items-center justify-center gap-2 bg-white text-slate-900 font-bold text-xs rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  Continue with Google
+                </a>
+              </>
+            )}
           </form>
         ) : (
           /* REGISTER FORM */

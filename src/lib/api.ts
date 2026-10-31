@@ -257,6 +257,12 @@ export const api = {
     apiFetch<any>(`/api/admin/gateways/${provider}`, { method: 'PUT', body: JSON.stringify(body) }),
   testAdminGateway: (provider: string) => apiFetch<any>(`/api/admin/gateways/${provider}/test`, { method: 'POST', body: '{}' }),
   getAdminIntegrationsConfig: () => apiFetch<any>('/api/admin/integrations/config'),
+  getAdminPlatformConfig: () => apiFetch<any>('/api/admin/platform-config'),
+  updateAdminPlatformConfig: (body: Record<string, unknown>) =>
+    apiFetch<any>('/api/admin/platform-config', { method: 'PUT', body: JSON.stringify(body) }),
+  testAdminPlatformEmail: (to?: string) =>
+    apiFetch<any>('/api/admin/platform-config/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
+  getPublicIntegrations: () => apiFetch<any>('/api/settings/public-integrations'),
   getAdminIntegrationLogs: () => apiFetch<any>('/api/admin/integrations/logs'),
   getCommissionRules: () => apiFetch<any>('/api/admin/commission-rules'),
   createCommissionRule: (body: Record<string, unknown>) =>

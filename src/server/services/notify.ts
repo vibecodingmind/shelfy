@@ -14,6 +14,7 @@ import {
 } from '../domain/notifications.js';
 import { renderEmailHtml } from './emailTemplates.js';
 import { defaultEmailFrom, defaultReplyTo, sendViaSmtp } from './smtp.js';
+import { runtimeEnv } from './platformConfig.js';
 
 export type { DeliveryStep, NotifyChannel, NotifyType } from '../domain/notifications.js';
 export { deliveryPlan, notificationProviders } from '../domain/notifications.js';
@@ -103,7 +104,7 @@ export async function dispatchExternalChannels(input: {
   channels?: NotifyChannel[];
   html?: string;
 }): Promise<DeliveryStep[]> {
-  const env = input.env || process.env;
+  const env = input.env || runtimeEnv();
   const prefs = input.userId ? userPrefs(input.userId) : undefined;
   const allowed = input.channels ? new Set(input.channels) : null;
   const plan = deliveryPlan(env).filter((step) => !allowed || allowed.has(step.channel));

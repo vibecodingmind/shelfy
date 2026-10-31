@@ -21,9 +21,11 @@ import {
 import { adminIntegrationsPayload, opsHealthSnapshot } from './domain/opsHealth.js';
 import { requestAzamPayToken, azamPayConfigured } from './payments/azampay.js';
 import { createAuthToken } from './services/tokens.js';
-import { notify } from './services/notify.js';
+import { notify, dispatchExternalChannels } from './services/notify.js';
 // reset token stored via createAuthToken; email flow uses existing password reset endpoint
 import { maskSecret, integrationEncryptionConfigured } from './admin/encryption.js';
+import { applyAdminPlatformConfigUpdate, buildAdminPlatformConfigResponse } from './admin/platformConfigAdmin.js';
+import { runtimeEnv } from './services/platformConfig.js';
 import {
   AdminPermission,
   PaymentGatewayConfig,
@@ -401,24 +403,65 @@ export function registerAdminRoutes(app: Express) {
     res.json({ success: true, data: logs });
   });
 
+  // ——— Platform config (admin-managed, DB + encrypted secrets) ———
+  app.get('/api/admin/platform-config', requireAuth, requireAdminPermission('MANAGE_SETTINGS'), (_req, res) => {
+    res.json({ success: true, data: buildAdminPlatformConfigResponse() });
+  });
+
+  app.put('/api/admin/platform-config', requireAuth, requireAdminPermission('MANAGE_SETTINGS'), (req: AuthenticatedRequest, res: Response) => {
+    const { settings, integrations, secrets } = req.body || {};
+    try {
+      const updated = applyAdminPlatformConfigUpdate({
+        settings,
+        integrations,
+        secrets,
+        updatedBy: req.user!.id,
+      });
+      logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'PLATFORM_CONFIG_UPDATED', 'PlatformSettings', 'global');
+      res.json({ success: true, data: { settings: updated, config: buildAdminPlatformConfigResponse() } });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: { message: err.message || 'Could not save platform config.' } });
+    }
+  });
+
+  app.post('/api/admin/platform-config/test-email', requireAuth, requireAdminPermission('MANAGE_INTEGRATIONS'), async (req: AuthenticatedRequest, res: Response) => {
+    const to = String(req.body?.to || req.user!.email || '').trim();
+    if (!to) return res.status(400).json({ success: false, error: { message: 'Recipient email required.' } });
+    const env = runtimeEnv();
+    const plan = await dispatchExternalChannels({
+      email: to,
+      title: 'Shelfy platform email test',
+      message: 'If you received this message, email delivery from Admin Settings is working.',
+      env,
+      channels: ['EMAIL'],
+    });
+    const emailStep = plan.find((s) => s.channel === 'EMAIL');
+    if (emailStep?.action === 'SKIP') {
+      return res.status(400).json({ success: false, error: { message: emailStep.reason || 'Email not configured.' } });
+    }
+    res.json({ success: true, data: { sent: true, to } });
+  });
+
   // ——— Integrations config ———
   app.get('/api/admin/integrations/config', requireAuth, requireAdminPermission('MANAGE_INTEGRATIONS'), (_req, res) => {
+    const env = runtimeEnv();
+    const int = dbEngine.db.settings.integrations?.smtp;
     res.json({
       success: true,
       data: {
-        status: adminIntegrationsPayload(),
+        status: adminIntegrationsPayload(env),
         encryptionConfigured: integrationEncryptionConfigured(),
         azamPay: {
           sandbox: listIntegrationSecretsMeta('AZAMPAY', 'sandbox'),
           live: listIntegrationSecretsMeta('AZAMPAY', 'live'),
         },
         smtp: {
-          host: process.env.SMTP_HOST || '',
-          port: process.env.SMTP_PORT || '',
-          user: process.env.SMTP_USER ? maskSecret(process.env.SMTP_USER) : '',
-          passConfigured: Boolean(process.env.SMTP_PASS || getIntegrationSecret('SMTP', 'live', 'SMTP_PASS')),
+          host: int?.host || env.SMTP_HOST || '',
+          port: int?.port || env.SMTP_PORT || '',
+          user: (int?.user || env.SMTP_USER) ? maskSecret(int?.user || env.SMTP_USER || '') : '',
+          passConfigured: Boolean(env.SMTP_PASS || getIntegrationSecret('SMTP', 'live', 'SMTP_PASS')),
         },
-        gemini: { configured: Boolean(process.env.GEMINI_API_KEY || getIntegrationSecret('GEMINI', 'live', 'GEMINI_API_KEY')) },
+        gemini: { configured: Boolean(env.GEMINI_API_KEY || getIntegrationSecret('GEMINI', 'live', 'GEMINI_API_KEY')) },
       },
     });
   });

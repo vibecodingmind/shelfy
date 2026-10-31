@@ -55,6 +55,8 @@ import { publicPlatformSettings } from './src/server/domain/publicSettings.js';
 import { uploadsDir } from './src/server/services/storage.js';
 import { adminIntegrationsPayload, opsHealthSnapshot } from './src/server/domain/opsHealth.js';
 import { ensureJwtSecret, resolvedAppUrl } from './src/server/services/jwtSecret.js';
+import { runtimeEnv, publicIntegrationHints } from './src/server/services/platformConfig.js';
+import { registerGoogleOAuthRoutes } from './src/server/auth/googleOAuth.js';
 import { requestLogMiddleware } from './src/server/middleware/requestLog.js';
 import { corsOrigin, securityHeadersMiddleware } from './src/server/middleware/securityHeaders.js';
 import {
@@ -121,8 +123,10 @@ function issueSession(user: User) {
 }
 
 function appUrl(): string {
-  return resolvedAppUrl(process.env, PORT);
+  return resolvedAppUrl(runtimeEnv(), PORT);
 }
+
+registerGoogleOAuthRoutes(app, PORT);
 
 // Health Check
 app.get('/api/health', (req: Request, res: Response) => {
@@ -183,7 +187,7 @@ app.post('/api/auth/register', authLimiter, (req: Request, res: Response) => {
       updatedAt: now,
     };
 
-    const emailProviderConfigured = Boolean(notificationProviders().email);
+    const emailProviderConfigured = Boolean(notificationProviders(runtimeEnv()).email);
     if (!emailProviderConfigured) {
       newUser.status = 'ACTIVE';
       newUser.emailVerifiedAt = now;
@@ -1870,9 +1874,13 @@ app.get('/api/settings', (req: Request, res: Response) => {
   res.json({ success: true, data: publicPlatformSettings(dbEngine.db.settings) });
 });
 
+app.get('/api/settings/public-integrations', (_req: Request, res: Response) => {
+  res.json({ success: true, data: publicIntegrationHints() });
+});
+
 // GET /api/admin/integrations — status only, no secrets
 app.get('/api/admin/integrations', requireAuth, requireAdminPermission('MANAGE_INTEGRATIONS'), (_req: AuthenticatedRequest, res: Response) => {
-  res.json({ success: true, data: adminIntegrationsPayload() });
+  res.json({ success: true, data: adminIntegrationsPayload(runtimeEnv()) });
 });
 
 app.get('/api/admin/payments/overview', requireAuth, requireAdminPermission('MANAGE_PAYMENTS'), (_req: AuthenticatedRequest, res: Response) => {
@@ -1896,8 +1904,22 @@ app.put('/api/admin/settings', requireAuth, requireAdminPermission('MANAGE_SETTI
     cancellationFeePercent,
     freeCancelDays,
     currency,
+    platformName,
+    supportEmail,
+    supportPhone,
+    defaultCountry,
+    timeZone,
+    vendorRegistrationEnabled,
+    hostRegistrationEnabled,
   } = req.body;
   const s = dbEngine.db.settings;
+  if (typeof platformName === 'string') s.platformName = platformName.trim();
+  if (typeof supportEmail === 'string') s.supportEmail = supportEmail.trim();
+  if (typeof supportPhone === 'string') s.supportPhone = supportPhone.trim();
+  if (typeof defaultCountry === 'string') s.defaultCountry = defaultCountry.trim();
+  if (typeof timeZone === 'string') s.timeZone = timeZone.trim();
+  if (typeof vendorRegistrationEnabled === 'boolean') s.vendorRegistrationEnabled = vendorRegistrationEnabled;
+  if (typeof hostRegistrationEnabled === 'boolean') s.hostRegistrationEnabled = hostRegistrationEnabled;
   if (typeof commissionPercentage === 'number') s.commissionPercentage = commissionPercentage;
   if (typeof autoApproveBookings === 'boolean') s.autoApproveBookings = autoApproveBookings;
   if (typeof maintenanceMode === 'boolean') s.maintenanceMode = maintenanceMode;

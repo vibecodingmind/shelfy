@@ -3,14 +3,22 @@
  */
 
 import { GoogleGenAI, Type } from '@google/genai';
+import { platformIntegrations, runtimeEnv } from './services/platformConfig.js';
 
 let aiInstance: GoogleGenAI | null = null;
+let aiInstanceKey: string | undefined;
+
+function geminiApiKey(): string | undefined {
+  if (platformIntegrations().gemini?.enabled === false) return undefined;
+  return runtimeEnv().GEMINI_API_KEY?.trim();
+}
 
 function getAI(): GoogleGenAI {
-  if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = geminiApiKey();
+  if (!aiInstance || aiInstanceKey !== apiKey) {
+    aiInstanceKey = apiKey;
     if (!apiKey) {
-      console.warn('GEMINI_API_KEY environment variable is missing. AI fallback heuristics will be used.');
+      console.warn('Gemini API key is not configured. AI fallback heuristics will be used.');
     }
     aiInstance = new GoogleGenAI({
       apiKey: apiKey || 'dummy_key_for_fallback',
@@ -31,7 +39,7 @@ function getAI(): GoogleGenAI {
 export async function analyzeShelfPhoto(photoUrlOrBase64: string) {
   try {
     const ai = getAI();
-    if (!process.env.GEMINI_API_KEY) {
+    if (!geminiApiKey()) {
       // Fallback structured simulation if key not configured
       return {
         visibleProductsCount: 16,
@@ -110,7 +118,7 @@ export async function recommendShelves(
 ) {
   try {
     const ai = getAI();
-    if (!process.env.GEMINI_API_KEY) {
+    if (!geminiApiKey()) {
       // Return heuristic matches
       return shelves.slice(0, 3).map((shelf, idx) => ({
         shelfId: shelf.id,
@@ -201,7 +209,7 @@ export async function generateVendorInsights(vendorData: {
 }) {
   try {
     const ai = getAI();
-    if (process.env.GEMINI_API_KEY) {
+    if (geminiApiKey()) {
       const prompt = `Generate business insights for vendor "${vendorData.businessName}" in Tanzania based on:
 Products: ${JSON.stringify(vendorData.products)}
 Active Bookings: ${JSON.stringify(vendorData.bookings)}

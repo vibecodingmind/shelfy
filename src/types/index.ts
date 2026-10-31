@@ -21,6 +21,9 @@ export type IntegrationProvider =
   | 'GEMINI'
   | 'S3'
   | 'SMS'
+  | 'MAPS'
+  | 'OAUTH'
+  | 'RESEND'
   | 'PESAPAL'
   | 'STRIPE'
   | 'FLUTTERWAVE';
@@ -526,6 +529,57 @@ export interface ShelfTypeOption {
   icon?: string;
 }
 
+export interface PlatformIntegrationSettings {
+  appUrl?: string;
+  emailFrom?: string;
+  emailReplyTo?: string;
+  smtp?: {
+    url?: string;
+    host?: string;
+    port?: number;
+    user?: string;
+    secure?: boolean;
+    tlsInsecure?: boolean;
+  };
+  resendEnabled?: boolean;
+  gemini?: { enabled?: boolean; model?: string };
+  maps?: {
+    provider?: 'google' | 'mapbox' | 'osm';
+    defaultCenterLat?: number;
+    defaultCenterLng?: number;
+    defaultZoom?: number;
+    /** Browser/embed key (restrict by HTTP referrer in Google Cloud). */
+    publicBrowserKey?: string;
+  };
+  oauth?: {
+    google?: { enabled?: boolean; clientId?: string };
+    facebook?: { enabled?: boolean; appId?: string };
+  };
+  storage?: {
+    driver?: 'local' | 's3';
+    bucket?: string;
+    region?: string;
+    endpoint?: string;
+    publicBaseUrl?: string;
+  };
+  sms?: {
+    provider?: 'none' | 'africas_talking' | 'twilio';
+    username?: string;
+    from?: string;
+  };
+  social?: {
+    facebookUrl?: string;
+    instagramUrl?: string;
+    twitterUrl?: string;
+    linkedInUrl?: string;
+  };
+  branding?: {
+    logoUrl?: string;
+    faviconUrl?: string;
+    maintenanceMessage?: string;
+  };
+}
+
 export interface PlatformSettings {
   commissionPercentage: number; // e.g., 10 for 10%
   platformName?: string;
@@ -548,6 +602,8 @@ export interface PlatformSettings {
   cancellationFeePercent?: number;
   freeCancelDays?: number;
   policies?: Record<string, string>;
+  /** Admin-managed integrations (secrets stored encrypted separately). */
+  integrations?: PlatformIntegrationSettings;
 }
 
 export interface BookingStatusHistory {

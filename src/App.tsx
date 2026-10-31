@@ -59,6 +59,8 @@ export function App() {
   const [adminUsers, setAdminUsers] = useState<User[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [googleLoginEnabled, setGoogleLoginEnabled] = useState(false);
+
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
     commissionPercentage: 10,
     autoApproveBookings: false,
@@ -96,7 +98,13 @@ export function App() {
     if (shelvesRes.success && shelvesRes.data) setShelves(shelvesRes.data);
 
     const settingsRes = await api.getSettings();
-    if (settingsRes.success && settingsRes.data) setPlatformSettings(settingsRes.data);
+    if (settingsRes.success && settingsRes.data) {
+      setPlatformSettings(settingsRes.data);
+      const pub = (settingsRes.data as any).publicIntegrations;
+      if (pub?.oauth?.googleEnabled) setGoogleLoginEnabled(true);
+    }
+    const intRes = await api.getPublicIntegrations();
+    if (intRes.success && intRes.data?.oauth?.googleEnabled) setGoogleLoginEnabled(true);
   };
 
   // Load User Specific Data
@@ -159,6 +167,24 @@ export function App() {
     if (token) {
       loadUserData();
     }
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('oauth') !== '1') return;
+    const token = params.get('token');
+    const refresh = params.get('refresh');
+    const err = params.get('oauth_error');
+    window.history.replaceState({}, '', window.location.pathname);
+    if (err) {
+      console.warn('Google sign-in failed:', err);
+      return;
+    }
+    if (!token) return;
+    setStoredToken(token, refresh || undefined);
+    void loadUserData().then(() => {
+      setShowAuthModal(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -515,6 +541,7 @@ export function App() {
           isOpen={showAuthModal}
           initialMode={authModalMode}
           initialRole={authModalRole}
+          googleLoginEnabled={googleLoginEnabled}
           onClose={() => setShowAuthModal(false)}
           onSuccess={(data) => {
             setStoredToken(data.token, data.refreshToken);

@@ -2,6 +2,7 @@ import { notificationProviders } from './notifications.js';
 import { storageStatus } from '../services/storage.js';
 import { resolvedAppUrl } from '../services/jwtSecret.js';
 import { azamPayConfigured, azamPayEnvironment } from '../payments/azampay.js';
+import { runtimeEnv } from '../services/platformConfig.js';
 
 export interface JwtRuntimeStatus {
   configured: boolean;
@@ -18,16 +19,22 @@ export function azamPayRuntimeStatus(env: NodeJS.ProcessEnv = process.env) {
 }
 
 /** Admin-only integration status (no secret values). */
-export function adminIntegrationsPayload(env: NodeJS.ProcessEnv = process.env) {
+export function adminIntegrationsPayload(env: NodeJS.ProcessEnv = runtimeEnv()) {
   const snap = opsHealthSnapshot(env);
   const appUrl = resolvedAppUrl(env);
   return {
     ...snap,
     gemini: { configured: Boolean(env.GEMINI_API_KEY?.trim()) },
+    maps: {
+      configured: Boolean(env.GOOGLE_MAPS_API_KEY?.trim() || env.MAPBOX_ACCESS_TOKEN?.trim()),
+    },
+    googleOAuth: {
+      configured: Boolean(env.GOOGLE_OAUTH_CLIENT_ID?.trim() && env.GOOGLE_OAUTH_CLIENT_SECRET?.trim()),
+    },
     azamPayCallbackUrl: appUrl ? `${appUrl.replace(/\/$/, '')}/api/payments/azampay/callback` : null,
     azamPayReturnUrl: appUrl ? `${appUrl.replace(/\/$/, '')}/api/payments/azampay/return` : null,
     configurationNote:
-      'Payment and integration secrets are set in deployment environment variables (Railway). This panel shows status only.',
+      'Manage integrations in Admin → Settings → Platform. Values saved here override deployment env fallbacks.',
   };
 }
 
