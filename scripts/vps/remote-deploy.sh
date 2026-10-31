@@ -85,6 +85,7 @@ set_env EMAIL_REPLY_TO "hello@shelfy.co.tz"
 set_env SMTP_HOST "127.0.0.1"
 set_env SMTP_PORT "25"
 set_env SMTP_SECURE "false"
+set_env SMTP_TLS_INSECURE "true"
 
 mkdir -p "$APP_DIR/uploads" "$APP_DIR/data/uploads"
 chown -R www-data:www-data "$APP_DIR" || true
@@ -118,20 +119,23 @@ if [[ -n "$COMPOSE_DIR" && -f "$SNIPPET" ]]; then
     sed 's/127.0.0.1:3002/host.docker.internal:3002/' "$SNIPPET" >> "$CADDYFILE"
     echo "Appended Shelfy block to $CADDYFILE (host.docker.internal:3002)"
   fi
-  if [[ -f "$COMPOSE_DIR/docker-compose.yml" ]] && ! grep -q 'host.docker.internal' "$COMPOSE_DIR/docker-compose.yml"; then
+  if [[ -f "$COMPOSE_DIR/docker-compose.yml" ]]; then
     python3 <<'PY'
 from pathlib import Path
 p = Path("/opt/christian-radios/docker-compose.yml")
 text = p.read_text()
-if "host.docker.internal" not in text:
-    text = text.replace(
-        "    depends_on:\n      - app\n",
-        "    extra_hosts:\n      - \"host.docker.internal:host-gateway\"\n    depends_on:\n      - app\n",
-        1,
-    )
-    p.write_text(text)
+if "  caddy:" in text:
+    block = text.split("  caddy:", 1)[1].split("\n\n", 1)[0]
+    if "extra_hosts" not in block:
+        text = text.replace(
+            "      - caddy_config:/config\n    depends_on:\n      - app\n",
+            "      - caddy_config:/config\n    extra_hosts:\n      - \"host.docker.internal:host-gateway\"\n    depends_on:\n      - app\n",
+            1,
+        )
+        p.write_text(text)
 PY
   fi
+  ufw allow from 172.16.0.0/12 to any port 3002 proto tcp comment 'Shelfy from Docker Caddy' 2>/dev/null || true
   (cd "$COMPOSE_DIR" && docker compose up -d --force-recreate caddy)
 fi
 

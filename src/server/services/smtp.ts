@@ -16,6 +16,14 @@ export function defaultReplyTo(env: NodeJS.ProcessEnv = process.env): string | u
   return 'hello@shelfy.co.tz';
 }
 
+function smtpAllowInsecureTls(env: NodeJS.ProcessEnv, host: string): boolean {
+  const flag = env.SMTP_TLS_INSECURE?.trim().toLowerCase();
+  if (flag === 'true' || flag === '1') return true;
+  if (flag === 'false' || flag === '0') return false;
+  const h = host.toLowerCase();
+  return h === '127.0.0.1' || h === 'localhost' || h === '::1';
+}
+
 export function createSmtpTransport(env: NodeJS.ProcessEnv) {
   const url = env.SMTP_URL?.trim();
   if (url) {
@@ -33,11 +41,13 @@ export function createSmtpTransport(env: NodeJS.ProcessEnv) {
   const user = env.SMTP_USER?.trim();
   const pass = env.SMTP_PASS?.trim();
   const auth = user ? { user, pass: pass ?? '' } : undefined;
+  const tls = smtpAllowInsecureTls(env, host) ? { rejectUnauthorized: false } : undefined;
   return nodemailer.createTransport({
     host,
     port,
     secure,
     ...(auth ? { auth } : {}),
+    ...(tls ? { tls } : {}),
   });
 }
 

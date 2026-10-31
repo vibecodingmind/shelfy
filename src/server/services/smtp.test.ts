@@ -50,6 +50,7 @@ describe('smtp helpers', () => {
       port: 587,
       secure: false,
       auth: { user: 'app', pass: 'secret' },
+      tls: { rejectUnauthorized: false },
     });
   });
 
