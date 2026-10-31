@@ -43,7 +43,7 @@ Automated HTTP tests cover login, refresh, client payment-confirm rejection (410
 
 ## D. Test results (executed)
 
-Command: `npx vitest run` on 2026-10-30.
+Command: `npm run test` on 2026-10-31 (pre-launch commit `adb3715`).
 
 - Test files: **12 passed**
 - Tests: **99 passed**, **1 skipped**, **0 failed**
@@ -83,7 +83,7 @@ No load test was run. Do not treat build time as a capacity number. VPS at audit
 
 ## H. Database
 
-Prisma migrations run on boot. Production uses database `shelfy` owned by `shelfy_app`, not the Christian Radios Docker Postgres. Seed catalogue was imported on first boot (demo users exist but demo login is refused). **No backup cron was verified.** Add `pg_dump` before further schema changes.
+Prisma migrations run on boot. Production uses database `shelfy` owned by `shelfy_app`, not the Christian Radios Docker Postgres. Seed catalogue was imported on first boot (demo users exist but demo login is refused). Backup script: `scripts/vps/backup-shelfy-db.sh` — **install cron on the VPS** before schema changes.
 
 ## I. Outstanding (operator actions)
 
@@ -107,8 +107,10 @@ Update later:
 
 ```bash
 cd /var/www/shelfy && git pull origin main && npm ci && npm run build
+grep -q '^SMTP_TLS_INSECURE=' .env || echo 'SMTP_TLS_INSECURE=true' >> .env
 chown -R www-data:www-data /var/www/shelfy
 systemctl restart shelfy
+curl -sf http://127.0.0.1:3002/api/health
 ```
 
 ## K. Rollback
