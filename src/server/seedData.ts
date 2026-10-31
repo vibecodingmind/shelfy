@@ -71,7 +71,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
     {
       id: 'usr_admin',
       name: 'Shelfy Admin',
-      email: 'admin@shelfy.co.tz',
+      email: 'hello@shelfy.co.tz',
       phone: '+255 700 000 001',
       passwordHash,
       role: 'ADMIN',

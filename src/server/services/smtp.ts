@@ -6,7 +6,7 @@ export function smtpConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 
 export function defaultEmailFrom(env: NodeJS.ProcessEnv = process.env): string {
-  return env.EMAIL_FROM?.trim() || 'Shelfy <noreply@shelfy.co.tz>';
+  return env.EMAIL_FROM?.trim() || 'Shelfy <hello@shelfy.co.tz>';
 }
 
 /** Default Reply-To so noreply sends still reach hello@shelfy.co.tz. */

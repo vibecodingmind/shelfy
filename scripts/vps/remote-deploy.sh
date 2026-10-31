@@ -84,6 +84,7 @@ set_env EMAIL_FROM "Shelfy <hello@shelfy.co.tz>"
 set_env EMAIL_REPLY_TO "hello@shelfy.co.tz"
 set_env SMTP_HOST "127.0.0.1"
 set_env SMTP_PORT "25"
+set_env SMTP_USER "hello@shelfy.co.tz"
 set_env SMTP_SECURE "false"
 set_env SMTP_TLS_INSECURE "true"
 

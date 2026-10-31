@@ -22,9 +22,11 @@ export function validatePassword(password: string): { ok: true } | { ok: false; 
   return { ok: true };
 }
 
-/** Pre-seeded operator accounts (normal password login; not gated by environment). */
+/** Platform admin mailbox (not auto-reset to the dev seed password). */
+export const PLATFORM_ADMIN_EMAIL = 'hello@shelfy.co.tz';
+
+/** Pre-seeded operator accounts kept on Password123! for staging demos. */
 export const SEED_OPERATOR_EMAILS = [
-  'admin@shelfy.co.tz',
   'vendor@shelfy.co.tz',
   'host@shelfy.co.tz',
   'agent@shelfy.co.tz',

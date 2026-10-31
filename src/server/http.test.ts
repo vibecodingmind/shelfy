@@ -295,7 +295,7 @@ describe('HTTP API', () => {
     const denied = await api(origin, 'GET', '/api/admin/dashboard', { token: vendor.token });
     expect(denied.status).toBe(403);
 
-    const admin = await login(origin, 'admin@shelfy.co.tz');
+    const admin = await login(origin, 'hello@shelfy.co.tz');
     const dash = await api(origin, 'GET', '/api/admin/dashboard', { token: admin.token });
     expect(dash.status).toBe(200);
     expect(typeof dash.json.data.stats.productsCount).toBe('number');

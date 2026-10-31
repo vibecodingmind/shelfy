@@ -32,7 +32,7 @@ describe('smtp helpers', () => {
   });
 
   it('defaults from and reply-to for shelfy.co.tz', () => {
-    expect(defaultEmailFrom({})).toBe('Shelfy <noreply@shelfy.co.tz>');
+    expect(defaultEmailFrom({})).toBe('Shelfy <hello@shelfy.co.tz>');
     expect(defaultReplyTo({})).toBe('hello@shelfy.co.tz');
     expect(defaultEmailFrom({ EMAIL_FROM: 'Custom <a@b.c>' })).toBe('Custom <a@b.c>');
   });
@@ -64,7 +64,7 @@ describe('smtp helpers', () => {
         to: 'user@example.com',
         subject: 'Hi',
         text: 'Body',
-        from: 'Shelfy <noreply@shelfy.co.tz>',
+        from: 'Shelfy <hello@shelfy.co.tz>',
         replyTo: 'hello@shelfy.co.tz',
       })
     );

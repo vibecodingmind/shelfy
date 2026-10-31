@@ -14,7 +14,7 @@ import { getPrisma } from './prisma.js';
 import { importSchemaToPrisma, loadSchemaFromPrisma, persistSchemaToPrisma, relationalUserCount } from './relational.js';
 import { ensurePrismaMigrationHistory, runPrismaMigrateDeploy } from './services/prismaBoot.js';
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
-import { SEED_OPERATOR_EMAILS } from './domain/passwords.js';
+import { PLATFORM_ADMIN_EMAIL, SEED_OPERATOR_EMAILS } from './domain/passwords.js';
 
 export const SEED_SCHEMA_VERSION = 7;
 
@@ -195,6 +195,14 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
     shelfSlugs.push(slug);
     return { ...shelf, slug };
   });
+
+  const legacyAdmin = next.users.find((u) => u.role === 'ADMIN' && u.email === 'admin@shelfy.co.tz');
+  const helloTaken = next.users.some((u) => u.email.toLowerCase() === PLATFORM_ADMIN_EMAIL);
+  if (legacyAdmin && !helloTaken) {
+    legacyAdmin.email = PLATFORM_ADMIN_EMAIL;
+    legacyAdmin.updatedAt = new Date().toISOString();
+    changed = true;
+  }
 
   const seedOperatorPassword = 'Password123!';
   next.users = next.users.map((user) => {

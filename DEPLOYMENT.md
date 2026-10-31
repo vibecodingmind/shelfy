@@ -48,7 +48,7 @@ When deploying to **Railway** (or any cloud host), set the following variables i
    - Go to the **Settings** tab on Railway → **Networking** → Click **Generate Domain**.
    - Your app will be live with HTTPS!
 
-**Demo accounts** (after deploy): `admin@shelfy.co.tz`, `vendor@shelfy.co.tz`, `host@shelfy.co.tz`, `agent@shelfy.co.tz` with password `Password123!`.
+**Admin:** `hello@shelfy.co.tz` (set password on the server with `scripts/vps/set-platform-admin.mjs`). **Staging operators:** `vendor@shelfy.co.tz`, `host@shelfy.co.tz`, `agent@shelfy.co.tz` with password `Password123!`.
 
 **Database:** set `DATABASE_URL` to the Railway Postgres URL (recommended: `${{Postgres.DATABASE_URL}}`). On boot the app runs `prisma migrate deploy`, imports any legacy `shelfy_store` JSONB row once, then uses relational Prisma tables. Locally, if `DATABASE_URL` is empty, the app still uses `data/shelfy.json` (not for production).
 

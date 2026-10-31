@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validatePassword, SEED_OPERATOR_EMAILS } from './passwords.js';
+import { validatePassword, SEED_OPERATOR_EMAILS, PLATFORM_ADMIN_EMAIL } from './passwords.js';
 import { publicUser } from './publicUser.js';
 import { addMonthsIsoDate, calculateBookingQuote, datesOverlap } from './pricing.js';
 import { assertTransition, canTransition, initialBookingStatus, normalizeHostApproval } from './bookingMachine.js';
@@ -39,8 +39,9 @@ describe('password policy', () => {
   });
 
   it('lists seeded operator emails', () => {
-    expect(SEED_OPERATOR_EMAILS).toContain('admin@shelfy.co.tz');
-    expect(SEED_OPERATOR_EMAILS).not.toContain('someone@example.com');
+    expect(PLATFORM_ADMIN_EMAIL).toBe('hello@shelfy.co.tz');
+    expect(SEED_OPERATOR_EMAILS).toContain('vendor@shelfy.co.tz');
+    expect(SEED_OPERATOR_EMAILS).not.toContain('hello@shelfy.co.tz');
   });
 });
 
