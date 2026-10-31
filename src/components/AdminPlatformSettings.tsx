@@ -11,10 +11,11 @@ import {
   Settings2,
 } from 'lucide-react';
 import { AdminPlatformConfigPanel } from './admin/AdminPlatformConfigPanel.js';
+import { AdminGatewaysPanel } from './admin/AdminGatewaysPanel.js';
 import { PlatformSettings } from '../types/index.js';
 import { api } from '../lib/api.js';
 
-type SettingsSection = 'platform' | 'business' | 'integrations' | 'payments' | 'team';
+type SettingsSection = 'platform' | 'business' | 'gateways' | 'integrations' | 'payments' | 'team';
 
 interface AdminPlatformSettingsProps {
   settings: PlatformSettings;
@@ -55,7 +56,7 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
   }, [settings]);
 
   useEffect(() => {
-    if (section !== 'integrations' && section !== 'payments') return;
+    if (section !== 'integrations' && section !== 'payments' && section !== 'gateways') return;
     setLoadingIntegrations(true);
     void Promise.all([api.getAdminIntegrations(), section === 'payments' ? api.getAdminPaymentsOverview() : null])
       .then(([intRes, payRes]) => {
@@ -93,8 +94,9 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
   const tabs: { id: SettingsSection; label: string; icon: React.ElementType }[] = [
     { id: 'platform', label: 'Platform config', icon: Settings2 },
     { id: 'business', label: 'Business rules', icon: Sliders },
+    { id: 'gateways', label: 'Payment gateways', icon: CreditCard },
     { id: 'integrations', label: 'Status', icon: Plug },
-    { id: 'payments', label: 'Payments ops', icon: CreditCard },
+    { id: 'payments', label: 'Payments ops', icon: RefreshCw },
     { id: 'team', label: 'Invite agent', icon: UserPlus },
   ];
 
@@ -189,6 +191,33 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
           >
             Save business rules
           </button>
+        </div>
+      )}
+
+      {section === 'gateways' && (
+        <div className="max-w-2xl space-y-4">
+          {integrations?.azamPayCallbackUrl && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 space-y-2">
+              <div className="font-bold text-white text-sm">Azam Pay URLs (register in Azam portal)</div>
+              <div>
+                <span className="text-slate-500">Callback:</span>{' '}
+                <code className="text-emerald-300 break-all">{integrations.azamPayCallbackUrl}</code>
+              </div>
+              <div>
+                <span className="text-slate-500">Return:</span>{' '}
+                <code className="text-emerald-300 break-all">{integrations.azamPayReturnUrl}</code>
+              </div>
+              <div>
+                <span className="text-slate-500">Active environment:</span>{' '}
+                <span className="text-amber-400 font-bold">{integrations.azampay?.environment || settings.azamPayEnvironment}</span>
+              </div>
+            </div>
+          )}
+          {loadingIntegrations && !integrations ? (
+            <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+          ) : (
+            <AdminGatewaysPanel onNotify={onSaved} />
+          )}
         </div>
       )}
 

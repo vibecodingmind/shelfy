@@ -26,6 +26,7 @@ import {
   Check,
   Package,
   CreditCard,
+  MapPin,
 } from 'lucide-react';
 import { User, AuditLog, PlatformSettings, Shop, Shelf, Booking, ShelfTypeOption } from '../types/index.js';
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
@@ -33,9 +34,9 @@ import { api } from '../lib/api.js';
 import { AdminPlatformSettings } from './AdminPlatformSettings.js';
 import { AdminAnalyticsPanel } from './admin/AdminAnalyticsPanel.js';
 import { AdminClientsPanel } from './admin/AdminClientsPanel.js';
-import { AdminGatewaysPanel } from './admin/AdminGatewaysPanel.js';
 import { AdminIntegrationsPanel } from './admin/AdminIntegrationsPanel.js';
 import { AdminSubscriptionsPanel } from './admin/AdminSubscriptionsPanel.js';
+import { AdminBusinessDirectory } from './admin/AdminBusinessDirectory.js';
 
 interface AdminDashboardProps {
   stats: any;
@@ -69,9 +70,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     | 'BOOKINGS'
     | 'FIELD'
     | 'FINANCE'
-    | 'GATEWAYS'
     | 'SUBSCRIPTIONS'
     | 'INTEGRATIONS'
+    | 'DIRECTORY'
     | 'SUPPORT'
     | 'SETTINGS'
     | 'AUDIT'
@@ -239,8 +240,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               { id: 'OVERVIEW', label: 'Snapshot', icon: TrendingUp },
               { id: 'CLIENTS', label: 'Clients', icon: UserCheck },
               { id: 'USERS', label: 'Users', icon: Users },
-              { id: 'GATEWAYS', label: 'Payments', icon: CreditCard },
               { id: 'INTEGRATIONS', label: 'Integrations', icon: Plug },
+              { id: 'DIRECTORY', label: 'Business Directory', icon: MapPin },
               { id: 'SUBSCRIPTIONS', label: 'Subscriptions', icon: Layers },
               { id: 'MARKETPLACE', label: 'Marketplace', icon: Store },
               { id: 'BOOKINGS', label: 'Bookings', icon: DollarSign },
@@ -451,8 +452,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {activeTab === 'ANALYTICS' && <AdminAnalyticsPanel />}
         {activeTab === 'CLIENTS' && <AdminClientsPanel />}
-        {activeTab === 'GATEWAYS' && <AdminGatewaysPanel />}
         {activeTab === 'INTEGRATIONS' && <AdminIntegrationsPanel />}
+
+        {activeTab === 'DIRECTORY' && <AdminBusinessDirectory />}
         {activeTab === 'SUBSCRIPTIONS' && <AdminSubscriptionsPanel />}
 
         {/* TAB 1: OVERVIEW */}

@@ -86,6 +86,8 @@ export function effectivePlatformEnv(base: NodeJS.ProcessEnv = process.env): Nod
     if (twToken) env.TWILIO_AUTH_TOKEN = twToken;
   }
 
+  const placesKey = pickSecret('MAPS', 'GOOGLE_PLACES_API_KEY', 'GOOGLE_PLACES_API_KEY', base);
+  if (placesKey) env.GOOGLE_PLACES_API_KEY = placesKey;
   const mapsKey = pickSecret('MAPS', 'GOOGLE_MAPS_API_KEY', 'GOOGLE_MAPS_API_KEY', base);
   if (mapsKey) env.GOOGLE_MAPS_API_KEY = mapsKey;
   const mapboxKey = pickSecret('MAPS', 'MAPBOX_ACCESS_TOKEN', 'MAPBOX_ACCESS_TOKEN', base);

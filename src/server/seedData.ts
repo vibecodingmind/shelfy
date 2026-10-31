@@ -85,6 +85,12 @@ export interface DatabaseSchema {
   apiClients: ApiClient[];
   apiClientKeys: ApiClientKey[];
   notificationTemplates: NotificationTemplate[];
+  directoryBusinesses?: import('../types/index.js').DirectoryBusiness[];
+  directoryImportJobs?: import('../types/index.js').DirectoryImportJob[];
+  directoryClaimRequests?: import('../types/index.js').DirectoryClaimRequest[];
+  directoryLicensedPhotos?: import('../types/index.js').DirectoryLicensedPhoto[];
+  placesDisplayCache?: import('../types/index.js').PlacesDisplayCacheEntry[];
+  directorySettings?: import('../types/index.js').DirectorySettings;
   settings: PlatformSettings;
 }
 
@@ -1876,7 +1882,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
   }
 
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     users,
     vendorProfiles,
     hostProfiles,

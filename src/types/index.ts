@@ -745,3 +745,127 @@ export interface DynamicPricingSuggestion {
 }
 
 export type SupportedLocale = 'en' | 'sw';
+
+// ——— Business directory (Google Places discovery) ———
+
+export type DirectoryClaimStatus = 'UNCLAIMED' | 'CLAIM_PENDING' | 'CLAIMED' | 'CLAIM_REJECTED';
+export type DirectoryVerificationStatus =
+  | 'NOT_VERIFIED'
+  | 'PENDING_VERIFICATION'
+  | 'VERIFIED'
+  | 'REJECTED'
+  | 'SUSPENDED';
+export type DirectoryMarketplaceStatus = 'DIRECTORY_ONLY' | 'ONBOARDING' | 'ACTIVE' | 'INACTIVE' | 'CLOSED';
+export type DirectoryDataSource = 'GOOGLE_PLACES' | 'OWNER' | 'FIELD_AGENT' | 'ADMIN';
+export type DirectoryPhotoSource = 'GOOGLE_PLACES' | 'OWNER_UPLOAD' | 'FIELD_AGENT_UPLOAD' | 'OTHER_LICENSED_SOURCE';
+
+export type DirectoryRegion = 'Mwanza' | 'Dar es Salaam' | 'Arusha' | 'Mbeya' | 'Dodoma';
+
+export type DirectoryCategory =
+  | 'SUPERMARKET'
+  | 'PHARMACY'
+  | 'MARKET'
+  | 'SHOPPING_CENTRE'
+  | 'GROCERY_STORE'
+  | 'CONVENIENCE_STORE'
+  | 'RETAIL_SHOP'
+  | 'ELECTRONICS_STORE'
+  | 'CLOTHING_STORE'
+  | 'HARDWARE_STORE'
+  | 'RESTAURANT'
+  | 'OTHER';
+
+export interface DirectoryBusiness {
+  id: string;
+  googlePlaceId: string;
+  dataSource: DirectoryDataSource;
+  directoryCategory: DirectoryCategory;
+  region: DirectoryRegion;
+  city: string;
+  neighborhood?: string;
+  latitude: number;
+  longitude: number;
+  claimStatus: DirectoryClaimStatus;
+  verificationStatus: DirectoryVerificationStatus;
+  marketplaceStatus: DirectoryMarketplaceStatus;
+  linkedShopId?: string;
+  linkedHostUserId?: string;
+  importJobId?: string;
+  createdAt: string;
+  updatedAt: string;
+  lastReviewedAt?: string;
+}
+
+export interface DirectoryLicensedPhoto {
+  id: string;
+  directoryBusinessId: string;
+  url: string;
+  source: DirectoryPhotoSource;
+  uploadedBy: string;
+  createdAt: string;
+}
+
+export interface DirectoryClaimRequest {
+  id: string;
+  directoryBusinessId: string;
+  requesterUserId: string;
+  requesterName: string;
+  requesterEmail: string;
+  message?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewedBy?: string;
+  reviewNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type DirectoryImportRecordStatus = 'PENDING' | 'CREATED' | 'DUPLICATE' | 'FAILED' | 'NEEDS_REVIEW';
+
+export interface DirectoryImportJob {
+  id: string;
+  initiatedBy: string;
+  initiatedByName: string;
+  region: DirectoryRegion;
+  city: string;
+  directoryCategory: DirectoryCategory;
+  placeIds: string[];
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  summary?: {
+    total: number;
+    created: number;
+    duplicates: number;
+    failed: number;
+    needsReview: number;
+  };
+  records?: Array<{ placeId: string; status: DirectoryImportRecordStatus; directoryBusinessId?: string; error?: string }>;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface PlacesDisplayCacheEntry {
+  placeId: string;
+  payload: Record<string, unknown>;
+  expiresAt: string;
+  fetchedAt: string;
+}
+
+export interface PlacesApiUsageDay {
+  date: string; // YYYY-MM-DD
+  textSearch: number;
+  nearbySearch: number;
+  placeDetails: number;
+  placePhotos: number;
+  errors: number;
+}
+
+export interface DirectorySettings {
+  enabled: boolean;
+  dailyQuotaLimit: number;
+  monthlyQuotaLimit: number;
+  cacheTtlHours: number;
+  placesApiEnabled: boolean;
+  mapsJsEnabled: boolean;
+  lastSuccessfulRequestAt?: string;
+  lastError?: string;
+  usageByDay: PlacesApiUsageDay[];
+}

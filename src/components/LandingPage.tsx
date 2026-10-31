@@ -25,6 +25,7 @@ import {
 import { isFeaturedShelf } from '../lib/shelfCardMeta.js';
 import { useFavoriteShelves } from '../hooks/useFavoriteShelves.js';
 import { SiteFooter } from './SiteFooter.js';
+import { DirectoryBusinessSection } from './DirectoryBusinessSection.js';
 
 interface LandingPageProps {
   shelves: Shelf[];
@@ -516,6 +517,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </>
         )}
       </main>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <DirectoryBusinessSection city={selectedCity || undefined} user={user} />
+      </div>
 
       <SiteFooter />
 

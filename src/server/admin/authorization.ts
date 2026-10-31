@@ -55,6 +55,7 @@ export function permissionForRoute(path: string): AdminPermission | null {
   if (path.includes('/settings')) return 'MANAGE_SETTINGS';
   if (path.includes('/subscriptions') || path.includes('/plans')) return 'MANAGE_FINANCE';
   if (path.includes('/field') || path.includes('/inspections')) return 'MANAGE_FIELD';
+  if (path.includes('/directory')) return 'MANAGE_MARKETPLACE';
   if (path.includes('/disputes') || path.includes('/verifications')) return 'MANAGE_SUPPORT';
   if (path.includes('/analytics') || path.includes('/dashboard') || path.includes('/health')) return 'MANAGE_SETTINGS';
   return 'MANAGE_SETTINGS';

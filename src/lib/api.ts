@@ -263,6 +263,39 @@ export const api = {
   testAdminPlatformEmail: (to?: string) =>
     apiFetch<any>('/api/admin/platform-config/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
   getPublicIntegrations: () => apiFetch<any>('/api/settings/public-integrations'),
+
+  getDirectoryBusinesses: (params?: Record<string, string>) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiFetch<any>(`/api/directory/businesses${qs ? `?${qs}` : ''}`);
+  },
+  getDirectoryBusiness: (id: string) => apiFetch<any>(`/api/directory/businesses/${id}`),
+  claimDirectoryBusiness: (id: string, message?: string) =>
+    apiFetch<any>(`/api/directory/businesses/${id}/claim`, { method: 'POST', body: JSON.stringify({ message }) }),
+  uploadDirectoryPhoto: (id: string, imageDataUrl: string, source?: string) =>
+    apiFetch<any>(`/api/directory/businesses/${id}/photos`, {
+      method: 'POST',
+      body: JSON.stringify({ imageDataUrl, source }),
+    }),
+  updateAdminDirectoryVerification: (id: string, body: Record<string, unknown>) =>
+    apiFetch<any>(`/api/admin/directory/businesses/${id}/verification`, { method: 'PUT', body: JSON.stringify(body) }),
+
+  getAdminDirectoryOverview: () => apiFetch<any>('/api/admin/directory/overview'),
+  getAdminDirectorySettings: () => apiFetch<any>('/api/admin/directory/settings'),
+  updateAdminDirectorySettings: (body: Record<string, unknown>) =>
+    apiFetch<any>('/api/admin/directory/settings', { method: 'PUT', body: JSON.stringify(body) }),
+  testAdminDirectoryPlaces: () => apiFetch<any>('/api/admin/directory/places/test', { method: 'POST', body: '{}' }),
+  searchAdminDirectoryPlaces: (body: Record<string, unknown>) =>
+    apiFetch<any>('/api/admin/directory/places/search', { method: 'POST', body: JSON.stringify(body) }),
+  importAdminDirectory: (body: Record<string, unknown>) =>
+    apiFetch<any>('/api/admin/directory/import', { method: 'POST', body: JSON.stringify(body) }),
+  getAdminDirectoryBusinesses: (params?: Record<string, string>) => {
+    const qs = new URLSearchParams(params).toString();
+    return apiFetch<any>(`/api/admin/directory/businesses${qs ? `?${qs}` : ''}`);
+  },
+  getAdminDirectoryImportJobs: () => apiFetch<any>('/api/admin/directory/import-jobs'),
+  getAdminDirectoryClaims: () => apiFetch<any>('/api/admin/directory/claims'),
+  reviewDirectoryClaim: (id: string, body: Record<string, unknown>) =>
+    apiFetch<any>(`/api/admin/directory/claims/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   getAdminIntegrationLogs: () => apiFetch<any>('/api/admin/integrations/logs'),
   getCommissionRules: () => apiFetch<any>('/api/admin/commission-rules'),
   createCommissionRule: (body: Record<string, unknown>) =>

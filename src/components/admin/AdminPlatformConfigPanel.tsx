@@ -261,6 +261,13 @@ export const AdminPlatformConfigPanel: React.FC<{ onSaved: (msg: string) => void
               value={integrations.maps?.publicBrowserKey || ''}
               onChange={(e) => patchInt({ maps: { ...integrations.maps, publicBrowserKey: e.target.value } })}
             />
+            <label className="block text-[11px] text-slate-400">Server Places API key (recommended) {meta.GOOGLE_PLACES_API_KEY ? '(configured)' : ''}</label>
+            <input
+              type="password"
+              className={inputClass}
+              value={secrets.GOOGLE_PLACES_API_KEY || ''}
+              onChange={(e) => setSecrets((s) => ({ ...s, GOOGLE_PLACES_API_KEY: e.target.value }))}
+            />
             <label className="block text-[11px] text-slate-400">Server Google Maps key {meta.GOOGLE_MAPS_API_KEY ? '(configured)' : ''}</label>
             <input
               type="password"

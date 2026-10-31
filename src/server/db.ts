@@ -16,7 +16,7 @@ import { ensurePrismaMigrationHistory, runPrismaMigrateDeploy } from './services
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 import { PLATFORM_ADMIN_EMAIL, SEED_OPERATOR_EMAILS } from './domain/passwords.js';
 
-export const SEED_SCHEMA_VERSION = 8;
+export const SEED_SCHEMA_VERSION = 9;
 
 const DATA_DIR = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || process.cwd(), process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH ? '' : 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'shelfy.json');
@@ -114,7 +114,48 @@ const EMPTY_COLLECTIONS: Array<keyof DatabaseSchema> = [
   'apiClients',
   'apiClientKeys',
   'notificationTemplates',
+  'directoryBusinesses',
+  'directoryImportJobs',
+  'directoryClaimRequests',
+  'directoryLicensedPhotos',
+  'placesDisplayCache',
 ];
+
+const BLOB_MERGE_KEYS: Array<keyof DatabaseSchema> = [
+  'directoryBusinesses',
+  'directoryImportJobs',
+  'directoryClaimRequests',
+  'directoryLicensedPhotos',
+  'placesDisplayCache',
+  'directorySettings',
+  'paymentGatewayConfigs',
+  'integrationCredentials',
+  'integrationLogs',
+  'userRoleAssignments',
+  'userAdminPermissions',
+  'adminNotes',
+  'webhookEvents',
+  'commissionRules',
+  'subscriptionPlans',
+  'subscriptions',
+  'apiClients',
+  'apiClientKeys',
+  'notificationTemplates',
+];
+
+function mergeBlobExtras(target: DatabaseSchema, blob: DatabaseSchema): DatabaseSchema {
+  const next = target;
+  for (const key of BLOB_MERGE_KEYS) {
+    const val = blob[key];
+    if (val !== undefined && val !== null) {
+      (next as any)[key] = val;
+    }
+  }
+  if (blob.settings?.integrations) {
+    next.settings = { ...next.settings, integrations: { ...next.settings.integrations, ...blob.settings.integrations } };
+  }
+  return next;
+}
 
 function normalizeCategory(category: string): string {
   return CATEGORY_ALIASES[category] || category;
@@ -148,6 +189,19 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
     changed = true;
   }
   next.settings = settings;
+
+  if (!next.directorySettings) {
+    next.directorySettings = {
+      enabled: true,
+      dailyQuotaLimit: 500,
+      monthlyQuotaLimit: 10000,
+      cacheTtlHours: 24,
+      placesApiEnabled: true,
+      mapsJsEnabled: true,
+      usageByDay: [],
+    };
+    changed = true;
+  }
 
   const occupiedShelfIds = new Set(
     next.bookings
@@ -317,7 +371,10 @@ class DatabaseEngine {
             const source = normalizeDatabase(fromBlob || buildCompleteSeedData()).data;
             await importSchemaToPrisma(prisma, source);
           }
-          this.data = normalizeDatabase(await loadSchemaFromPrisma(prisma)).data;
+          let loaded = normalizeDatabase(await loadSchemaFromPrisma(prisma)).data;
+          const blob = await this.loadFromPostgres();
+          if (blob) loaded = normalizeDatabase(mergeBlobExtras(loaded, blob)).data;
+          this.data = loaded;
           this.driver = 'prisma';
           console.log('🗄️  Shelfy database driver: prisma');
           return;
@@ -422,7 +479,6 @@ class DatabaseEngine {
       const prisma = await getPrisma();
       if (prisma) {
         await persistSchemaToPrisma(prisma, target);
-        return;
       }
     }
     if ((this.driver === 'postgres' || this.driver === 'prisma') && this.pool) {
@@ -432,7 +488,6 @@ class DatabaseEngine {
          ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
         [JSON.stringify(target)]
       );
-      if (this.driver === 'prisma') return;
       return;
     }
     this.saveFile(target);

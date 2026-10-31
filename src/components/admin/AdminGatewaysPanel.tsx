@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api.js';
 
-export const AdminGatewaysPanel: React.FC = () => {
+export const AdminGatewaysPanel: React.FC<{ onNotify?: (msg: string) => void }> = ({ onNotify }) => {
   const [gateways, setGateways] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
   const [secrets, setSecrets] = useState({
@@ -27,13 +27,18 @@ export const AdminGatewaysPanel: React.FC = () => {
       environment,
       secrets: Object.fromEntries(Object.entries(secrets).filter(([, v]) => v.trim())),
     });
-    setMsg(res.success ? 'Gateway saved. Secrets encrypted at rest.' : res.error?.message || 'Save failed.');
+    const text = res.success ? 'Gateway saved. Secrets encrypted at rest.' : res.error?.message || 'Save failed.';
+    setMsg(text);
+    onNotify?.(text);
+    if (res.success) setSecrets({ AZAMPAY_APP_NAME: '', AZAMPAY_CLIENT_ID: '', AZAMPAY_CLIENT_SECRET: '', AZAMPAY_API_KEY: '' });
     load();
   };
 
   const test = async () => {
     const res = await api.testAdminGateway('AZAMPAY');
-    setMsg(res.success ? `Connection OK (${res.data?.durationMs}ms)` : res.error?.message || 'Test failed.');
+    const text = res.success ? `Connection OK (${res.data?.durationMs}ms)` : res.error?.message || 'Test failed.';
+    setMsg(text);
+    onNotify?.(text);
     load();
   };
 
