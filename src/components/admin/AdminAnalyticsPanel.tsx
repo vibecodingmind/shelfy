@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { Building, Users } from 'lucide-react';
 import { api } from '../../lib/api.js';
+import { Booking, PlatformSettings, Shop, User } from '../../types/index.js';
 
 const presets = [
   { id: 'today', days: 0, label: 'Today' },
@@ -15,7 +17,16 @@ function rangeForDays(days: number) {
   return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
 }
 
-export const AdminAnalyticsPanel: React.FC = () => {
+type SnapshotProps = {
+  stats?: any;
+  users?: User[];
+  shops?: Shop[];
+  shelves?: { id: string }[];
+  bookings?: Booking[];
+  settings?: PlatformSettings;
+};
+
+export const AdminAnalyticsPanel: React.FC<SnapshotProps> = ({ stats, users = [], shops = [], shelves = [], bookings = [], settings }) => {
   const [preset, setPreset] = useState('30d');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -60,6 +71,88 @@ export const AdminAnalyticsPanel: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in">
+      {(stats || users.length > 0) && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <div className="text-slate-400 text-xs font-semibold mb-1">Total users</div>
+              <div className="text-2xl font-black text-white">{stats?.usersCount ?? users.length}</div>
+              <div className="text-[11px] text-emerald-400 mt-1">
+                Vendors: {stats?.vendorsCount ?? 0} · Hosts: {stats?.hostsCount ?? 0}
+              </div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <div className="text-slate-400 text-xs font-semibold mb-1">Client businesses</div>
+              <div className="text-2xl font-black text-amber-400">{shops.length}</div>
+              <div className="text-[11px] text-slate-400 mt-1">Occupancy {stats?.occupancy?.paidPercent ?? 0}% ({stats?.occupancy?.windowDays ?? 30}d)</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <div className="text-slate-400 text-xs font-semibold mb-1">Gross GMV</div>
+              <div className="text-2xl font-black text-emerald-400">TZS {(stats?.totalRevenueTzs || 0).toLocaleString()}</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <div className="text-slate-400 text-xs font-semibold mb-1">Platform commission</div>
+              <div className="text-2xl font-black text-teal-300">TZS {(stats?.totalCommissionsTzs || 0).toLocaleString()}</div>
+              <div className="text-[11px] text-teal-400 mt-1">Rate: {settings?.commissionPercentage ?? 10}%</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <div className="text-slate-400 text-xs font-semibold mb-1">Products</div>
+              <div className="text-2xl font-black text-white">{stats?.productsCount ?? 0}</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <div className="text-slate-400 text-xs font-semibold mb-1">Available shelves</div>
+              <div className="text-2xl font-black text-white">{stats?.availableShelves ?? 0}</div>
+              <div className="text-[11px] text-slate-400 mt-1">of {stats?.shelvesCount ?? shelves.length} total</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <div className="text-slate-400 text-xs font-semibold mb-1">Bookings</div>
+              <div className="text-2xl font-black text-white">{stats?.bookingsCount ?? bookings.length}</div>
+              <div className="text-[11px] text-slate-400 mt-1">Active {stats?.activeBookings ?? 0} · Pending {stats?.pendingBookings ?? 0}</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+              <div className="text-slate-400 text-xs font-semibold mb-1">Pending approvals</div>
+              <div className="text-2xl font-black text-amber-300">{stats?.pendingVerifications ?? 0}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-400" /> Recent users
+              </h3>
+              <div className="space-y-3">
+                {users.slice(0, 5).map((u) => (
+                  <div key={u.id} className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+                    <div>
+                      <div className="font-bold text-white">{u.name}</div>
+                      <div className="text-[10px] text-slate-400">{u.email}</div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-amber-400">{u.role}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                <Building className="w-4 h-4 text-amber-400" /> GMV by city
+              </h3>
+              <div className="space-y-3">
+                {(stats?.cityBreakdown || []).map((row: any) => (
+                  <div key={row.city} className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+                    <div>
+                      <div className="font-bold text-white">{row.city}</div>
+                      <div className="text-[10px] text-slate-400">{row.shops} shops</div>
+                    </div>
+                    <div className="font-mono text-emerald-400">TZS {(row.gmv || 0).toLocaleString()}</div>
+                  </div>
+                ))}
+                {!stats?.cityBreakdown?.length && <p className="text-xs text-slate-500">No city breakdown yet.</p>}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="flex flex-wrap gap-2 items-end">
         {presets.map((p) => (
           <button

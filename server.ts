@@ -12,7 +12,6 @@ import rateLimit from 'express-rate-limit';
 import { dbEngine } from './src/server/db.js';
 import { requireAuth, requireRole, requireAdminPermission, generateToken, logAuditEvent, AuthenticatedRequest, optionalAuth, ACCESS_TOKEN_TTL_SECONDS } from './src/server/auth.js';
 import { registerAdminRoutes } from './src/server/adminRoutes.js';
-import { registerDirectoryRoutes } from './src/server/directoryRoutes.js';
 import { assignedRolesForUser } from './src/server/admin/authorization.js';
 import { buildAzamPayEnvFromStore } from './src/server/admin/integrationStore.js';
 import { integrationEncryptionConfigured } from './src/server/admin/encryption.js';
@@ -2010,7 +2009,6 @@ app.post('/api/ai/vendor-insights', requireAuth, requireRole('VENDOR', 'ADMIN'),
 async function startServer() {
   registerP1Routes(app);
   registerPhaseRoutes(app);
-  registerDirectoryRoutes(app);
   registerAdminRoutes(app);
   const uploadDir = uploadsDir();
   fs.mkdirSync(uploadDir, { recursive: true });

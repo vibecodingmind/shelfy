@@ -1,21 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import {
   Sliders,
-  Plug,
   CreditCard,
   UserPlus,
-  CheckCircle2,
-  XCircle,
   Loader2,
   RefreshCw,
   Settings2,
+  Layers,
 } from 'lucide-react';
 import { AdminPlatformConfigPanel } from './admin/AdminPlatformConfigPanel.js';
 import { AdminGatewaysPanel } from './admin/AdminGatewaysPanel.js';
+import { AdminSubscriptionsPanel } from './admin/AdminSubscriptionsPanel.js';
 import { PlatformSettings } from '../types/index.js';
 import { api } from '../lib/api.js';
 
-type SettingsSection = 'platform' | 'business' | 'gateways' | 'integrations' | 'payments' | 'team';
+type SettingsSection = 'platform' | 'business' | 'gateways' | 'subscriptions' | 'payments' | 'team';
 
 interface AdminPlatformSettingsProps {
   settings: PlatformSettings;
@@ -56,7 +55,7 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
   }, [settings]);
 
   useEffect(() => {
-    if (section !== 'integrations' && section !== 'payments' && section !== 'gateways') return;
+    if (section !== 'payments' && section !== 'gateways') return;
     setLoadingIntegrations(true);
     void Promise.all([api.getAdminIntegrations(), section === 'payments' ? api.getAdminPaymentsOverview() : null])
       .then(([intRes, payRes]) => {
@@ -78,24 +77,11 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
     onSaved('Platform business rules saved.');
   };
 
-  const StatusRow = ({ label, ok, detail }: { label: string; ok: boolean; detail?: string }) => (
-    <div className="flex items-start justify-between gap-3 py-2 border-b border-slate-800 last:border-0">
-      <span className="text-sm text-slate-300">{label}</span>
-      <div className="text-right">
-        <span className={`inline-flex items-center gap-1 text-xs font-bold ${ok ? 'text-emerald-400' : 'text-amber-400'}`}>
-          {ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-          {ok ? 'Configured' : 'Not configured'}
-        </span>
-        {detail && <div className="text-[10px] text-slate-500 mt-0.5 max-w-[220px]">{detail}</div>}
-      </div>
-    </div>
-  );
-
   const tabs: { id: SettingsSection; label: string; icon: React.ElementType }[] = [
     { id: 'platform', label: 'Platform config', icon: Settings2 },
     { id: 'business', label: 'Business rules', icon: Sliders },
     { id: 'gateways', label: 'Payment gateways', icon: CreditCard },
-    { id: 'integrations', label: 'Status', icon: Plug },
+    { id: 'subscriptions', label: 'Subscriptions', icon: Layers },
     { id: 'payments', label: 'Payments ops', icon: RefreshCw },
     { id: 'team', label: 'Invite agent', icon: UserPlus },
   ];
@@ -221,33 +207,7 @@ export const AdminPlatformSettings: React.FC<AdminPlatformSettingsProps> = ({
         </div>
       )}
 
-      {section === 'integrations' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-2xl">
-          <h2 className="text-lg font-bold text-white mb-1">Integrations status</h2>
-          <p className="text-xs text-slate-400 mb-4">{integrations?.configurationNote}</p>
-          {loadingIntegrations && !integrations ? (
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
-          ) : integrations ? (
-            <div className="space-y-1">
-              <StatusRow label="JWT secret" ok={integrations.jwt?.configured && !integrations.jwt?.ephemeral} detail={integrations.jwt?.ephemeral ? 'Ephemeral — set JWT_SECRET in production' : undefined} />
-              <StatusRow label="Azam Pay" ok={integrations.azampay?.configured} detail={`Environment: ${integrations.azampay?.environment}`} />
-              <StatusRow label="Email" ok={integrations.email?.configured} detail={integrations.email?.provider || 'RESEND or SMTP'} />
-              <StatusRow label="SMS" ok={integrations.sms?.configured} detail={integrations.sms?.provider || 'Africa\'s Talking or Twilio'} />
-              <StatusRow label="Object storage" ok={integrations.storage?.driver === 's3'} detail={`Driver: ${integrations.storage?.driver}`} />
-              <StatusRow label="Gemini AI" ok={integrations.gemini?.configured} />
-              <div className="pt-3 mt-3 border-t border-slate-800 text-xs text-slate-400 space-y-1">
-                <div>
-                  <span className="text-slate-500">App URL:</span> {integrations.appUrl || '—'}
-                </div>
-                <div>
-                  <span className="text-slate-500">Azam callback:</span>{' '}
-                  <code className="text-emerald-300 break-all">{integrations.azamPayCallbackUrl}</code>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      )}
+      {section === 'subscriptions' && <AdminSubscriptionsPanel />}
 
       {section === 'payments' && (
         <div className="space-y-4 max-w-3xl">

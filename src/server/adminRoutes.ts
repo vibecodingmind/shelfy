@@ -35,6 +35,20 @@ import {
 } from '../types/index.js';
 import { calculateBookingQuote } from './domain/pricing.js';
 import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
+import { DIRECTORY_CATEGORY_META, REGION_CENTER } from './directory/constants.js';
+import { searchNearbyPlaces, searchTextPlaces, placesApiStatus, fetchPlacePhoto, getPlaceDetails } from './directory/googlePlaces.js';
+import { importPlacesAsShops } from './admin/shopPlacesImport.js';
+import { REFRESH_TOKEN_TTL_MS } from './services/tokens.js';
+import { listingStatusOf } from './domain/listings.js';
+
+const adminPlacesLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: { message: 'Too many Places API searches. Wait and try again.' } },
+});
 
 function ensureAdminCollections() {
   const db = dbEngine.db as any;
@@ -669,6 +683,148 @@ export function registerAdminRoutes(app: Express) {
     shelf.updatedAt = new Date().toISOString();
     void dbEngine.saveAsync();
     res.json({ success: true, data: shelf });
+  });
+
+  // ——— Businesses (retail clients = shops / supermarkets) ———
+  app.get('/api/admin/businesses', requireAuth, requireAdminPermission('MANAGE_MARKETPLACE'), (req, res) => {
+    const { city, verification, listing, q } = req.query;
+    let rows = dbEngine.db.shops.filter((s) => !s.deletedAt);
+    if (city) rows = rows.filter((s) => s.city.toLowerCase().includes(String(city).toLowerCase()));
+    if (verification) rows = rows.filter((s) => s.verificationStatus === String(verification));
+    if (listing) rows = rows.filter((s) => listingStatusOf(s) === listing);
+    if (q) {
+      const needle = String(q).toLowerCase();
+      rows = rows.filter(
+        (s) => s.name.toLowerCase().includes(needle) || s.address.toLowerCase().includes(needle) || s.hostName?.toLowerCase().includes(needle)
+      );
+    }
+    const enriched = rows.map((shop) => ({
+      ...shop,
+      listingStatus: listingStatusOf(shop),
+      shelfCount: dbEngine.db.shelves.filter((sh) => sh.shopId === shop.id && !sh.deletedAt).length,
+      host: dbEngine.db.users.find((u) => u.id === shop.hostId),
+    }));
+    res.json({ success: true, data: enriched.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) });
+  });
+
+  app.post('/api/admin/businesses/import-places', requireAuth, requireAdminPermission('MANAGE_MARKETPLACE'), async (req: AuthenticatedRequest, res: Response) => {
+    const { placeIds, hostUserId, city, region, directoryCategory } = req.body || {};
+    if (!Array.isArray(placeIds) || !placeIds.length || !hostUserId || !city) {
+      return res.status(400).json({ success: false, error: { message: 'placeIds, hostUserId, and city are required.' } });
+    }
+    try {
+      const result = await importPlacesAsShops({
+        placeIds: placeIds.slice(0, 50),
+        hostUserId,
+        city,
+        region: region || city,
+        directoryCategory,
+      });
+      logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'BUSINESSES_IMPORTED', 'Shop', 'batch');
+      res.json({ success: true, data: result });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: { message: err.message || 'Import failed.' } });
+    }
+  });
+
+  app.post('/api/admin/places/search', requireAuth, requireAdminPermission('MANAGE_MARKETPLACE'), adminPlacesLimiter, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const {
+        mode = 'text',
+        region = 'Dar es Salaam',
+        category = 'SUPERMARKET',
+        textQuery,
+        city,
+        latitude,
+        longitude,
+        radiusMeters = 8000,
+        pageToken,
+      } = req.body || {};
+      const center = REGION_CENTER[region as keyof typeof REGION_CENTER] || REGION_CENTER['Dar es Salaam'];
+      const lat = Number(latitude) || center.latitude;
+      const lng = Number(longitude) || center.longitude;
+      const meta = DIRECTORY_CATEGORY_META[category as keyof typeof DIRECTORY_CATEGORY_META] || DIRECTORY_CATEGORY_META.OTHER;
+      const query = textQuery?.trim() || `${meta.textQuery} ${city || center.defaultCity} Tanzania`;
+      const result =
+        mode === 'nearby'
+          ? await searchNearbyPlaces({
+              latitude: lat,
+              longitude: lng,
+              radiusMeters: Math.min(50000, Math.max(500, Number(radiusMeters))),
+              includedTypes: meta.includedTypes,
+              pageToken,
+            })
+          : await searchTextPlaces({
+              textQuery: query,
+              latitude: lat,
+              longitude: lng,
+              radiusMeters: Math.min(50000, Math.max(500, Number(radiusMeters))),
+              pageToken,
+            });
+      const places = (result.places || []).map((p: { placeId?: string }) => {
+        const pid = String(p.placeId || '').replace(/^places\//, '');
+        const shop = dbEngine.db.shops.find((s) => !s.deletedAt && (s as { googlePlaceId?: string }).googlePlaceId === pid);
+        return {
+          ...p,
+          shelfyMatch: shop ? { existingShop: true, shopId: shop.id, shopName: shop.name } : { existingShop: false },
+        };
+      });
+      res.json({
+        success: true,
+        data: { places, nextPageToken: result.nextPageToken, quota: placesApiStatus(), attribution: 'Powered by Google' },
+      });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: { message: err.message || 'Search failed.' } });
+    }
+  });
+
+  app.post('/api/admin/places/test', requireAuth, requireAdminPermission('MANAGE_MARKETPLACE'), adminPlacesLimiter, async (_req, res) => {
+    try {
+      const center = REGION_CENTER['Dar es Salaam'];
+      await searchTextPlaces({
+        textQuery: 'supermarket Dar es Salaam Tanzania',
+        latitude: center.latitude,
+        longitude: center.longitude,
+        radiusMeters: 3000,
+      });
+      res.json({ success: true, data: { ok: true, placesApi: placesApiStatus() } });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: { message: err.message || 'Test failed.' } });
+    }
+  });
+
+  app.get('/api/admin/places/google-photo', requireAuth, requireAdminPermission('MANAGE_MARKETPLACE'), async (req, res) => {
+    const name = String(req.query.name || '').trim();
+    if (!name) return res.status(400).send('Missing photo name.');
+    try {
+      const maxHeightPx = Math.min(800, Number(req.query.maxHeightPx) || 400);
+      const { buffer, contentType } = await fetchPlacePhoto(name, maxHeightPx);
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.send(buffer);
+    } catch (err: any) {
+      res.status(502).json({ success: false, error: { message: err.message || 'Photo unavailable.' } });
+    }
+  });
+
+  app.post('/api/admin/impersonate/:userId', requireAuth, requireAdminPermission('MANAGE_USERS'), (req: AuthenticatedRequest, res: Response) => {
+    const target = dbEngine.db.users.find((u) => u.id === req.params.userId);
+    if (!target) return res.status(404).json({ success: false, error: { message: 'User not found.' } });
+    if (target.role === 'ADMIN') {
+      return res.status(403).json({ success: false, error: { message: 'Cannot impersonate admin accounts.' } });
+    }
+    const token = generateToken(target);
+    const refresh = createAuthToken(dbEngine.db, target.id, 'REFRESH', REFRESH_TOKEN_TTL_MS);
+    logAuditEvent(req.user!.id, req.user!.name, req.user!.role, 'ADMIN_IMPERSONATE', 'User', target.id, `Login as ${target.email}`);
+    res.json({
+      success: true,
+      data: {
+        token,
+        refreshToken: refresh.raw,
+        user: publicUser(target),
+        impersonatedBy: req.user!.id,
+      },
+    });
   });
 
   // Export clients CSV

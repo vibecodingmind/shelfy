@@ -7,36 +7,27 @@ import {
   Shield,
   Users,
   Store,
-  DollarSign,
-  TrendingUp,
   Sliders,
   FileText,
   UserCheck,
-  Ban,
   CheckCircle2,
   AlertTriangle,
-  Building,
   Layers,
   Activity,
-  Sparkles,
-  Plug,
   Tag,
   Plus,
   Trash2,
-  Check,
   Package,
-  CreditCard,
-  MapPin,
+  Truck,
 } from 'lucide-react';
 import { User, AuditLog, PlatformSettings, Shop, Shelf, Booking, ShelfTypeOption } from '../types/index.js';
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 import { api } from '../lib/api.js';
 import { AdminPlatformSettings } from './AdminPlatformSettings.js';
 import { AdminAnalyticsPanel } from './admin/AdminAnalyticsPanel.js';
-import { AdminClientsPanel } from './admin/AdminClientsPanel.js';
-import { AdminIntegrationsPanel } from './admin/AdminIntegrationsPanel.js';
-import { AdminSubscriptionsPanel } from './admin/AdminSubscriptionsPanel.js';
-import { AdminBusinessDirectory } from './admin/AdminBusinessDirectory.js';
+import { AdminBusinessesPanel } from './admin/AdminBusinessesPanel.js';
+import { AdminUsersPanel } from './admin/AdminUsersPanel.js';
+import { AdminVendorsPanel } from './admin/AdminVendorsPanel.js';
 
 interface AdminDashboardProps {
   stats: any;
@@ -62,53 +53,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateSettings,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    | 'OVERVIEW'
     | 'ANALYTICS'
     | 'CLIENTS'
     | 'USERS'
+    | 'VENDORS'
     | 'MARKETPLACE'
     | 'BOOKINGS'
     | 'FIELD'
-    | 'FINANCE'
-    | 'SUBSCRIPTIONS'
-    | 'INTEGRATIONS'
-    | 'DIRECTORY'
     | 'SUPPORT'
     | 'SETTINGS'
     | 'AUDIT'
   >('ANALYTICS');
   const [verifications, setVerifications] = useState<any[]>([]);
-  const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [disputes, setDisputes] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [financeRows, setFinanceRows] = useState<any[]>([]);
   const [fieldVisits, setFieldVisits] = useState<any[]>([]);
   const [fieldReports, setFieldReports] = useState<any[]>([]);
   const [adminProducts, setAdminProducts] = useState<any[]>([]);
-  const [payoutRef, setPayoutRef] = useState('');
   const [shelfListingFilter, setShelfListingFilter] = useState('');
-  const [userQuery, setUserQuery] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState('');
-  const [userStatusFilter, setUserStatusFilter] = useState('');
 
   useEffect(() => {
     api.getVerifications().then((res) => {
       if (res.success && res.data) setVerifications(res.data);
     });
-    api.getWithdrawals().then((res) => {
-      if (res.success && res.data) setWithdrawals(res.data);
-    });
     api.getDisputes().then((res) => {
       if (res.success && res.data) setDisputes(res.data);
     });
-    if (activeTab === 'FINANCE') {
-      api.getAdminPaymentsOverview().then((res) => {
-        if (res.success && res.data) setPayments(res.data.payments || []);
-      });
-      api.getFinanceSummary().then((res) => {
-        if (res.success && res.data) setFinanceRows(Array.isArray(res.data) ? res.data : res.data.hosts || res.data.rows || []);
-      });
-    }
     if (activeTab === 'FIELD') {
       api.getFieldVisits().then((res) => {
         if (res.success && res.data) setFieldVisits(res.data);
@@ -237,16 +206,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
               { id: 'ANALYTICS', label: 'Dashboard', icon: Activity },
-              { id: 'OVERVIEW', label: 'Snapshot', icon: TrendingUp },
-              { id: 'CLIENTS', label: 'Clients', icon: UserCheck },
+              { id: 'CLIENTS', label: 'Clients', icon: Store },
               { id: 'USERS', label: 'Users', icon: Users },
-              { id: 'INTEGRATIONS', label: 'Integrations', icon: Plug },
-              { id: 'DIRECTORY', label: 'Business Directory', icon: MapPin },
-              { id: 'SUBSCRIPTIONS', label: 'Subscriptions', icon: Layers },
-              { id: 'MARKETPLACE', label: 'Marketplace', icon: Store },
-              { id: 'BOOKINGS', label: 'Bookings', icon: DollarSign },
+              { id: 'VENDORS', label: 'Vendors', icon: Truck },
+              { id: 'MARKETPLACE', label: 'Marketplace', icon: Package },
+              { id: 'BOOKINGS', label: 'Bookings', icon: Layers },
               { id: 'FIELD', label: 'Field', icon: UserCheck },
-              { id: 'FINANCE', label: 'Finance', icon: CreditCard },
               { id: 'SUPPORT', label: 'Support', icon: AlertTriangle },
               { id: 'SETTINGS', label: 'Settings', icon: Sliders },
               { id: 'AUDIT', label: 'Audit', icon: FileText },
@@ -288,7 +253,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <Shield className="w-6 h-6 text-emerald-400" />
               Admin
             </h1>
-            <p className="text-xs text-slate-400 mt-1">Super Admin Control Center — clients, payments, integrations, subscriptions, and platform operations.</p>
+            <p className="text-xs text-slate-400 mt-1">Super Admin — businesses (clients), users, vendors, marketplace, and platform settings.</p>
           </div>
 
           {savedSuccessMsg && (
@@ -450,216 +415,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {activeTab === 'ANALYTICS' && <AdminAnalyticsPanel />}
-        {activeTab === 'CLIENTS' && <AdminClientsPanel />}
-        {activeTab === 'INTEGRATIONS' && <AdminIntegrationsPanel />}
-
-        {activeTab === 'DIRECTORY' && <AdminBusinessDirectory />}
-        {activeTab === 'SUBSCRIPTIONS' && <AdminSubscriptionsPanel />}
-
-        {/* TAB 1: OVERVIEW */}
-        {activeTab === 'OVERVIEW' && (
-          <div className="space-y-8">
-            
-            {/* KPI Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div className="text-slate-400 text-xs font-semibold mb-1">Total Users Registered</div>
-                <div className="text-2xl font-black text-white">{stats?.usersCount || users.length}</div>
-                <div className="text-[11px] text-emerald-400 font-medium mt-1">
-                  Vendors: {stats?.vendorsCount || 0} | Hosts: {stats?.hostsCount || 0}
-                </div>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div className="text-slate-400 text-xs font-semibold mb-1">Active Retail Shops</div>
-                <div className="text-2xl font-black text-amber-400">{shops.length}</div>
-                <div className="text-[11px] text-slate-400 font-medium mt-1">
-                  Paid occupancy {stats?.occupancy?.windowDays || 30}d: {stats?.occupancy?.paidPercent ?? 0}%
-                </div>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div className="text-slate-400 text-xs font-semibold mb-1">Total Gross GMV</div>
-                <div className="text-2xl font-black text-emerald-400">
-                  TZS {(stats?.totalRevenueTzs || 0).toLocaleString()}
-                </div>
-                <div className="text-[11px] text-emerald-400 font-medium mt-1">Azam Pay verified payments</div>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div className="text-slate-400 text-xs font-semibold mb-1">Platform Commission Earnings</div>
-                <div className="text-2xl font-black text-teal-300">
-                  TZS {(stats?.totalCommissionsTzs || 0).toLocaleString()}
-                </div>
-                <div className="text-[11px] text-teal-400 font-medium mt-1">
-                  Rate: {settings?.commissionPercentage || 10}%
-                </div>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div className="text-slate-400 text-xs font-semibold mb-1">Products</div>
-                <div className="text-2xl font-black text-white">{stats?.productsCount || 0}</div>
-              </div>
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div className="text-slate-400 text-xs font-semibold mb-1">Available spaces</div>
-                <div className="text-2xl font-black text-white">{stats?.availableShelves || 0}</div>
-                <div className="text-[11px] text-slate-400 mt-1">of {stats?.shelvesCount || shelves.length} shelves</div>
-              </div>
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div className="text-slate-400 text-xs font-semibold mb-1">Bookings</div>
-                <div className="text-2xl font-black text-white">{stats?.bookingsCount || bookings.length}</div>
-                <div className="text-[11px] text-slate-400 mt-1">
-                  Active {stats?.activeBookings || 0} · Pending {stats?.pendingBookings || 0}
-                </div>
-              </div>
-              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
-                <div className="text-slate-400 text-xs font-semibold mb-1">Pending approvals</div>
-                <div className="text-2xl font-black text-amber-300">{stats?.pendingVerifications || 0}</div>
-                <div className="text-[11px] text-slate-400 mt-1">Withdrawals waiting: {stats?.pendingWithdrawals || 0}</div>
-              </div>
-            </div>
-
-            {/* Quick Actions & Recent Users */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-emerald-400" /> Platform User Overview
-                </h3>
-                <div className="space-y-3">
-                  {users.slice(0, 5).map((u) => (
-                    <div key={u.id} className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
-                      <div>
-                        <div className="font-bold text-white">{u.name}</div>
-                        <div className="text-[10px] text-slate-400">{u.email} • {u.phone}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-amber-400 border border-amber-500/20">
-                          {u.role}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                          {u.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Geographic Active Regions */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                  <Building className="w-4 h-4 text-amber-400" /> Geographic Retail Distribution
-                </h3>
-                <div className="space-y-3">
-                  {(stats?.cityBreakdown || []).map((row: any) => (
-                    <div key={row.city} className="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
-                      <div>
-                        <div className="font-bold text-white">{row.city}</div>
-                        <div className="text-[10px] text-slate-400">{row.shops} shops · occupancy uses paid GMV</div>
-                      </div>
-                      <div className="font-mono text-emerald-400">TZS {(row.gmv || 0).toLocaleString()}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
-          </div>
+        {activeTab === 'ANALYTICS' && (
+          <AdminAnalyticsPanel stats={stats} users={users} shops={shops} shelves={shelves} bookings={bookings} settings={settings} />
         )}
-
-        {/* TAB 2: USER MANAGEMENT */}
+        {activeTab === 'CLIENTS' && <AdminBusinessesPanel users={users} />}
         {activeTab === 'USERS' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <h2 className="text-base font-bold text-white mb-4">User Accounts & Role Permissions</h2>
-            <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <input
-                value={userQuery}
-                onChange={(e) => setUserQuery(e.target.value)}
-                placeholder="Search name or email"
-                className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white flex-1"
-              />
-              <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
-                <option value="">All roles</option>
-                <option value="ADMIN">Admin</option>
-                <option value="VENDOR">Vendor</option>
-                <option value="HOST">Host</option>
-                <option value="FIELD_AGENT">Field agent</option>
-              </select>
-              <select value={userStatusFilter} onChange={(e) => setUserStatusFilter(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
-                <option value="">All statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="PENDING">Pending</option>
-                <option value="SUSPENDED">Suspended</option>
-              </select>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider font-bold">
-                  <tr>
-                    <th className="p-3">User</th>
-                    <th className="p-3">Role</th>
-                    <th className="p-3">Phone</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {users
-                    .filter((u) => !userRoleFilter || u.role === userRoleFilter)
-                    .filter((u) => !userStatusFilter || u.status === userStatusFilter)
-                    .filter((u) => {
-                      const q = userQuery.trim().toLowerCase();
-                      if (!q) return true;
-                      return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-                    })
-                    .map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-800/40">
-                      <td className="p-3">
-                        <div className="font-bold text-white">{u.name}</div>
-                        <div className="text-[10px] text-slate-400">{u.email}</div>
-                      </td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-amber-400 border border-amber-500/20">
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono">{u.phone}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                          {u.status}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        {u.role !== 'ADMIN' && (
-                          <div className="flex items-center gap-2">
-                            {u.status === 'ACTIVE' ? (
-                              <button
-                                onClick={() => onUpdateUserStatus(u.id, 'SUSPENDED')}
-                                className="px-2.5 py-1 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 rounded font-bold text-[10px] flex items-center gap-1"
-                              >
-                                <Ban className="w-3 h-3" /> Suspend
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => onUpdateUserStatus(u.id, 'ACTIVE')}
-                                className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded font-bold text-[10px] flex items-center gap-1"
-                              >
-                                <CheckCircle2 className="w-3 h-3" /> Activate
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <AdminUsersPanel users={users} shops={shops} onUpdateUserStatus={onUpdateUserStatus} />
         )}
+        {activeTab === 'VENDORS' && <AdminVendorsPanel users={users} />}
 
         {/* TAB 3: SHOPS & SHELVES */}
         {activeTab === 'MARKETPLACE' && (
@@ -874,89 +637,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
 
         {activeTab === 'SUPPORT' && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-bold text-white">Verification queue</h2>
-            <p className="text-xs text-slate-400">Approve shops and shelves before they appear in the public marketplace.</p>
-            {verifications.length === 0 ? (
-              <div className="text-xs text-slate-500">No verification requests.</div>
-            ) : (
-              verifications.map((v) => (
-                <div key={v.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-white">{v.subjectType} · {v.subjectId}</div>
-                    <div className="text-slate-400">{v.status} · {new Date(v.createdAt).toLocaleString()}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={async () => { await api.decideVerification(v.id, 'VERIFIED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded">Verify</button>
-                    <button onClick={async () => { await api.decideVerification(v.id, 'REJECTED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-rose-500/20 text-rose-400 font-bold rounded">Reject</button>
-                    <button onClick={async () => { await api.decideVerification(v.id, 'SUSPENDED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-amber-500/20 text-amber-400 font-bold rounded">Suspend</button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {activeTab === 'FINANCE' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-              <h2 className="text-lg font-bold text-white mb-3">Payments</h2>
-              {payments.length === 0 ? (
-                <div className="text-xs text-slate-500">No payment records.</div>
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-white">Verification queue</h2>
+              <p className="text-xs text-slate-400">Approve shops and shelves before they appear in the public marketplace.</p>
+              {verifications.length === 0 ? (
+                <div className="text-xs text-slate-500">No verification requests.</div>
               ) : (
-                <div className="space-y-2">
-                  {payments.slice(0, 20).map((p) => (
-                    <div key={p.id} className="flex justify-between text-xs bg-slate-950 border border-slate-800 rounded-xl p-3">
-                      <span className="text-white font-semibold">TZS {Number(p.amountTzs || 0).toLocaleString()}</span>
-                      <span className="text-slate-400">{p.status} · {p.bookingId || p.id}</span>
+                verifications.map((v) => (
+                  <div key={v.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-white">{v.subjectType} · {v.subjectId}</div>
+                      <div className="text-slate-400">{v.status} · {new Date(v.createdAt).toLocaleString()}</div>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex gap-2">
+                      <button onClick={async () => { await api.decideVerification(v.id, 'VERIFIED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded">Verify</button>
+                      <button onClick={async () => { await api.decideVerification(v.id, 'REJECTED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-rose-500/20 text-rose-400 font-bold rounded">Reject</button>
+                      <button onClick={async () => { await api.decideVerification(v.id, 'SUSPENDED'); const res = await api.getVerifications(); if (res.data) setVerifications(res.data); }} className="px-2 py-1 bg-amber-500/20 text-amber-400 font-bold rounded">Suspend</button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-              <h2 className="text-lg font-bold text-white mb-3">Host balances</h2>
-              {financeRows.length === 0 ? (
-                <div className="text-xs text-slate-500">No host balances.</div>
-              ) : (
-                <div className="space-y-2">
-                  {financeRows.map((row) => (
-                    <div key={row.hostId} className="text-xs bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between">
-                      <span className="text-white font-semibold">{row.name}</span>
-                      <span className="text-emerald-400 font-mono">
-                        Available TZS {Number(row.availableTzs || row.availableBalanceTzs || 0).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          <div className="space-y-3">
-            <h2 className="text-lg font-bold text-white">Host withdrawals</h2>
-            <input value={payoutRef} onChange={(e) => setPayoutRef(e.target.value)} placeholder="Payout reference" className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white w-full max-w-sm" />
-            {withdrawals.length === 0 ? (
-              <div className="text-xs text-slate-500">No withdrawal requests.</div>
-            ) : (
-              withdrawals.map((w) => (
-                <div key={w.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-white">TZS {w.amountTzs.toLocaleString()} · {w.status}</div>
-                    <div className="text-slate-400">{w.hostId} · {w.method} {w.payoutReference ? `· ${w.payoutReference}` : ''}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    {w.status === 'PENDING' && <button onClick={async () => { await api.approveWithdrawal(w.id); const res = await api.getWithdrawals(); if (res.data) setWithdrawals(res.data); }} className="px-2 py-1 bg-emerald-500 text-slate-950 font-bold rounded">Approve</button>}
-                    {['APPROVED', 'PROCESSING'].includes(w.status) && <button onClick={async () => { await api.processWithdrawal(w.id, payoutRef || `PO-${w.id}`); const res = await api.getWithdrawals(); if (res.data) setWithdrawals(res.data); }} className="px-2 py-1 bg-teal-500 text-slate-950 font-bold rounded">Process</button>}
-                    {['PENDING', 'APPROVED', 'PROCESSING'].includes(w.status) && <button onClick={async () => { await api.failWithdrawal(w.id, 'Admin marked failed'); const res = await api.getWithdrawals(); if (res.data) setWithdrawals(res.data); }} className="px-2 py-1 bg-rose-500/20 text-rose-400 font-bold rounded">Fail</button>}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-          </div>
-        )}
-
-        {activeTab === 'SUPPORT' && (
-          <div className="space-y-3">
+            <div className="space-y-3">
             <h2 className="text-lg font-bold text-white">Open disputes</h2>
             <p className="text-xs text-slate-400">Resolving to COMPLETED releases host earnings. CANCELLED does not invent a refund — use cancel if money must move.</p>
             {disputes.length === 0 ? (
@@ -979,6 +682,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               ))
             )}
+            </div>
           </div>
         )}
 

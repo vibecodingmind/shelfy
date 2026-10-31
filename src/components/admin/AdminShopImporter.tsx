@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { Loader2, Search, Download, CheckSquare, Square } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { OPENSTREETMAP_TILE_ATTRIBUTION, OPENSTREETMAP_TILE_URL } from '../../lib/shopMapLocation.js';
-import { DirectoryCategory, DirectoryRegion } from '../../types/index.js';
+import { DirectoryCategory, DirectoryRegion, User } from '../../types/index.js';
 
 const REGIONS: DirectoryRegion[] = ['Mwanza', 'Dar es Salaam', 'Arusha', 'Mbeya', 'Dodoma'];
 const CATEGORIES: DirectoryCategory[] = [
@@ -21,11 +21,12 @@ const CATEGORIES: DirectoryCategory[] = [
   'OTHER',
 ];
 
-export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ onImported }) => {
+export const AdminShopImporter: React.FC<{ hosts: User[]; onDone?: () => void }> = ({ hosts, onDone }) => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markersLayer = useRef<L.LayerGroup | null>(null);
 
+  const [hostUserId, setHostUserId] = useState('');
   const [region, setRegion] = useState<DirectoryRegion>('Dar es Salaam');
   const [category, setCategory] = useState<DirectoryCategory>('SUPERMARKET');
   const [city, setCity] = useState('Dar es Salaam');
@@ -37,7 +38,7 @@ export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ 
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
-  const [lastJob, setLastJob] = useState<any>(null);
+  const [lastResult, setLastResult] = useState<any>(null);
   const [mapCenter, setMapCenter] = useState({ lat: -6.7924, lng: 39.2083 });
   const [error, setError] = useState('');
 
@@ -70,7 +71,7 @@ export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ 
       if (lat == null || lng == null) return;
       const marker = L.circleMarker([lat, lng], {
         radius: selected.has(p.placeId) ? 9 : 6,
-        color: p.shelfyMatch?.inDirectory ? '#f59e0b' : '#10b981',
+        color: p.shelfyMatch?.existingShop ? '#f59e0b' : '#10b981',
         fillOpacity: 0.85,
       });
       marker.on('click', () => toggleSelect(p.placeId));
@@ -82,7 +83,7 @@ export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ 
   const runSearch = async (pageToken?: string) => {
     setSearching(true);
     setError('');
-    const res = await api.searchAdminDirectoryPlaces({
+    const res = await api.searchAdminPlaces({
       mode,
       region,
       category,
@@ -112,27 +113,28 @@ export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ 
     });
   };
 
-  const selectAllPage = () => {
-    setSelected(new Set(places.map((p) => p.placeId)));
-  };
-
   const runImport = async () => {
+    if (!hostUserId) {
+      setError('Select a host user to assign imported shops.');
+      return;
+    }
     if (!selected.size) {
       setError('Select at least one business.');
       return;
     }
     setImporting(true);
-    const res = await api.importAdminDirectory({
+    const res = await api.importAdminBusinessPlaces({
       placeIds: [...selected],
+      hostUserId,
       region,
       city,
       directoryCategory: category,
     });
     setImporting(false);
     if (res.success && res.data) {
-      setLastJob(res.data);
+      setLastResult(res.data);
       setSelected(new Set());
-      onImported?.();
+      onDone?.();
     } else {
       setError(res.error?.message || 'Import failed.');
     }
@@ -141,9 +143,22 @@ export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ 
   return (
     <div className="space-y-4">
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-[11px] text-amber-200">
-        Google Places data is fetched on demand. Shelfy stores Place IDs and directory metadata — not permanent copies of Google content.
-        Photos and details use Google attribution. Refine area/category to discover more; pagination limits apply.
+        Import creates <strong>client businesses</strong> (Shop records) assigned to a host user. Google Place IDs are stored; complete photos and publish from the host dashboard.
       </div>
+
+      <select
+        required
+        value={hostUserId}
+        onChange={(e) => setHostUserId(e.target.value)}
+        className="w-full max-w-md bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+      >
+        <option value="">Assign host user for imports…</option>
+        {hosts.map((h) => (
+          <option key={h.id} value={h.id}>
+            {h.name} ({h.email}) — {h.role}
+          </option>
+        ))}
+      </select>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
@@ -189,12 +204,12 @@ export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ 
 
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden min-h-[280px]">
           <div ref={mapRef} className="w-full h-[320px]" />
-          <p className="text-[10px] text-slate-500 p-2">Map centre used for search bias. Amber = already in Shelfy directory.</p>
+          <p className="text-[10px] text-slate-500 p-2">Amber = already imported as a Shelfy shop.</p>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
-        <button type="button" onClick={selectAllPage} className="text-xs font-bold text-slate-300 flex items-center gap-1">
+        <button type="button" onClick={() => setSelected(new Set(places.map((p) => p.placeId)))} className="text-xs font-bold text-slate-300 flex items-center gap-1">
           <CheckSquare className="w-4 h-4" /> Select all on page
         </button>
         <button type="button" onClick={() => setSelected(new Set())} className="text-xs text-slate-500 flex items-center gap-1">
@@ -208,13 +223,13 @@ export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ 
           className="ml-auto flex items-center gap-2 px-4 py-2 bg-teal-500 text-slate-950 font-bold rounded-xl text-xs disabled:opacity-50"
         >
           {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Confirm import
+          Import as clients
         </button>
       </div>
 
-      {lastJob?.summary && (
+      {lastResult && (
         <div className="text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3">
-          Import summary: {lastJob.summary.created} created, {lastJob.summary.duplicates} duplicates, {lastJob.summary.failed} failed, {lastJob.summary.needsReview} need review.
+          Created {lastResult.created?.length ?? 0}, duplicates {lastResult.duplicates?.length ?? 0}, failed {lastResult.failed?.length ?? 0}.
         </div>
       )}
 
@@ -224,26 +239,12 @@ export const AdminDirectoryImporter: React.FC<{ onImported?: () => void }> = ({ 
             <button type="button" onClick={() => toggleSelect(p.placeId)} className="shrink-0 mt-1">
               {selected.has(p.placeId) ? <CheckSquare className="w-5 h-5 text-emerald-400" /> : <Square className="w-5 h-5 text-slate-600" />}
             </button>
-            {p.photos?.[0]?.proxyUrl ? (
-              <img src={p.photos[0].proxyUrl} alt="" className="w-16 h-16 rounded-lg object-cover bg-slate-800" />
-            ) : (
-              <div className="w-16 h-16 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] text-slate-500">No photo</div>
-            )}
+            <div className="w-16 h-16 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] text-slate-500 shrink-0">Place</div>
             <div className="flex-1 min-w-0 text-xs">
               <div className="font-bold text-white truncate">{p.displayName || '—'}</div>
               <div className="text-slate-400 truncate">{p.formattedAddress || '—'}</div>
-              <div className="text-slate-500">
-                {p.rating != null && <>★ {p.rating} ({p.userRatingCount ?? 0}) · </>}
-                {p.primaryType || p.types?.[0]}
-              </div>
-              {p.shelfyMatch?.inDirectory && <span className="text-amber-400 font-bold">Already in directory</span>}
-              {p.googleMapsUri && (
-                <a href={p.googleMapsUri} target="_blank" rel="noreferrer" className="text-teal-400 hover:underline">
-                  Google Maps
-                </a>
-              )}
+              {p.shelfyMatch?.existingShop && <span className="text-amber-400 font-bold">Already in Shelfy</span>}
               <div className="text-[10px] text-slate-600 font-mono truncate">{p.placeId}</div>
-              <div className="text-[10px] text-slate-600">Powered by Google</div>
             </div>
           </div>
         ))}
