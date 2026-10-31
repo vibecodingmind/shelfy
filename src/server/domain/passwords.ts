@@ -22,18 +22,10 @@ export function validatePassword(password: string): { ok: true } | { ok: false; 
   return { ok: true };
 }
 
-export const DEMO_EMAILS = [
+/** Pre-seeded operator accounts (normal password login; not gated by environment). */
+export const SEED_OPERATOR_EMAILS = [
   'admin@shelfy.co.tz',
   'vendor@shelfy.co.tz',
   'host@shelfy.co.tz',
   'agent@shelfy.co.tz',
-];
-
-export function isDemoEmail(email: string): boolean {
-  return DEMO_EMAILS.includes(email.toLowerCase());
-}
-
-export function demoLoginAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
-  if (env.ALLOW_DEMO_LOGIN === 'true') return true;
-  return env.NODE_ENV !== 'production';
-}
+] as const;

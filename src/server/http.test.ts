@@ -11,7 +11,6 @@ import path from 'path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'vitest_jwt_secret_shelfy';
-process.env.ALLOW_DEMO_LOGIN = 'true';
 process.env.NODE_ENV = 'test';
 delete process.env.DATABASE_URL;
 delete process.env.AZAMPAY_APP_NAME;

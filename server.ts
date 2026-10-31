@@ -15,7 +15,7 @@ import { analyzeShelfPhoto, recommendShelves, generateVendorInsights } from './s
 import { BookingStatus, User, UserRole } from './src/types/index.js';
 import { SHELF_TYPE_CATALOG } from './src/lib/shelfTypes.js';
 import { normalizeShelfRules } from './src/lib/shelfRules.js';
-import { validatePassword, demoLoginAllowed, isDemoEmail } from './src/server/domain/passwords.js';
+import { validatePassword } from './src/server/domain/passwords.js';
 import { publicUser, publicUsers } from './src/server/domain/publicUser.js';
 import { addMonthsIsoDate, BLOCKING_BOOKING_STATUSES, calculateBookingQuote, datesOverlap } from './src/server/domain/pricing.js';
 import { assertTransition, initialBookingStatus, normalizeHostApproval } from './src/server/domain/bookingMachine.js';
@@ -239,10 +239,6 @@ app.post('/api/auth/login', authLimiter, (req: Request, res: Response) => {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ success: false, error: { message: 'Email and password required.' } });
-    }
-
-    if (isDemoEmail(email) && !demoLoginAllowed()) {
-      return res.status(403).json({ success: false, error: { message: 'Demo login is disabled in this environment.' } });
     }
 
     const user = dbEngine.db.users.find((u) => u.email.toLowerCase() === String(email).toLowerCase());

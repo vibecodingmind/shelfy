@@ -14,8 +14,8 @@ test.describe('Marketplace shell', () => {
   });
 });
 
-test.describe('Demo auth journey', () => {
-  test('vendor can log in when demo login is enabled', async ({ page, request }) => {
+test.describe('Seeded operator auth', () => {
+  test('vendor can log in with email and password', async ({ page, request }) => {
     const login = await request.post('/api/auth/login', {
       data: { email: 'vendor@shelfy.co.tz', password: 'Password123!' },
     });
@@ -32,7 +32,9 @@ test.describe('Demo auth journey', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Account' }).click();
     await page.getByRole('button', { name: 'Sign In' }).click();
-    await page.getByRole('button', { name: /Brand Vendor/i }).click();
+    await page.getByPlaceholder('e.g. yourname@domain.co.tz').fill('vendor@shelfy.co.tz');
+    await page.locator('input[type="password"]').first().fill('Password123!');
+    await page.getByRole('button', { name: 'Sign In', exact: true }).click();
     await expect(page.getByText('VENDOR PORTAL')).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: 'Account' }).click();
     await page.getByRole('button', { name: 'Account settings' }).click();

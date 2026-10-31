@@ -14,6 +14,7 @@ import { getPrisma } from './prisma.js';
 import { importSchemaToPrisma, loadSchemaFromPrisma, persistSchemaToPrisma, relationalUserCount } from './relational.js';
 import { ensurePrismaMigrationHistory, runPrismaMigrateDeploy } from './services/prismaBoot.js';
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
+import { SEED_OPERATOR_EMAILS } from './domain/passwords.js';
 
 export const SEED_SCHEMA_VERSION = 7;
 
@@ -195,19 +196,18 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
     return { ...shelf, slug };
   });
 
-  const demoPassword = 'Password123!';
-  const demoEmails = ['admin@shelfy.co.tz', 'vendor@shelfy.co.tz', 'host@shelfy.co.tz', 'agent@shelfy.co.tz'];
+  const seedOperatorPassword = 'Password123!';
   next.users = next.users.map((user) => {
-    if (!demoEmails.includes(user.email)) return user;
+    if (!SEED_OPERATOR_EMAILS.includes(user.email as (typeof SEED_OPERATOR_EMAILS)[number])) return user;
     try {
-      if (user.passwordHash && bcrypt.compareSync(demoPassword, user.passwordHash)) return user;
+      if (user.passwordHash && bcrypt.compareSync(seedOperatorPassword, user.passwordHash)) return user;
     } catch {
       // rehash below
     }
     changed = true;
     return {
       ...user,
-      passwordHash: bcrypt.hashSync(demoPassword, 10),
+      passwordHash: bcrypt.hashSync(seedOperatorPassword, 10),
       emailVerifiedAt: user.emailVerifiedAt || new Date().toISOString(),
       status: user.status === 'PENDING' ? 'ACTIVE' : user.status,
       updatedAt: new Date().toISOString(),

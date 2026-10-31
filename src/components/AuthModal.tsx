@@ -1,9 +1,9 @@
 /**
- * Shelfy 🇹🇿 — Authentication & Registration Modal with 1-Click Role Logins
+ * Shelfy 🇹🇿 — Authentication & Registration Modal
  */
 
 import React, { useState } from 'react';
-import { X, Lock, Mail, User as UserIcon, Phone, Building, Store, ShoppingBag, Shield, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, Lock, Mail, Phone, Store, ShoppingBag } from 'lucide-react';
 import { UserRole } from '../types/index.js';
 import { api } from '../lib/api.js';
 
@@ -51,19 +51,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } else {
       setErrorMsg(res.error?.message || 'Login failed. Please check your credentials.');
-    }
-    setLoading(false);
-  };
-
-  const handleQuickDemoLogin = async (demoEmail: string) => {
-    setErrorMsg('');
-    setLoading(true);
-    const res = await api.login({ email: demoEmail, password: 'Password123!' });
-    if (res.success && res.data) {
-      onSuccess(res.data);
-      onClose();
-    } else {
-      setErrorMsg(res.error?.message || 'Demo login failed.');
     }
     setLoading(false);
   };
@@ -148,102 +135,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* 1-CLICK DEMO LOGIN ACCOUNTS (Visible on Login tab) */}
-        {mode === 'LOGIN' && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Instant Demo Role Access
-              </span>
-              <span className="text-[10px] text-slate-400">1-click login</span>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {/* Host Demo */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => handleQuickDemoLogin('host@shelfy.co.tz')}
-                className="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-blue-500/50 rounded-xl text-left transition-all group flex items-start gap-2.5"
-              >
-                <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Store className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white group-hover:text-blue-400 flex items-center gap-1">
-                    Shop Host <span className="text-[10px] text-blue-400 font-mono font-normal">→</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 truncate">Juma Mkwawa (Shops)</div>
-                </div>
-              </button>
-
-              {/* Vendor Demo */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => handleQuickDemoLogin('vendor@shelfy.co.tz')}
-                className="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-xl text-left transition-all group flex items-start gap-2.5"
-              >
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <ShoppingBag className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white group-hover:text-amber-400 flex items-center gap-1">
-                    Brand Vendor <span className="text-[10px] text-amber-400 font-mono font-normal">→</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 truncate">Amina (Kilimanjaro)</div>
-                </div>
-              </button>
-
-              {/* Admin Demo */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => handleQuickDemoLogin('admin@shelfy.co.tz')}
-                className="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-left transition-all group flex items-start gap-2.5"
-              >
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white group-hover:text-emerald-400 flex items-center gap-1">
-                    Platform Admin <span className="text-[10px] text-emerald-400 font-mono font-normal">→</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 truncate">Governance & Categories</div>
-                </div>
-              </button>
-
-              {/* Field Agent Demo */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => handleQuickDemoLogin('agent@shelfy.co.tz')}
-                className="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-purple-500/50 rounded-xl text-left transition-all group flex items-start gap-2.5"
-              >
-                <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <UserIcon className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white group-hover:text-purple-400 flex items-center gap-1">
-                    Field Agent <span className="text-[10px] text-purple-400 font-mono font-normal">→</span>
-                  </div>
-                  <div className="text-[10px] text-slate-400 truncate">Baraka (Audits & Visits)</div>
-                </div>
-              </button>
-            </div>
-
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-800" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-500">
-                <span className="bg-slate-900 px-3">or sign in with password</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* LOGIN FORM */}
         {mode === 'LOGIN' ? (
           <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
             <div>

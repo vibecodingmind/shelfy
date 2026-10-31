@@ -168,20 +168,6 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [user?.id]);
 
-  // Demo Login Handler
-  const handleDemoLogin = async (email: string) => {
-    const res = await api.login({ email, password: 'Password123!' });
-    if (res.success && res.data) {
-      setStoredToken(res.data.token, res.data.refreshToken);
-      setUser(res.data.user);
-      if (res.data.vendorProfile) setVendorProfile(res.data.vendorProfile);
-      if (res.data.hostProfile) setHostProfile(res.data.hostProfile);
-      setActiveRoleView(res.data.user.role);
-      loadUserData();
-      loadPublicData();
-    }
-  };
-
   // Logout Handler
   const handleLogout = () => {
     void api.logout();
@@ -319,7 +305,6 @@ export function App() {
           if (activeRoleView !== 'MARKETPLACE') setActiveRoleView('MARKETPLACE');
         }}
         onLoginClick={(mode, role) => handleOpenAuthModal(mode || 'LOGIN', role || 'VENDOR')}
-        onDemoLogin={handleDemoLogin}
         onLogout={handleLogout}
         onSwitchView={(view) => {
           setActiveRoleView(view);

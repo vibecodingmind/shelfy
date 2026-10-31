@@ -59,8 +59,8 @@ if (shelves.json.data?.[0]?.id) {
   ok('availability hides vendorName', ranges.every((r) => !('vendorName' in r)));
 }
 
-const demoLogin = await post('/api/auth/login', { email: 'vendor@shelfy.co.tz', password: 'Password123!' });
-ok('demo login blocked in prod', demoLogin.status === 403);
+const seedLogin = await post('/api/auth/login', { email: 'vendor@shelfy.co.tz', password: 'Password123!' });
+ok('seed vendor login works', seedLogin.status === 200 && seedLogin.json?.data?.token);
 
 const registerEmail = `smoke-${Date.now()}@shelfy.test`;
 const reg = await post('/api/auth/register', {

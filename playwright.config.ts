@@ -10,7 +10,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'ALLOW_DEMO_LOGIN=true NODE_ENV=development PORT=3460 DATA_DIR=/tmp/shelfy-e2e-data DATABASE_URL= tsx server.ts',
+      'NODE_ENV=development PORT=3460 DATA_DIR=/tmp/shelfy-e2e-data DATABASE_URL= tsx server.ts',
     url: 'http://127.0.0.1:3460/api/health',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

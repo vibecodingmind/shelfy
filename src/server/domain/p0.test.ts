@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validatePassword, isDemoEmail } from './passwords.js';
+import { validatePassword, SEED_OPERATOR_EMAILS } from './passwords.js';
 import { publicUser } from './publicUser.js';
 import { addMonthsIsoDate, calculateBookingQuote, datesOverlap } from './pricing.js';
 import { assertTransition, canTransition, initialBookingStatus, normalizeHostApproval } from './bookingMachine.js';
@@ -38,9 +38,9 @@ describe('password policy', () => {
     expect(validatePassword('Password123!').ok).toBe(true);
   });
 
-  it('recognizes demo emails', () => {
-    expect(isDemoEmail('admin@shelfy.co.tz')).toBe(true);
-    expect(isDemoEmail('someone@example.com')).toBe(false);
+  it('lists seeded operator emails', () => {
+    expect(SEED_OPERATOR_EMAILS).toContain('admin@shelfy.co.tz');
+    expect(SEED_OPERATOR_EMAILS).not.toContain('someone@example.com');
   });
 });
 

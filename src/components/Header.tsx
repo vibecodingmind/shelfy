@@ -13,7 +13,6 @@ interface HeaderProps {
   searchQuery?: string;
   onSearchChange?: (val: string) => void;
   onLoginClick: (initialMode?: 'LOGIN' | 'REGISTER', initialRole?: UserRole) => void;
-  onDemoLogin?: (email: string) => void;
   onLogout: () => void;
   onSwitchView?: (roleView: string) => void;
   onOpenFilter?: () => void;

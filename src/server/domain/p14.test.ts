@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { Client } from 'pg';
 import { publicUser } from './publicUser.js';
 import { canAccessBooking, canAccessPayment, canAccessPayouts, canSelfRegister, isActiveForApi, ownsResource, filterFieldVisitsForUser, canListFieldVisits } from './rbac.js';
-import { demoLoginAllowed } from './passwords.js';
 import { canEditListing, isPublishedShop, publicShops } from './listings.js';
 import {
   paymentCapturedPostings,
@@ -67,18 +66,12 @@ describe('security: public responses', () => {
   });
 });
 
-describe('security: registration and demo login', () => {
+describe('security: registration', () => {
   it('allows only vendor and host self-register', () => {
     expect(canSelfRegister('VENDOR')).toBe(true);
     expect(canSelfRegister('HOST')).toBe(true);
     expect(canSelfRegister('ADMIN')).toBe(false);
     expect(canSelfRegister('FIELD_AGENT')).toBe(false);
-  });
-
-  it('blocks demo login in production unless ALLOW_DEMO_LOGIN=true', () => {
-    expect(demoLoginAllowed({ NODE_ENV: 'production' })).toBe(false);
-    expect(demoLoginAllowed({ NODE_ENV: 'production', ALLOW_DEMO_LOGIN: 'true' })).toBe(true);
-    expect(demoLoginAllowed({ NODE_ENV: 'development' })).toBe(true);
   });
 });
 
