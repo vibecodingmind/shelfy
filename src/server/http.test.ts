@@ -235,4 +235,74 @@ describe('HTTP API', () => {
     expect(settings.json.data.azamPayEnvironment).toBe('sandbox');
     expect(settings.json.data.autoApproveBookings).toBe(false);
   });
+
+  it('updates profile fields and clears an avatar', async () => {
+    const vendor = await login(origin, 'vendor@shelfy.co.tz');
+    const saved = await api(origin, 'PUT', '/api/users/me', {
+      token: vendor.token,
+      body: {
+        name: 'Amina Updated',
+        phone: '0754123456',
+        avatarUrl: '',
+        vendorProfile: {
+          businessName: 'Kilimanjaro Goods',
+          description: 'Shelf vendor in Arusha',
+          city: 'Arusha',
+          logoUrl: '',
+        },
+      },
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.json.data.user.name).toBe('Amina Updated');
+    expect(saved.json.data.user.avatarUrl).toBeUndefined();
+    expect(saved.json.data.vendorProfile.description).toBe('Shelf vendor in Arusha');
+    expect(saved.json.data.vendorProfile.logoUrl).toBeUndefined();
+  });
+
+  it('lets a vendor edit and archive a product, and blocks other vendors', async () => {
+    const vendor = await login(origin, 'vendor@shelfy.co.tz');
+    const created = await api(origin, 'POST', '/api/products', {
+      token: vendor.token,
+      body: { name: 'Test Spice', priceTzs: 2500, stockQuantity: 4 },
+    });
+    expect(created.status).toBe(200);
+    const id = created.json.data.id as string;
+    const updated = await api(origin, 'PUT', `/api/products/${id}`, {
+      token: vendor.token,
+      body: { name: 'Test Spice Jar', status: 'INACTIVE', priceTzs: 3000 },
+    });
+    expect(updated.status).toBe(200);
+    expect(updated.json.data.name).toBe('Test Spice Jar');
+    expect(updated.json.data.status).toBe('INACTIVE');
+    expect(updated.json.data.priceTzs).toBe(3000);
+
+    const other = await api(origin, 'POST', '/api/auth/register', {
+      body: {
+        name: 'Other Vendor',
+        email: `other-${Date.now()}@shelfy.test`,
+        password: 'Password123!',
+        role: 'VENDOR',
+      },
+    });
+    const denied = await api(origin, 'PUT', `/api/products/${id}`, {
+      token: other.json.data.token,
+      body: { name: 'Stolen' },
+    });
+    expect(denied.status).toBe(403);
+  });
+
+  it('returns admin dashboard counts and rejects vendors', async () => {
+    const vendor = await login(origin, 'vendor@shelfy.co.tz');
+    const denied = await api(origin, 'GET', '/api/admin/dashboard', { token: vendor.token });
+    expect(denied.status).toBe(403);
+
+    const admin = await login(origin, 'admin@shelfy.co.tz');
+    const dash = await api(origin, 'GET', '/api/admin/dashboard', { token: admin.token });
+    expect(dash.status).toBe(200);
+    expect(typeof dash.json.data.stats.productsCount).toBe('number');
+    expect(typeof dash.json.data.stats.availableShelves).toBe('number');
+    expect(typeof dash.json.data.stats.bookingsCount).toBe('number');
+    expect(typeof dash.json.data.stats.pendingBookings).toBe('number');
+    expect(Array.isArray(dash.json.data.stats.recentUsers)).toBe(true);
+  });
 });

@@ -37,6 +37,7 @@ export interface VendorProfile {
   city: string;
   region: string;
   country: string;
+  logoUrl?: string;
   verificationStatus: VerificationStatus;
 }
 
@@ -49,6 +50,7 @@ export interface HostProfile {
   phone: string;
   /** Mobile money MSISDN for withdrawal payouts (TZ). */
   payoutPhone?: string;
+  logoUrl?: string;
   verificationStatus: VerificationStatus;
 }
 

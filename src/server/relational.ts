@@ -119,6 +119,7 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
       city: p.city,
       region: p.region,
       country: p.country,
+      logoUrl: p.logoUrl || undefined,
       verificationStatus: p.verificationStatus as any,
     })),
     hostProfiles: hostProfiles.map((p) => ({
@@ -128,6 +129,7 @@ export async function loadSchemaFromPrisma(prisma: PrismaClient): Promise<Databa
       businessRegistration: p.businessRegistration || undefined,
       description: p.description || undefined,
       phone: p.phone,
+      logoUrl: p.logoUrl || undefined,
       verificationStatus: p.verificationStatus as any,
     })),
     shops: shops.map((s) => ({
@@ -447,12 +449,20 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           city: profile.city,
           region: profile.region,
           country: profile.country,
+          logoUrl: profile.logoUrl,
           verificationStatus: profile.verificationStatus as any,
         },
         update: {
           businessName: profile.businessName,
-          verificationStatus: profile.verificationStatus as any,
+          businessRegistration: profile.businessRegistration,
           description: profile.description,
+          category: profile.category,
+          address: profile.address,
+          city: profile.city,
+          region: profile.region,
+          country: profile.country,
+          logoUrl: profile.logoUrl,
+          verificationStatus: profile.verificationStatus as any,
         },
       });
     }
@@ -466,10 +476,15 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
           businessRegistration: profile.businessRegistration,
           description: profile.description,
           phone: profile.phone,
+          logoUrl: profile.logoUrl,
           verificationStatus: profile.verificationStatus as any,
         },
         update: {
           businessName: profile.businessName,
+          businessRegistration: profile.businessRegistration,
+          description: profile.description,
+          phone: profile.phone,
+          logoUrl: profile.logoUrl,
           verificationStatus: profile.verificationStatus as any,
         },
       });
@@ -580,7 +595,11 @@ export async function persistSchemaToPrisma(prisma: PrismaClient, data: Database
         },
         update: {
           name: product.name,
+          description: product.description,
+          category: product.category,
+          sku: product.sku,
           priceTzs: product.priceTzs,
+          images: jsonValue(product.images),
           stockQuantity: product.stockQuantity,
           status: product.status,
           updatedAt: mustDate(product.updatedAt),

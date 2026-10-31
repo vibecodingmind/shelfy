@@ -264,6 +264,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
                   className="flex items-center gap-1.5 sm:gap-2 p-1.5 pl-2 rounded-full bg-slate-800 border border-slate-700 hover:border-slate-600 transition-all text-xs touch-target"
                   aria-expanded={showUserDropdown}
+                  aria-label="Account"
                 >
                   <div className="text-right hidden sm:block pr-1">
                     <div className="text-xs font-bold text-white leading-tight">{user.name.split(' ')[0]}</div>

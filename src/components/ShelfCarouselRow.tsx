@@ -5,13 +5,13 @@ import { AirbnbShelfCard } from './AirbnbShelfCard.js';
 import { isFeaturedShelf, isVerifiedShelf } from '../lib/shelfCardMeta.js';
 
 /** Desktop (lg+): 7 visible; tablet: 3; mobile: 2. Uses scroller width, not viewport. */
-function cardsPerViewForWidth(width: number): number {
+export function cardsPerViewForWidth(width: number): number {
   if (width >= 1024) return 7;
   if (width >= 640) return 3;
   return 2;
 }
 
-function flexClassForCardsPerView(n: number): string {
+export function flexClassForCardsPerView(n: number): string {
   switch (n) {
     case 2:
       return 'flex-[0_0_calc((100%-1rem)/2)]';
@@ -55,7 +55,9 @@ export const ShelfCarouselRow: React.FC<ShelfCarouselRowProps> = ({
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
   const [visibleCount, setVisibleCount] = useState(() =>
-    responsiveCards ? 2 : cardsPerView ?? 0
+    responsiveCards
+      ? cardsPerViewForWidth(typeof window !== 'undefined' ? window.innerWidth : 1280)
+      : cardsPerView ?? 0
   );
 
   const updateArrows = useCallback(() => {
@@ -114,8 +116,7 @@ export const ShelfCarouselRow: React.FC<ShelfCarouselRowProps> = ({
           </h2>
         </button>
 
-        {shelves.length > effectiveCount && effectiveCount > 0 && (
-          <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               aria-label="Previous shelves"
@@ -135,7 +136,6 @@ export const ShelfCarouselRow: React.FC<ShelfCarouselRowProps> = ({
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-        )}
       </div>
 
       <div

@@ -153,6 +153,7 @@ model VendorProfile {
   city                 String
   region               String
   country              String             @default("Tanzania")
+  logoUrl              String?
   verificationStatus   VerificationStatus @default(PENDING)
 }
 
@@ -164,6 +165,7 @@ model HostProfile {
   businessRegistration String?
   description          String?
   phone                String             @default("")
+  logoUrl              String?
   verificationStatus   VerificationStatus @default(PENDING)
 }
 

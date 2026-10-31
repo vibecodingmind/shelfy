@@ -486,6 +486,7 @@ app.put('/api/users/me', requireAuth, async (req: AuthenticatedRequest, res: Res
       if (typeof vendorPatch.address === 'string') vp.address = vendorPatch.address.trim();
       if (typeof vendorPatch.city === 'string') vp.city = vendorPatch.city.trim();
       if (typeof vendorPatch.region === 'string') vp.region = vendorPatch.region.trim();
+      if (typeof vendorPatch.logoUrl === 'string') vp.logoUrl = vendorPatch.logoUrl.trim() || undefined;
     }
   }
 
@@ -499,6 +500,7 @@ app.put('/api/users/me', requireAuth, async (req: AuthenticatedRequest, res: Res
       if (typeof hostPatch.payoutPhone === 'string') {
         hp.payoutPhone = normalizeTzPhone(hostPatch.payoutPhone) || hostPatch.payoutPhone.trim();
       }
+      if (typeof hostPatch.logoUrl === 'string') hp.logoUrl = hostPatch.logoUrl.trim() || undefined;
     }
   }
 
@@ -1338,6 +1340,48 @@ app.post('/api/products', requireAuth, requireRole('VENDOR', 'ADMIN'), (req: Aut
   res.json({ success: true, data: newProduct });
 });
 
+app.put('/api/products/:id', requireAuth, requireRole('VENDOR', 'ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+  const product = dbEngine.db.products.find((p) => p.id === req.params.id);
+  if (!product) {
+    return res.status(404).json({ success: false, error: { message: 'Product not found.' } });
+  }
+  if (req.user!.role !== 'ADMIN' && product.vendorId !== req.user!.id) {
+    return res.status(403).json({ success: false, error: { message: 'You can only edit your own products.' } });
+  }
+
+  const { name, description, category, sku, priceTzs, images, stockQuantity, status } = req.body || {};
+  if (typeof name === 'string' && name.trim()) product.name = name.trim();
+  if (typeof description === 'string') product.description = description.trim();
+  if (typeof category === 'string' && category.trim()) product.category = category.trim();
+  if (typeof sku === 'string' && sku.trim()) product.sku = sku.trim();
+  if (priceTzs !== undefined) {
+    const price = Number(priceTzs);
+    if (!Number.isFinite(price) || price < 0) {
+      return res.status(400).json({ success: false, error: { message: 'Price must be a positive number.' } });
+    }
+    product.priceTzs = price;
+  }
+  if (Array.isArray(images)) {
+    product.images = images.filter((img) => typeof img === 'string' && img.trim()).map((img) => img.trim());
+  }
+  if (stockQuantity !== undefined) {
+    const stock = Number(stockQuantity);
+    if (!Number.isFinite(stock) || stock < 0) {
+      return res.status(400).json({ success: false, error: { message: 'Stock must be zero or greater.' } });
+    }
+    product.stockQuantity = stock;
+  }
+  if (status !== undefined) {
+    if (status !== 'ACTIVE' && status !== 'INACTIVE') {
+      return res.status(400).json({ success: false, error: { message: 'Status must be ACTIVE or INACTIVE.' } });
+    }
+    product.status = status;
+  }
+  product.updatedAt = new Date().toISOString();
+  dbEngine.save();
+  res.json({ success: true, data: product });
+});
+
 // GET /api/inventory
 app.get('/api/inventory', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const user = req.user!;
@@ -1673,6 +1717,24 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
     windowEnd: window.windowEnd,
   });
 
+  const recentUsers = publicUsers(
+    [...dbEngine.db.users].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6)
+  );
+  const recentPayments = [...dbEngine.db.payments]
+    .filter((p) => p.status === 'PAID')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 6)
+    .map((p) => ({
+      id: p.id,
+      amountTzs: p.amountTzs,
+      status: p.status,
+      bookingId: p.bookingId,
+      createdAt: p.createdAt,
+    }));
+  const recentAuditLogs = [...dbEngine.db.auditLogs]
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+    .slice(0, 6);
+
   const stats = {
     usersCount,
     vendorsCount,
@@ -1680,13 +1742,22 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
     agentsCount,
     shopsCount,
     shelvesCount,
+    productsCount: dbEngine.db.products.length,
+    availableShelves: dbEngine.db.shelves.filter((s) => s.availabilityStatus === 'AVAILABLE').length,
+    bookingsCount: dbEngine.db.bookings.length,
     activeBookings,
+    pendingBookings: dbEngine.db.bookings.filter((b) =>
+      ['PENDING_APPROVAL', 'PAYMENT_PENDING', 'DRAFT'].includes(b.status)
+    ).length,
     totalRevenueTzs,
     totalCommissionsTzs,
     pendingVerifications: dbEngine.db.verificationRequests.filter((v) => v.status === 'PENDING' || v.status === 'UNDER_REVIEW').length,
     pendingWithdrawals: dbEngine.db.withdrawals.filter((w) => w.status === 'PENDING' || w.status === 'APPROVED').length,
     cityBreakdown,
     occupancy,
+    recentUsers,
+    recentPayments,
+    recentAuditLogs,
   };
 
   res.json({

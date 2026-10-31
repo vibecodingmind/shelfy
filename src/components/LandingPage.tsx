@@ -2,11 +2,13 @@
  * Shelfy 🇹🇿 — Airbnb-Style Public Landing Page & Shelf Discovery Marketplace
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Store,
   SlidersHorizontal,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Shelf, Shop, User } from '../types/index.js';
 import { AirbnbShelfDetail } from './AirbnbShelfDetail.js';
@@ -178,6 +180,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   );
 
   const featuredShelves = filteredShelves.filter((shelf) => isFeaturedShelf(shelf));
+  const typeNavRef = useRef<HTMLDivElement>(null);
+  const [typeCanPrev, setTypeCanPrev] = useState(false);
+  const [typeCanNext, setTypeCanNext] = useState(false);
+  const updateTypeNav = useCallback(() => {
+    const el = typeNavRef.current;
+    if (!el) return;
+    setTypeCanPrev(el.scrollLeft > 4);
+    setTypeCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    updateTypeNav();
+    const el = typeNavRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateTypeNav, { passive: true });
+    const ro = new ResizeObserver(updateTypeNav);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', updateTypeNav);
+      ro.disconnect();
+    };
+  }, [updateTypeNav]);
 
   const handleResetFilters = () => {
     setSelectedCategory('');
@@ -233,7 +257,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <div id="shelfy-marketplace" className="min-h-screen bg-[var(--shelfy-bg)] text-[var(--shelfy-fg)] flex flex-col font-sans pb-28 md:pb-16">
 
       <section className="bg-[var(--shelfy-bg)] border-b border-[var(--shelfy-border)] sticky top-16 sm:top-20 z-20 py-3">
-        <div className="flex flex-nowrap items-center gap-3 overflow-x-auto px-3 sm:px-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden xl:flex-wrap xl:justify-center xl:overflow-visible">
+        <div className="flex items-center gap-1 px-2 sm:px-4">
+          <button
+            type="button"
+            aria-label="Previous shelf types"
+            disabled={!typeCanPrev}
+            onClick={() => typeNavRef.current?.scrollBy({ left: -280, behavior: 'smooth' })}
+            className="shrink-0 w-8 h-8 rounded-full border border-[var(--shelfy-border)] bg-[var(--shelfy-bg)] flex items-center justify-center text-[var(--shelfy-fg)] hover:opacity-80 disabled:opacity-35 disabled:pointer-events-none"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        <div ref={typeNavRef} className="flex flex-nowrap items-center gap-3 overflow-x-auto flex-1 px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {shelfTypeNav.map((pill) => {
               const isActive = selectedType === pill.id;
               const Icon = pill.Icon;
@@ -262,6 +296,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </button>
               );
             })}
+        </div>
+          <button
+            type="button"
+            aria-label="Next shelf types"
+            disabled={!typeCanNext}
+            onClick={() => typeNavRef.current?.scrollBy({ left: 280, behavior: 'smooth' })}
+            className="shrink-0 w-8 h-8 rounded-full border border-[var(--shelfy-border)] bg-[var(--shelfy-bg)] flex items-center justify-center text-[var(--shelfy-fg)] hover:opacity-80 disabled:opacity-35 disabled:pointer-events-none"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </section>
 
@@ -417,6 +461,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onSelectShelf={openShelf}
                 isFavorite={isFavorite}
                 onToggleFavorite={handleToggleFavorite}
+                responsiveCards
               />
             )}
 
@@ -449,6 +494,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   setSelectedCity(cityGroup.id);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
+                responsiveCards
               />
             ))}
 

@@ -27,4 +27,18 @@ test.describe('Demo auth journey', () => {
     await page.goto('/');
     await expect(page.getByText(/Shelfy|Tanzania/i).first()).toBeVisible();
   });
+
+  test('vendor can open account settings from the header', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Account' }).click();
+    await page.getByRole('button', { name: 'Sign In' }).click();
+    await page.getByRole('button', { name: /Brand Vendor/i }).click();
+    await expect(page.getByText('VENDOR PORTAL')).toBeVisible({ timeout: 15000 });
+    await page.getByRole('button', { name: 'Account' }).click();
+    await page.getByRole('button', { name: 'Account settings' }).click();
+    await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible();
+    await expect(page.getByText('Display name', { exact: true })).toBeVisible();
+    await expect(page.getByText('Profile checklist')).toBeVisible();
+    await expect(page.getByText('Business logo')).toBeVisible();
+  });
 });

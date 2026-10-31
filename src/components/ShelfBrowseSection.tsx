@@ -5,6 +5,7 @@ import { BrowseGroup } from '../lib/shelfBrowseGroups.js';
 import { AirbnbShelfCard } from './AirbnbShelfCard.js';
 import { isFeaturedShelf, isVerifiedShelf } from '../lib/shelfCardMeta.js';
 import { capRailShelves } from '../lib/shelfBrowseGroups.js';
+import { cardsPerViewForWidth, flexClassForCardsPerView } from './ShelfCarouselRow.js';
 
 interface ShelfBrowseSectionProps {
   sectionKind: 'category' | 'type';
@@ -42,6 +43,9 @@ export const ShelfBrowseSection: React.FC<ShelfBrowseSectionProps> = ({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(() =>
+    cardsPerViewForWidth(typeof window !== 'undefined' ? window.innerWidth : 1280)
+  );
 
   const activeGroup = groups.find((g) => g.id === activeGroupId) || groups[0];
   const shelves = useMemo(() => {
@@ -62,6 +66,7 @@ export const ShelfBrowseSection: React.FC<ShelfBrowseSectionProps> = ({
   const updateArrows = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
+    setVisibleCount(cardsPerViewForWidth(el.clientWidth));
     setCanPrev(el.scrollLeft > 4);
     setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }, []);
@@ -72,9 +77,12 @@ export const ShelfBrowseSection: React.FC<ShelfBrowseSectionProps> = ({
     if (!el) return;
     el.addEventListener('scroll', updateArrows, { passive: true });
     window.addEventListener('resize', updateArrows);
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(el);
     return () => {
       el.removeEventListener('scroll', updateArrows);
       window.removeEventListener('resize', updateArrows);
+      ro.disconnect();
     };
   }, [shelves, updateArrows]);
 
@@ -152,14 +160,14 @@ export const ShelfBrowseSection: React.FC<ShelfBrowseSectionProps> = ({
       ) : (
         <div
           ref={scrollerRef}
-          className="flex gap-4 sm:gap-5 overflow-x-auto pb-1 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex w-full min-w-0 gap-4 overflow-x-auto pb-1 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {shelves.map((shelf) => {
             const shop = shopById.get(shelf.shopId);
             return (
               <div
                 key={shelf.id}
-                className="snap-start shrink-0 w-[42vw] sm:w-[28vw] md:w-[22vw] lg:w-[18vw] xl:w-[15vw] max-w-[280px] min-w-[140px]"
+                className={`snap-start min-w-0 ${flexClassForCardsPerView(visibleCount)}`}
               >
                 <AirbnbShelfCard
                   shelf={shelf}

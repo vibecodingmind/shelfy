@@ -54,12 +54,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateUserStatus,
   onUpdateSettings,
 }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'SHOPS' | 'CATEGORIES' | 'BOOKINGS' | 'VERIFY' | 'PAYOUTS' | 'DISPUTES' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'MARKETPLACE' | 'BOOKINGS' | 'FIELD' | 'FINANCE' | 'SUPPORT' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
   const [verifications, setVerifications] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [disputes, setDisputes] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [financeRows, setFinanceRows] = useState<any[]>([]);
+  const [fieldVisits, setFieldVisits] = useState<any[]>([]);
+  const [fieldReports, setFieldReports] = useState<any[]>([]);
+  const [adminProducts, setAdminProducts] = useState<any[]>([]);
   const [payoutRef, setPayoutRef] = useState('');
   const [shelfListingFilter, setShelfListingFilter] = useState('');
+  const [userQuery, setUserQuery] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('');
+  const [userStatusFilter, setUserStatusFilter] = useState('');
 
   useEffect(() => {
     api.getVerifications().then((res) => {
@@ -71,6 +79,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     api.getDisputes().then((res) => {
       if (res.success && res.data) setDisputes(res.data);
     });
+    if (activeTab === 'FINANCE') {
+      api.getAdminPaymentsOverview().then((res) => {
+        if (res.success && res.data) setPayments(res.data.payments || []);
+      });
+      api.getFinanceSummary().then((res) => {
+        if (res.success && res.data) setFinanceRows(Array.isArray(res.data) ? res.data : res.data.hosts || res.data.rows || []);
+      });
+    }
+    if (activeTab === 'FIELD') {
+      api.getFieldVisits().then((res) => {
+        if (res.success && res.data) setFieldVisits(res.data);
+      });
+      api.getReports().then((res) => {
+        if (res.success && res.data) setFieldReports(res.data);
+      });
+    }
+    if (activeTab === 'MARKETPLACE') {
+      api.getProducts().then((res) => {
+        if (res.success && res.data) setAdminProducts(res.data);
+      });
+    }
   }, [activeTab]);
 
   // Shelf Category Management State
@@ -180,19 +209,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div>
           <div className="flex items-center gap-2 px-2 py-2 md:py-3 border-b border-slate-800 mb-3 md:mb-4">
             <Shield className="w-5 h-5 text-emerald-400" />
-            <span className="font-extrabold text-sm tracking-wider text-white">ADMIN CONTROL</span>
+            <span className="font-extrabold text-sm tracking-wider text-white">ADMIN</span>
           </div>
 
           <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
               { id: 'OVERVIEW', label: 'Overview', icon: Activity },
-              { id: 'CATEGORIES', label: 'Categories', icon: Tag },
               { id: 'USERS', label: 'Users', icon: Users },
-              { id: 'SHOPS', label: 'Shops', icon: Store },
+              { id: 'MARKETPLACE', label: 'Marketplace', icon: Store },
               { id: 'BOOKINGS', label: 'Bookings', icon: DollarSign },
-              { id: 'VERIFY', label: 'Verify', icon: UserCheck },
-              { id: 'PAYOUTS', label: 'Payouts', icon: CreditCard },
-              { id: 'DISPUTES', label: 'Disputes', icon: AlertTriangle },
+              { id: 'FIELD', label: 'Field', icon: UserCheck },
+              { id: 'FINANCE', label: 'Finance', icon: CreditCard },
+              { id: 'SUPPORT', label: 'Support', icon: AlertTriangle },
               { id: 'SETTINGS', label: 'Settings', icon: Sliders },
               { id: 'AUDIT', label: 'Audit', icon: FileText },
             ].map((item) => {
@@ -231,9 +259,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
               <Shield className="w-6 h-6 text-emerald-400" />
-              Main Admin Platform Command
+              Admin
             </h1>
-            <p className="text-xs text-slate-400 mt-1">Full platform authority over users, shelf types, categories, shops, payments, and system rules.</p>
+            <p className="text-xs text-slate-400 mt-1">This login covers platform control, support cases, and finance. There is no separate support or finance account.</p>
           </div>
 
           {savedSuccessMsg && (
@@ -244,7 +272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         {/* TAB: SHELF TYPES & CATEGORIES MANAGEMENT */}
-        {activeTab === 'CATEGORIES' && (
+        {activeTab === 'MARKETPLACE' && (
           <div className="space-y-8 animate-in fade-in">
             
             {/* Section 1: Product Categories Allowed on Shelves */}
@@ -434,6 +462,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   Rate: {settings?.commissionPercentage || 10}%
                 </div>
               </div>
+
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                <div className="text-slate-400 text-xs font-semibold mb-1">Products</div>
+                <div className="text-2xl font-black text-white">{stats?.productsCount || 0}</div>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                <div className="text-slate-400 text-xs font-semibold mb-1">Available spaces</div>
+                <div className="text-2xl font-black text-white">{stats?.availableShelves || 0}</div>
+                <div className="text-[11px] text-slate-400 mt-1">of {stats?.shelvesCount || shelves.length} shelves</div>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                <div className="text-slate-400 text-xs font-semibold mb-1">Bookings</div>
+                <div className="text-2xl font-black text-white">{stats?.bookingsCount || bookings.length}</div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  Active {stats?.activeBookings || 0} · Pending {stats?.pendingBookings || 0}
+                </div>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                <div className="text-slate-400 text-xs font-semibold mb-1">Pending approvals</div>
+                <div className="text-2xl font-black text-amber-300">{stats?.pendingVerifications || 0}</div>
+                <div className="text-[11px] text-slate-400 mt-1">Withdrawals waiting: {stats?.pendingWithdrawals || 0}</div>
+              </div>
             </div>
 
             {/* Quick Actions & Recent Users */}
@@ -490,6 +540,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'USERS' && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
             <h2 className="text-base font-bold text-white mb-4">User Accounts & Role Permissions</h2>
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <input
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+                placeholder="Search name or email"
+                className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white flex-1"
+              />
+              <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+                <option value="">All roles</option>
+                <option value="ADMIN">Admin</option>
+                <option value="VENDOR">Vendor</option>
+                <option value="HOST">Host</option>
+                <option value="FIELD_AGENT">Field agent</option>
+              </select>
+              <select value={userStatusFilter} onChange={(e) => setUserStatusFilter(e.target.value)} className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+                <option value="">All statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="PENDING">Pending</option>
+                <option value="SUSPENDED">Suspended</option>
+              </select>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider font-bold">
@@ -502,7 +573,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {users.map((u) => (
+                  {users
+                    .filter((u) => !userRoleFilter || u.role === userRoleFilter)
+                    .filter((u) => !userStatusFilter || u.status === userStatusFilter)
+                    .filter((u) => {
+                      const q = userQuery.trim().toLowerCase();
+                      if (!q) return true;
+                      return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+                    })
+                    .map((u) => (
                     <tr key={u.id} className="hover:bg-slate-800/40">
                       <td className="p-3">
                         <div className="font-bold text-white">{u.name}</div>
@@ -549,8 +628,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
 
         {/* TAB 3: SHOPS & SHELVES */}
-        {activeTab === 'SHOPS' && (
+        {activeTab === 'MARKETPLACE' && (
           <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h2 className="text-base font-bold text-white mb-3">Products ({adminProducts.length})</h2>
+              {adminProducts.length === 0 ? (
+                <div className="text-xs text-slate-500">No products yet.</div>
+              ) : (
+                <div className="overflow-x-auto max-h-64">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="text-slate-400 uppercase text-[10px]">
+                      <tr>
+                        <th className="p-2">Product</th>
+                        <th className="p-2">Vendor</th>
+                        <th className="p-2">Status</th>
+                        <th className="p-2">Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminProducts.map((p) => (
+                        <tr key={p.id} className="border-t border-slate-800">
+                          <td className="p-2 text-white font-semibold">{p.name}</td>
+                          <td className="p-2">{p.vendorName || p.vendorId}</td>
+                          <td className="p-2">{p.status}</td>
+                          <td className="p-2 font-mono">TZS {Number(p.priceTzs || 0).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <h2 className="text-base font-bold text-white">Shelf moderation ({shelves.length})</h2>
@@ -693,7 +801,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {activeTab === 'VERIFY' && (
+        {activeTab === 'FIELD' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h2 className="text-base font-bold text-white mb-3">Field visits ({fieldVisits.length})</h2>
+              {fieldVisits.length === 0 ? (
+                <div className="text-xs text-slate-500">No inspection visits.</div>
+              ) : (
+                <div className="space-y-2">
+                  {fieldVisits.map((v) => (
+                    <div key={v.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs flex justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-white">{v.shopName} · {v.shelfName}</div>
+                        <div className="text-slate-400">{v.shopCity} · agent {v.agentName || v.agentId}</div>
+                      </div>
+                      <span className="text-amber-400 font-bold">{v.status}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h2 className="text-base font-bold text-white mb-3">Inspection reports ({fieldReports.length})</h2>
+              {fieldReports.length === 0 ? (
+                <div className="text-xs text-slate-500">No reports submitted.</div>
+              ) : (
+                <div className="space-y-2">
+                  {fieldReports.map((r) => (
+                    <div key={r.id} className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs">
+                      <div className="font-bold text-white">{r.stockLevelPercent}% stock · {r.shelfCondition}</div>
+                      <div className="text-slate-400 mt-1">{r.notes}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'SUPPORT' && (
           <div className="space-y-3">
             <h2 className="text-lg font-bold text-white">Verification queue</h2>
             <p className="text-xs text-slate-400">Approve shops and shelves before they appear in the public marketplace.</p>
@@ -717,7 +863,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
 
-        {activeTab === 'PAYOUTS' && (
+        {activeTab === 'FINANCE' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h2 className="text-lg font-bold text-white mb-3">Payments</h2>
+              {payments.length === 0 ? (
+                <div className="text-xs text-slate-500">No payment records.</div>
+              ) : (
+                <div className="space-y-2">
+                  {payments.slice(0, 20).map((p) => (
+                    <div key={p.id} className="flex justify-between text-xs bg-slate-950 border border-slate-800 rounded-xl p-3">
+                      <span className="text-white font-semibold">TZS {Number(p.amountTzs || 0).toLocaleString()}</span>
+                      <span className="text-slate-400">{p.status} · {p.bookingId || p.id}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+              <h2 className="text-lg font-bold text-white mb-3">Host balances</h2>
+              {financeRows.length === 0 ? (
+                <div className="text-xs text-slate-500">No host balances.</div>
+              ) : (
+                <div className="space-y-2">
+                  {financeRows.map((row) => (
+                    <div key={row.hostId} className="text-xs bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between">
+                      <span className="text-white font-semibold">{row.name}</span>
+                      <span className="text-emerald-400 font-mono">
+                        Available TZS {Number(row.availableTzs || row.availableBalanceTzs || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           <div className="space-y-3">
             <h2 className="text-lg font-bold text-white">Host withdrawals</h2>
             <input value={payoutRef} onChange={(e) => setPayoutRef(e.target.value)} placeholder="Payout reference" className="bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white w-full max-w-sm" />
@@ -739,9 +918,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               ))
             )}
           </div>
+          </div>
         )}
 
-        {activeTab === 'DISPUTES' && (
+        {activeTab === 'SUPPORT' && (
           <div className="space-y-3">
             <h2 className="text-lg font-bold text-white">Open disputes</h2>
             <p className="text-xs text-slate-400">Resolving to COMPLETED releases host earnings. CANCELLED does not invent a refund — use cancel if money must move.</p>

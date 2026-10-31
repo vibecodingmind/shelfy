@@ -193,6 +193,8 @@ export const api = {
   // Products & Inventory
   getProducts: () => apiFetch<Product[]>('/api/products'),
   createProduct: (productData: any) => apiFetch<Product>('/api/products', { method: 'POST', body: JSON.stringify(productData) }),
+  updateProduct: (id: string, productData: Record<string, unknown>) =>
+    apiFetch<Product>(`/api/products/${id}`, { method: 'PUT', body: JSON.stringify(productData) }),
   getInventory: () => apiFetch<ShelfInventory[]>('/api/inventory'),
 
   // Field Agent Visits & Reports

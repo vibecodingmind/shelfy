@@ -98,6 +98,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
 
   // New Product Modal
   const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [prodName, setProdName] = useState('');
   const [prodCategory, setProdCategory] = useState('Food & Beverages');
   const [prodPrice, setProdPrice] = useState(5000);
@@ -136,18 +137,27 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
   // Add Product
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await api.createProduct({
+    const payload = {
       name: prodName,
       category: prodCategory,
       priceTzs: prodPrice,
       sku: prodSku || `SKU-${Date.now().toString().slice(-6)}`,
       stockQuantity: prodStock,
-    });
+    };
+    const res = editingProductId
+      ? await api.updateProduct(editingProductId, payload)
+      : await api.createProduct(payload);
     if (res.success) {
       setShowProductModal(false);
+      setEditingProductId(null);
       setProdName('');
       onRefreshData();
     }
+  };
+
+  const archiveProduct = async (id: string, status: 'ACTIVE' | 'INACTIVE') => {
+    const res = await api.updateProduct(id, { status });
+    if (res.success) onRefreshData();
   };
 
   // Checkout is handled by PesapalPaymentModal → server initiate + poll.
@@ -421,7 +431,11 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                 <p className="text-xs text-slate-400">Add SKUs and products to place in booked retail shelves.</p>
               </div>
               <button
-                onClick={() => setShowProductModal(true)}
+                onClick={() => {
+                  setEditingProductId(null);
+                  setProdName('');
+                  setShowProductModal(true);
+                }}
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" /> Add Product
@@ -435,7 +449,31 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
                   <div className="text-[10px] text-amber-400 font-mono font-bold">{p.sku}</div>
                   <h3 className="font-bold text-white text-sm">{p.name}</h3>
                   <div className="text-xs font-mono font-bold text-emerald-400 my-1">TZS {p.priceTzs.toLocaleString()}</div>
-                  <div className="text-[11px] text-slate-400">Stock: {p.stockQuantity} units</div>
+                  <div className="text-[11px] text-slate-400">Stock: {p.stockQuantity} units · {p.status}</div>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProductId(p.id);
+                        setProdName(p.name);
+                        setProdCategory(p.category);
+                        setProdPrice(p.priceTzs);
+                        setProdSku(p.sku);
+                        setProdStock(p.stockQuantity);
+                        setShowProductModal(true);
+                      }}
+                      className="px-2 py-1 text-[10px] font-bold rounded-lg bg-slate-800 text-white"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => archiveProduct(p.id, p.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE')}
+                      className="px-2 py-1 text-[10px] font-bold rounded-lg bg-slate-800 text-amber-300"
+                    >
+                      {p.status === 'ACTIVE' ? 'Archive' : 'Restore'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -729,11 +767,11 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
       {showProductModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 relative">
-            <button onClick={() => setShowProductModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+            <button onClick={() => { setShowProductModal(false); setEditingProductId(null); }} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
 
-            <h2 className="text-lg font-bold text-white mb-4">Add Product SKU</h2>
+            <h2 className="text-lg font-bold text-white mb-4">{editingProductId ? 'Edit product' : 'Add Product SKU'}</h2>
 
             <form onSubmit={handleAddProduct} className="space-y-4 text-xs">
               <div>
@@ -770,7 +808,7 @@ export const VendorDashboard: React.FC<VendorDashboardProps> = ({
               </div>
 
               <button type="submit" className="w-full py-3 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl">
-                Create SKU
+                {editingProductId ? 'Save product' : 'Create SKU'}
               </button>
             </form>
           </div>

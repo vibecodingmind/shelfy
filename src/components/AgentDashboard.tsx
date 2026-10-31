@@ -46,9 +46,8 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
   const [activeVisit, setActiveVisit] = useState<FieldVisit | null>(null);
 
   // Photos State: array of captured or uploaded photo URLs
-  const [capturedPhotos, setCapturedPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1583258292688-d02132382025?w=800',
-  ]);
+  const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
+  const [agentSection, setAgentSection] = useState<'assigned' | 'history' | 'earnings'>('assigned');
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
 
   // Camera Stream state
@@ -238,6 +237,14 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
   const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeVisit) return;
+    if (capturedPhotos.length === 0) {
+      alert('Capture at least one inspection photo before submitting.');
+      return;
+    }
+    if (gpsDistanceMeters === null) {
+      alert('Verify GPS at the shop before submitting. A missing reading is not recorded as a distance.');
+      return;
+    }
 
     setSubmittingReport(true);
     const res = await api.submitReport({
@@ -248,8 +255,8 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
       shelfCondition: condition,
       notes: notes || 'Physical inspection complete by agent.',
       photos: capturedPhotos,
-      gpsVerified: !!gpsLocation,
-      gpsDistanceMeters: gpsDistanceMeters || 12,
+      gpsVerified: gpsDistanceMeters !== null,
+      gpsDistanceMeters: gpsDistanceMeters ?? undefined,
     });
 
     if (res.success) {
@@ -502,7 +509,9 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
               {gpsLocation && (
                 <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between pt-1">
                   <span>Lat: {gpsLocation.latitude.toFixed(4)}, Lng: {gpsLocation.longitude.toFixed(4)}</span>
-                  <span className="text-emerald-400 font-bold">✓ On-Site ({gpsDistanceMeters || 8}m from shop)</span>
+                  <span className="text-emerald-400 font-bold">
+                    {gpsDistanceMeters === null ? 'Distance not measured' : `${gpsDistanceMeters}m from shop`}
+                  </span>
                 </div>
               )}
             </div>
@@ -563,9 +572,31 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
           </form>
         </div>
       ) : (
-        /* VISITS CHECKLIST */
         <div className="space-y-6">
-          
+          <div className="flex gap-2">
+            {([
+              ['assigned', 'Assigned'],
+              ['history', 'History'],
+              ['earnings', 'Earnings'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setAgentSection(id)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold ${agentSection === id ? 'bg-purple-500 text-white' : 'bg-slate-900 text-slate-300 border border-slate-800'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {agentSection === 'earnings' && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-sm text-slate-300">
+              Incentives are not configured for field agents. Completed inspections are listed under History.
+            </div>
+          )}
+
+          {agentSection === 'assigned' && (
           <div>
             <h2 className="text-sm font-bold text-white mb-3 flex items-center justify-between">
               <span>Assigned Shop Inspections ({visits.length})</span>
@@ -598,6 +629,10 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
                     <button
                       type="button"
                       onClick={() => {
+                        setCapturedPhotos([]);
+                        setActivePhotoIndex(0);
+                        setGpsDistanceMeters(null);
+                        setGpsLocation(null);
                         setActiveVisit(visit);
                         startCamera();
                       }}
@@ -610,8 +645,9 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
               ))}
             </div>
           </div>
+          )}
 
-          {/* HISTORICAL REPORTS */}
+          {agentSection === 'history' && (
           <div>
             <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4 text-emerald-400" /> Submitted Reports History
@@ -636,6 +672,7 @@ export const AgentDashboard: React.FC<AgentDashboardProps> = ({
               ))}
             </div>
           </div>
+          )}
 
         </div>
       )}
