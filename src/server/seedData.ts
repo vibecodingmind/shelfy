@@ -25,6 +25,19 @@ import {
   SavedSearch,
   NotificationPreference,
   EnterpriseAccount,
+  UserRoleAssignment,
+  UserAdminPermission,
+  AdminNote,
+  IntegrationCredential,
+  IntegrationLog,
+  PaymentGatewayConfig,
+  WebhookEvent,
+  CommissionRule,
+  SubscriptionPlan,
+  Subscription,
+  ApiClient,
+  ApiClientKey,
+  NotificationTemplate,
 } from '../types/index.js';
 import { LedgerAccount, LedgerEntry, accountKey, paymentCapturedPostings } from './domain/ledger.js';
 import { Withdrawal } from './domain/withdrawals.js';
@@ -59,6 +72,19 @@ export interface DatabaseSchema {
   savedSearches: SavedSearch[];
   notificationPreferences: NotificationPreference[];
   enterpriseAccounts: EnterpriseAccount[];
+  userRoleAssignments: UserRoleAssignment[];
+  userAdminPermissions: UserAdminPermission[];
+  adminNotes: AdminNote[];
+  integrationCredentials: IntegrationCredential[];
+  integrationLogs: IntegrationLog[];
+  paymentGatewayConfigs: PaymentGatewayConfig[];
+  webhookEvents: WebhookEvent[];
+  commissionRules: CommissionRule[];
+  subscriptionPlans: SubscriptionPlan[];
+  subscriptions: Subscription[];
+  apiClients: ApiClient[];
+  apiClientKeys: ApiClientKey[];
+  notificationTemplates: NotificationTemplate[];
   settings: PlatformSettings;
 }
 
@@ -76,6 +102,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
       passwordHash,
       role: 'ADMIN',
       status: 'ACTIVE',
+      adminPermissions: ['SUPER_ADMIN'],
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
       emailVerifiedAt: now,
       phoneVerifiedAt: now,
@@ -1849,7 +1876,7 @@ export function buildCompleteSeedData(): DatabaseSchema {
   }
 
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     users,
     vendorProfiles,
     hostProfiles,
@@ -1877,6 +1904,19 @@ export function buildCompleteSeedData(): DatabaseSchema {
     savedSearches: [],
     notificationPreferences: [],
     enterpriseAccounts: [],
+    userRoleAssignments: [],
+    userAdminPermissions: [],
+    adminNotes: [],
+    integrationCredentials: [],
+    integrationLogs: [],
+    paymentGatewayConfigs: [],
+    webhookEvents: [],
+    commissionRules: [],
+    subscriptionPlans: [],
+    subscriptions: [],
+    apiClients: [],
+    apiClientKeys: [],
+    notificationTemplates: [],
     settings,
   };
 }

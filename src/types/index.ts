@@ -4,6 +4,173 @@
 
 export type UserRole = 'ADMIN' | 'VENDOR' | 'HOST' | 'FIELD_AGENT';
 
+export type AdminPermission =
+  | 'SUPER_ADMIN'
+  | 'MANAGE_USERS'
+  | 'MANAGE_PAYMENTS'
+  | 'MANAGE_FINANCE'
+  | 'MANAGE_INTEGRATIONS'
+  | 'MANAGE_SETTINGS'
+  | 'MANAGE_MARKETPLACE'
+  | 'MANAGE_FIELD'
+  | 'MANAGE_SUPPORT';
+
+export type IntegrationProvider =
+  | 'AZAMPAY'
+  | 'SMTP'
+  | 'GEMINI'
+  | 'S3'
+  | 'SMS'
+  | 'PESAPAL'
+  | 'STRIPE'
+  | 'FLUTTERWAVE';
+
+export type PaymentGatewayProvider = 'AZAMPAY' | 'PESAPAL' | 'STRIPE' | 'FLUTTERWAVE';
+
+export interface UserRoleAssignment {
+  id: string;
+  userId: string;
+  role: UserRole;
+  status: UserStatus;
+  grantedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserAdminPermission {
+  id: string;
+  userId: string;
+  permission: AdminPermission;
+  grantedBy?: string;
+  createdAt: string;
+}
+
+export interface AdminNote {
+  id: string;
+  userId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface IntegrationCredential {
+  id: string;
+  provider: IntegrationProvider;
+  environment: 'sandbox' | 'live';
+  key: string;
+  ciphertext: string;
+  iv: string;
+  tag: string;
+  updatedBy?: string;
+  updatedAt: string;
+}
+
+export interface IntegrationLog {
+  id: string;
+  provider: string;
+  operation: string;
+  success: boolean;
+  durationMs?: number;
+  errorMessage?: string;
+  resourceType?: string;
+  resourceId?: string;
+  createdAt: string;
+}
+
+export interface PaymentGatewayConfig {
+  id: string;
+  provider: PaymentGatewayProvider;
+  enabled: boolean;
+  isDefault: boolean;
+  environment: 'sandbox' | 'live';
+  configJson: Record<string, unknown>;
+  lastTestAt?: string;
+  lastTestOk?: boolean;
+  lastTestMessage?: string;
+  updatedAt: string;
+}
+
+export interface WebhookEvent {
+  id: string;
+  provider: string;
+  paymentId?: string;
+  verified: boolean;
+  status: string;
+  payloadSummary: string;
+  createdAt: string;
+}
+
+export interface CommissionRule {
+  id: string;
+  effectiveFrom: string;
+  platformBps: number;
+  vendorBps?: number;
+  hostBps?: number;
+  category?: string;
+  planId?: string;
+  createdAt: string;
+}
+
+export type SubscriptionStatus = 'ACTIVE' | 'TRIAL' | 'CANCELLED' | 'EXPIRED' | 'SUSPENDED';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description?: string;
+  priceTzs: number;
+  currency: string;
+  billingPeriod: 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'CUSTOM';
+  trialDays: number;
+  active: boolean;
+  entitlements: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  planId: string;
+  status: SubscriptionStatus;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  trialEndsAt?: string;
+  cancelledAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiClient {
+  id: string;
+  name: string;
+  description?: string;
+  scopes: string[];
+  rateLimitPerHour: number;
+  enabled: boolean;
+  lastUsedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiClientKey {
+  id: string;
+  clientId: string;
+  keyPrefix: string;
+  keyHash: string;
+  createdAt: string;
+  revokedAt?: string;
+}
+
+export interface NotificationTemplate {
+  id: string;
+  key: string;
+  channel: 'EMAIL' | 'SMS';
+  subject?: string;
+  body: string;
+  updatedAt: string;
+}
+
 export type UserStatus = 'ACTIVE' | 'PENDING' | 'SUSPENDED';
 
 export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED' | 'SUSPENDED';
@@ -24,6 +191,9 @@ export interface User {
   lastLoginAt?: string;
   createdAt: string;
   updatedAt: string;
+  /** Active portal role (JWT); defaults to primary role. */
+  activeRole?: UserRole;
+  adminPermissions?: AdminPermission[];
 }
 
 export interface VendorProfile {
@@ -123,6 +293,7 @@ export interface Shelf {
   status: 'ACTIVE' | 'INACTIVE';
   avgRating?: number;
   reviewCount?: number;
+  featured?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -357,6 +528,13 @@ export interface ShelfTypeOption {
 
 export interface PlatformSettings {
   commissionPercentage: number; // e.g., 10 for 10%
+  platformName?: string;
+  supportEmail?: string;
+  supportPhone?: string;
+  defaultCountry?: string;
+  timeZone?: string;
+  vendorRegistrationEnabled?: boolean;
+  hostRegistrationEnabled?: boolean;
   autoApproveBookings: boolean;
   azamPayEnvironment: 'sandbox' | 'live';
   /** @deprecated use azamPayEnvironment */

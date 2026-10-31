@@ -8,6 +8,8 @@ import jwt from 'jsonwebtoken';
 import { dbEngine } from './db.js';
 import { User, UserRole } from '../types/index.js';
 import { PENDING_ALLOWED_PATHS, isActiveForApi } from './domain/rbac.js';
+import { canAdmin, permissionForRoute, permissionsForUser, userHasRole } from './admin/authorization.js';
+import { AdminPermission, UserRole } from '../types/index.js';
 
 function currentJwtSecret(): string {
   const fromEnv = process.env.JWT_SECRET?.trim();
@@ -25,12 +27,15 @@ export interface AuthenticatedRequest extends Request {
   user?: User;
 }
 
-export function generateToken(user: User): string {
+export function generateToken(user: User, activeRole?: UserRole): string {
+  const role = activeRole || user.activeRole || user.role;
   const payload = {
     id: user.id,
     email: user.email,
-    role: user.role,
+    role,
+    activeRole: role,
     name: user.name,
+    adminPermissions: user.role === 'ADMIN' ? permissionsForUser(user) : undefined,
   };
   return jwt.sign(payload, currentJwtSecret(), { expiresIn: ACCESS_TOKEN_TTL });
 }
@@ -46,10 +51,15 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, currentJwtSecret()) as { id: string; email: string; role: UserRole };
-    const user = dbEngine.db.users.find((u) => u.id === decoded.id);
+    const decoded = jwt.verify(token, currentJwtSecret()) as {
+      id: string;
+      email: string;
+      role: UserRole;
+      activeRole?: UserRole;
+    };
+    const found = dbEngine.db.users.find((u) => u.id === decoded.id);
 
-    if (!user) {
+    if (!found) {
       return res.status(401).json({
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'User account not found or suspended.' },
@@ -57,19 +67,33 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
     }
 
     const allowPending = PENDING_ALLOWED_PATHS.some((path) => req.path.startsWith(path));
-    if (!isActiveForApi(user, allowPending)) {
+    if (!isActiveForApi(found, allowPending)) {
       return res.status(403).json({
         success: false,
         error: {
-          code: user.status === 'PENDING' ? 'EMAIL_UNVERIFIED' : 'SUSPENDED',
+          code: found.status === 'PENDING' ? 'EMAIL_UNVERIFIED' : 'SUSPENDED',
           message:
-            user.status === 'PENDING'
+            found.status === 'PENDING'
               ? 'Verify your email before using the marketplace.'
               : 'Your account has been suspended.',
         },
       });
     }
 
+    const activeRole = decoded.activeRole || decoded.role;
+    let user = found;
+    if (activeRole && activeRole !== found.role) {
+      if (found.role === 'ADMIN' && activeRole === 'ADMIN') {
+        user = found;
+      } else if (!userHasRole(found.id, activeRole)) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Invalid active role for this account.' },
+        });
+      } else {
+        user = { ...found, role: activeRole, activeRole };
+      }
+    }
     req.user = user;
     next();
   } catch {
@@ -78,6 +102,19 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
       error: { code: 'INVALID_TOKEN', message: 'Session expired or invalid token.' },
     });
   }
+}
+
+export function requireAdminPermission(permission: AdminPermission) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user || req.user.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, error: { message: 'Admin access required.' } });
+    }
+    const routePerm = permissionForRoute(req.path) || permission;
+    if (!canAdmin(req.user, permission) && !canAdmin(req.user, routePerm)) {
+      return res.status(403).json({ success: false, error: { message: 'Insufficient admin permissions.' } });
+    }
+    next();
+  };
 }
 
 export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction) {

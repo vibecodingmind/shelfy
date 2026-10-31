@@ -43,6 +43,7 @@ export function App() {
   const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
   const [hostProfile, setHostProfile] = useState<HostProfile | null>(null);
   const [activeRoleView, setActiveRoleView] = useState<string>('MARKETPLACE');
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
 
   // Application Data State
   const [shops, setShops] = useState<Shop[]>([]);
@@ -521,6 +522,7 @@ export function App() {
             if (data.vendorProfile) setVendorProfile(data.vendorProfile);
             if (data.hostProfile) setHostProfile(data.hostProfile);
             setActiveRoleView(data.user.role);
+            if (Array.isArray((data as any).availableRoles)) setAvailableRoles((data as any).availableRoles);
             loadUserData();
           }}
         />

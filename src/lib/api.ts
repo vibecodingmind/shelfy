@@ -237,6 +237,39 @@ export const api = {
   runPaymentReconcileJob: () => apiFetch<any>('/api/jobs/payment-reconcile', { method: 'POST' }),
   inviteFieldAgent: (body: { name: string; email: string; phone?: string; password?: string }) =>
     apiFetch<any>('/api/admin/agents', { method: 'POST', body: JSON.stringify(body) }),
+  getAdminAnalytics: (range: { from: string; to: string; granularity?: string }) =>
+    apiFetch<any>(`/api/admin/analytics?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}&granularity=${range.granularity || 'day'}`),
+  getAdminHealth: () => apiFetch<any>('/api/admin/health'),
+  getAdminClients: (params?: { q?: string; role?: string; status?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.set('q', params.q);
+    if (params?.role) qs.set('role', params.role);
+    if (params?.status) qs.set('status', params.status);
+    return apiFetch<User[]>(`/api/admin/clients?${qs.toString()}`);
+  },
+  getAdminClient: (id: string) => apiFetch<any>(`/api/admin/clients/${id}`),
+  createAdminClient: (body: Record<string, unknown>) => apiFetch<any>('/api/admin/clients', { method: 'POST', body: JSON.stringify(body) }),
+  adminVerifyClientEmail: (id: string) => apiFetch<any>(`/api/admin/clients/${id}/verify-email`, { method: 'POST', body: '{}' }),
+  adminResetClientPassword: (id: string) => apiFetch<any>(`/api/admin/clients/${id}/reset-password`, { method: 'POST', body: '{}' }),
+  switchRole: (role: string) => apiFetch<any>('/api/auth/switch-role', { method: 'POST', body: JSON.stringify({ role }) }),
+  getAdminGateways: () => apiFetch<any>('/api/admin/gateways'),
+  updateAdminGateway: (provider: string, body: Record<string, unknown>) =>
+    apiFetch<any>(`/api/admin/gateways/${provider}`, { method: 'PUT', body: JSON.stringify(body) }),
+  testAdminGateway: (provider: string) => apiFetch<any>(`/api/admin/gateways/${provider}/test`, { method: 'POST', body: '{}' }),
+  getAdminIntegrationsConfig: () => apiFetch<any>('/api/admin/integrations/config'),
+  getAdminIntegrationLogs: () => apiFetch<any>('/api/admin/integrations/logs'),
+  getCommissionRules: () => apiFetch<any>('/api/admin/commission-rules'),
+  createCommissionRule: (body: Record<string, unknown>) =>
+    apiFetch<any>('/api/admin/commission-rules', { method: 'POST', body: JSON.stringify(body) }),
+  getSubscriptionPlans: () => apiFetch<any>('/api/admin/subscription-plans'),
+  createSubscriptionPlan: (body: Record<string, unknown>) =>
+    apiFetch<any>('/api/admin/subscription-plans', { method: 'POST', body: JSON.stringify(body) }),
+  getSubscriptions: () => apiFetch<any>('/api/admin/subscriptions'),
+  assignSubscription: (body: Record<string, unknown>) =>
+    apiFetch<any>('/api/admin/subscriptions', { method: 'POST', body: JSON.stringify(body) }),
+  getApiClients: () => apiFetch<any>('/api/admin/api-clients'),
+  createApiClient: (body: Record<string, unknown>) =>
+    apiFetch<any>('/api/admin/api-clients', { method: 'POST', body: JSON.stringify(body) }),
   updateMe: (body: Record<string, unknown>) => apiFetch<any>('/api/users/me', { method: 'PUT', body: JSON.stringify(body) }),
   changePassword: (currentPassword: string, newPassword: string) =>
     apiFetch<any>('/api/users/me/change-password', {

@@ -16,7 +16,7 @@ import { ensurePrismaMigrationHistory, runPrismaMigrateDeploy } from './services
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 import { PLATFORM_ADMIN_EMAIL, SEED_OPERATOR_EMAILS } from './domain/passwords.js';
 
-export const SEED_SCHEMA_VERSION = 7;
+export const SEED_SCHEMA_VERSION = 8;
 
 const DATA_DIR = path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || process.cwd(), process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH ? '' : 'data');
 const DB_FILE = path.resolve(DATA_DIR, 'shelfy.json');
@@ -101,6 +101,19 @@ const EMPTY_COLLECTIONS: Array<keyof DatabaseSchema> = [
   'savedSearches',
   'notificationPreferences',
   'enterpriseAccounts',
+  'userRoleAssignments',
+  'userAdminPermissions',
+  'adminNotes',
+  'integrationCredentials',
+  'integrationLogs',
+  'paymentGatewayConfigs',
+  'webhookEvents',
+  'commissionRules',
+  'subscriptionPlans',
+  'subscriptions',
+  'apiClients',
+  'apiClientKeys',
+  'notificationTemplates',
 ];
 
 function normalizeCategory(category: string): string {
@@ -202,6 +215,13 @@ export function normalizeDatabase(data: DatabaseSchema): { data: DatabaseSchema;
     legacyAdmin.email = PLATFORM_ADMIN_EMAIL;
     legacyAdmin.updatedAt = new Date().toISOString();
     changed = true;
+  }
+
+  for (const admin of next.users.filter((u) => u.role === 'ADMIN')) {
+    if (!admin.adminPermissions?.length) {
+      admin.adminPermissions = ['SUPER_ADMIN'];
+      changed = true;
+    }
   }
 
   const seedOperatorPassword = 'Password123!';

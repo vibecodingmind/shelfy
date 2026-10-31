@@ -19,6 +19,7 @@ import {
   Layers,
   Activity,
   Sparkles,
+  Plug,
   Tag,
   Plus,
   Trash2,
@@ -30,6 +31,11 @@ import { User, AuditLog, PlatformSettings, Shop, Shelf, Booking, ShelfTypeOption
 import { SHELF_TYPE_CATALOG } from '../lib/shelfTypes.js';
 import { api } from '../lib/api.js';
 import { AdminPlatformSettings } from './AdminPlatformSettings.js';
+import { AdminAnalyticsPanel } from './admin/AdminAnalyticsPanel.js';
+import { AdminClientsPanel } from './admin/AdminClientsPanel.js';
+import { AdminGatewaysPanel } from './admin/AdminGatewaysPanel.js';
+import { AdminIntegrationsPanel } from './admin/AdminIntegrationsPanel.js';
+import { AdminSubscriptionsPanel } from './admin/AdminSubscriptionsPanel.js';
 
 interface AdminDashboardProps {
   stats: any;
@@ -54,7 +60,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateUserStatus,
   onUpdateSettings,
 }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'MARKETPLACE' | 'BOOKINGS' | 'FIELD' | 'FINANCE' | 'SUPPORT' | 'SETTINGS' | 'AUDIT'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<
+    | 'OVERVIEW'
+    | 'ANALYTICS'
+    | 'CLIENTS'
+    | 'USERS'
+    | 'MARKETPLACE'
+    | 'BOOKINGS'
+    | 'FIELD'
+    | 'FINANCE'
+    | 'GATEWAYS'
+    | 'SUBSCRIPTIONS'
+    | 'INTEGRATIONS'
+    | 'SUPPORT'
+    | 'SETTINGS'
+    | 'AUDIT'
+  >('ANALYTICS');
   const [verifications, setVerifications] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -214,8 +235,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
-              { id: 'OVERVIEW', label: 'Overview', icon: Activity },
+              { id: 'ANALYTICS', label: 'Dashboard', icon: Activity },
+              { id: 'OVERVIEW', label: 'Snapshot', icon: TrendingUp },
+              { id: 'CLIENTS', label: 'Clients', icon: UserCheck },
               { id: 'USERS', label: 'Users', icon: Users },
+              { id: 'GATEWAYS', label: 'Payments', icon: CreditCard },
+              { id: 'INTEGRATIONS', label: 'Integrations', icon: Plug },
+              { id: 'SUBSCRIPTIONS', label: 'Subscriptions', icon: Layers },
               { id: 'MARKETPLACE', label: 'Marketplace', icon: Store },
               { id: 'BOOKINGS', label: 'Bookings', icon: DollarSign },
               { id: 'FIELD', label: 'Field', icon: UserCheck },
@@ -261,7 +287,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <Shield className="w-6 h-6 text-emerald-400" />
               Admin
             </h1>
-            <p className="text-xs text-slate-400 mt-1">This login covers platform control, support cases, and finance. There is no separate support or finance account.</p>
+            <p className="text-xs text-slate-400 mt-1">Super Admin Control Center — clients, payments, integrations, subscriptions, and platform operations.</p>
           </div>
 
           {savedSuccessMsg && (
@@ -422,6 +448,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           </div>
         )}
+
+        {activeTab === 'ANALYTICS' && <AdminAnalyticsPanel />}
+        {activeTab === 'CLIENTS' && <AdminClientsPanel />}
+        {activeTab === 'GATEWAYS' && <AdminGatewaysPanel />}
+        {activeTab === 'INTEGRATIONS' && <AdminIntegrationsPanel />}
+        {activeTab === 'SUBSCRIPTIONS' && <AdminSubscriptionsPanel />}
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'OVERVIEW' && (

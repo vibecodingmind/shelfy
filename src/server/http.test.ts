@@ -304,4 +304,21 @@ describe('HTTP API', () => {
     expect(typeof dash.json.data.stats.pendingBookings).toBe('number');
     expect(Array.isArray(dash.json.data.stats.recentUsers)).toBe(true);
   });
+
+  it('admin analytics, clients, and gateways work', async () => {
+    const admin = await login(origin, 'hello@shelfy.co.tz');
+    const analytics = await api(origin, 'GET', '/api/admin/analytics?from=2020-01-01&to=2030-01-01', { token: admin.token });
+    expect(analytics.status).toBe(200);
+    expect(analytics.json.data.kpis.totalUsers).toBeGreaterThan(0);
+
+    const clients = await api(origin, 'GET', '/api/admin/clients', { token: admin.token });
+    expect(clients.status).toBe(200);
+    expect(Array.isArray(clients.json.data)).toBe(true);
+
+    const gw = await api(origin, 'GET', '/api/admin/gateways', { token: admin.token });
+    expect(gw.status).toBe(200);
+    const azam = gw.json.data.find((g: any) => g.provider === 'AZAMPAY');
+    expect(azam.integrated).toBe(true);
+    expect(JSON.stringify(gw.json.data)).not.toMatch(/clientSecret/i);
+  });
 });

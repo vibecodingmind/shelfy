@@ -10,7 +10,20 @@ import fs from 'fs';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { dbEngine } from './src/server/db.js';
-import { requireAuth, requireRole, generateToken, logAuditEvent, AuthenticatedRequest, optionalAuth, ACCESS_TOKEN_TTL_SECONDS } from './src/server/auth.js';
+import { requireAuth, requireRole, requireAdminPermission, generateToken, logAuditEvent, AuthenticatedRequest, optionalAuth, ACCESS_TOKEN_TTL_SECONDS } from './src/server/auth.js';
+import { registerAdminRoutes } from './src/server/adminRoutes.js';
+import { assignedRolesForUser } from './src/server/admin/authorization.js';
+import { buildAzamPayEnvFromStore } from './src/server/admin/integrationStore.js';
+import { integrationEncryptionConfigured } from './src/server/admin/encryption.js';
+import { commissionDiscountBpsForUser } from './src/server/admin/entitlements.js';
+
+function resolveAzamPayRuntimeEnv(): NodeJS.ProcessEnv {
+  const cfg = dbEngine.db.paymentGatewayConfigs?.find((c) => c.provider === 'AZAMPAY' && c.enabled);
+  if (cfg && integrationEncryptionConfigured()) {
+    return buildAzamPayEnvFromStore(cfg.environment);
+  }
+  return process.env;
+}
 import { analyzeShelfPhoto, recommendShelves, generateVendorInsights } from './src/server/ai.js';
 import { BookingStatus, User, UserRole } from './src/types/index.js';
 import { SHELF_TYPE_CATALOG } from './src/lib/shelfTypes.js';
@@ -283,11 +296,36 @@ app.post('/api/auth/login', authLimiter, (req: Request, res: Response) => {
         vendorProfile,
         hostProfile,
         emailVerified: Boolean(user.emailVerifiedAt),
+        availableRoles: assignedRolesForUser(user.id),
       },
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: { message: err.message || 'Login failed.' } });
   }
+});
+
+app.post('/api/auth/switch-role', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const role = String(req.body?.role || '') as UserRole;
+  if (!role) return res.status(400).json({ success: false, error: { message: 'role required.' } });
+  const user = dbEngine.db.users.find((u) => u.id === req.user!.id);
+  if (!user) return res.status(404).json({ success: false, error: { message: 'User not found.' } });
+  if (user.role === 'ADMIN' && role === 'ADMIN') {
+    // ok
+  } else if (!assignedRolesForUser(user.id).includes(role)) {
+    return res.status(403).json({ success: false, error: { message: 'Role not assigned to this account.' } });
+  }
+  const token = generateToken(user, role);
+  const sessionUser = { ...publicUser(user), role, activeRole: role };
+  res.json({
+    success: true,
+    data: {
+      token,
+      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      user: sessionUser,
+      vendorProfile: dbEngine.db.vendorProfiles.find((v) => v.userId === user.id) || null,
+      hostProfile: dbEngine.db.hostProfiles.find((h) => h.userId === user.id) || null,
+    },
+  });
 });
 
 app.post('/api/auth/verify-email', authLimiter, (req: Request, res: Response) => {
@@ -755,10 +793,15 @@ app.post('/api/bookings', requireAuth, requireRole('VENDOR', 'ADMIN'), async (re
     return res.status(400).json({ success: false, error: { message: 'This shelf is not published yet.' } });
   }
 
+  let commissionPct = dbEngine.db.settings.commissionPercentage;
+  const discountBps = commissionDiscountBpsForUser(user.id);
+  if (discountBps > 0) {
+    commissionPct = Math.max(0, commissionPct - discountBps / 100);
+  }
   const quote = calculateBookingQuote({
     monthlyPriceTzs: shelf.monthlyPriceTzs,
     durationMonths,
-    commissionPercentage: dbEngine.db.settings.commissionPercentage,
+    commissionPercentage: commissionPct,
   });
   const startKey = startDate ? String(startDate).slice(0, 10) : new Date().toISOString().slice(0, 10);
   const endKey = addMonthsIsoDate(startKey, quote.durationMonths);
@@ -1049,19 +1092,23 @@ app.post('/api/payments/initiate-session', paymentLimiter, requireAuth, requireR
   let transactionId: string | undefined;
   let pushMessage: string | undefined;
 
-  if (azamPayConfigured()) {
+  const azEnv = resolveAzamPayRuntimeEnv();
+  if (azamPayConfigured(azEnv)) {
     try {
-      const checkout = await initiateMnoCheckout({
-        accountNumber: toAzamMsisdn(billingPhone),
-        amountTzs: booking.totalPriceTzs,
-        externalId: transactionReference,
-        provider,
-        additionalProperties: {
-          paymentId: payment.id,
-          bookingId: booking.id,
-          vendorId: booking.vendorId,
+      const checkout = await initiateMnoCheckout(
+        {
+          accountNumber: toAzamMsisdn(billingPhone),
+          amountTzs: booking.totalPriceTzs,
+          externalId: transactionReference,
+          provider,
+          additionalProperties: {
+            paymentId: payment.id,
+            bookingId: booking.id,
+            vendorId: booking.vendorId,
+          },
         },
-      });
+        azEnv
+      );
       transactionId = checkout.transactionId;
       payment.azamPayTransactionId = checkout.transactionId;
       mode = 'AZAM_PAY';
@@ -1674,7 +1721,7 @@ app.post('/api/messages/mark-read', requireAuth, (req: AuthenticatedRequest, res
 // ==========================================
 
 // GET /api/admin/dashboard
-app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/admin/dashboard', requireAuth, requireAdminPermission('MANAGE_SETTINGS'), (req: AuthenticatedRequest, res: Response) => {
   const usersCount = dbEngine.db.users.length;
   const vendorsCount = dbEngine.db.users.filter((u) => u.role === 'VENDOR').length;
   const hostsCount = dbEngine.db.users.filter((u) => u.role === 'HOST').length;
@@ -1767,12 +1814,12 @@ app.get('/api/admin/dashboard', requireAuth, requireRole('ADMIN'), (req: Authent
 });
 
 // GET /api/admin/users
-app.get('/api/admin/users', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/admin/users', requireAuth, requireAdminPermission('MANAGE_USERS'), (req: AuthenticatedRequest, res: Response) => {
   res.json({ success: true, data: publicUsers(dbEngine.db.users) });
 });
 
 // PUT /api/admin/users/:id/status
-app.put('/api/admin/users/:id/status', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+app.put('/api/admin/users/:id/status', requireAuth, requireAdminPermission('MANAGE_USERS'), (req: AuthenticatedRequest, res: Response) => {
   const { status } = req.body;
   const targetUser = dbEngine.db.users.find((u) => u.id === req.params.id);
 
@@ -1795,7 +1842,7 @@ app.put('/api/admin/users/:id/status', requireAuth, requireRole('ADMIN'), (req: 
 });
 
 // GET /api/admin/audit-logs
-app.get('/api/admin/audit-logs', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/admin/audit-logs', requireAuth, requireAdminPermission('MANAGE_SETTINGS'), (req: AuthenticatedRequest, res: Response) => {
   res.json({ success: true, data: dbEngine.db.auditLogs });
 });
 
@@ -1824,11 +1871,11 @@ app.get('/api/settings', (req: Request, res: Response) => {
 });
 
 // GET /api/admin/integrations — status only, no secrets
-app.get('/api/admin/integrations', requireAuth, requireRole('ADMIN'), (_req: AuthenticatedRequest, res: Response) => {
+app.get('/api/admin/integrations', requireAuth, requireAdminPermission('MANAGE_INTEGRATIONS'), (_req: AuthenticatedRequest, res: Response) => {
   res.json({ success: true, data: adminIntegrationsPayload() });
 });
 
-app.get('/api/admin/payments/overview', requireAuth, requireRole('ADMIN'), (_req: AuthenticatedRequest, res: Response) => {
+app.get('/api/admin/payments/overview', requireAuth, requireAdminPermission('MANAGE_PAYMENTS'), (_req: AuthenticatedRequest, res: Response) => {
   const payments = [...dbEngine.db.payments].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 25);
   const attempts = [...(dbEngine.db.paymentAttempts || [])]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -1837,7 +1884,7 @@ app.get('/api/admin/payments/overview', requireAuth, requireRole('ADMIN'), (_req
 });
 
 // PUT /api/admin/settings
-app.put('/api/admin/settings', requireAuth, requireRole('ADMIN'), (req: AuthenticatedRequest, res: Response) => {
+app.put('/api/admin/settings', requireAuth, requireAdminPermission('MANAGE_SETTINGS'), (req: AuthenticatedRequest, res: Response) => {
   const {
     commissionPercentage,
     autoApproveBookings,
@@ -1940,6 +1987,7 @@ app.post('/api/ai/vendor-insights', requireAuth, requireRole('VENDOR', 'ADMIN'),
 async function startServer() {
   registerP1Routes(app);
   registerPhaseRoutes(app);
+  registerAdminRoutes(app);
   const uploadDir = uploadsDir();
   fs.mkdirSync(uploadDir, { recursive: true });
   app.use('/uploads', express.static(uploadDir));
@@ -1995,6 +2043,7 @@ export async function prepareHttpApp() {
   if (!httpPrepared) {
     registerP1Routes(app);
     registerPhaseRoutes(app);
+    registerAdminRoutes(app);
     httpPrepared = true;
   }
   return app;
